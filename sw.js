@@ -1,4 +1,4 @@
-const CACHE_NAME = 'chef-breaks-v2';
+const CACHE_NAME = 'chef-breaks-v3';
 const FILES_TO_CACHE = [
   './index.html',
   './manifest.json',
