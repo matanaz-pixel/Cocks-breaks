@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ניהול בנק טבחים</title>
+
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#1d2328">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@400;600;800&family=Oswald:wght@500;600;700&display=swap');
+  :root{
+    --steel-0:#14181c; --steel-1:#1d2328; --steel-2:#262e34;
+    --line:#3a444c; --amber:#ff8c2f; --amber-dim:#8a5322;
+    --text:#eef1f3; --text-dim:#8b969e; --danger:#ff3b30;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; min-height:100%;
+    background:radial-gradient(circle at 50% -10%, #232a30 0%, var(--steel-0) 55%);
+    color:var(--text); font-family:'Rubik',sans-serif;
+    -webkit-tap-highlight-color:transparent;
+  }
+  body{ display:flex; justify-content:center; padding:24px 16px 60px; }
+  .app{ width:100%; max-width:460px; }
+  .header{ text-align:center; margin-bottom:20px; }
+  .eyebrow{ font-family:'Oswald',sans-serif; letter-spacing:.14em; font-size:12px; color:var(--text-dim); text-transform:uppercase; }
+  h1{ font-family:'Oswald',sans-serif; font-weight:700; font-size:24px; margin:4px 0 0; }
+
+  .back-btn{
+    display:block; text-align:center; margin-bottom:18px;
+    background:var(--steel-1); border:1px solid var(--line); color:var(--text-dim);
+    border-radius:12px; padding:11px; font-size:13px; text-decoration:none; font-family:'Rubik',sans-serif;
+  }
+  .back-btn:active{ transform:scale(.97); }
+
+  .add-row{
+    background:linear-gradient(180deg,var(--steel-1),var(--steel-0));
+    border:1px solid var(--line); border-radius:18px; padding:14px;
+    display:flex; gap:8px; margin-bottom:22px; position:relative; overflow:hidden;
+  }
+  .add-row::before{
+    content:""; position:absolute; top:0;left:0;right:0; height:4px;
+    background:linear-gradient(90deg,transparent,var(--amber),transparent); opacity:.6;
+  }
+  .add-row input{
+    flex:1; background:var(--steel-2); border:1px solid var(--line); border-radius:12px;
+    padding:12px 14px; color:var(--text); font-size:15px; font-family:'Rubik',sans-serif; outline:none;
+  }
+  .add-row input:focus{ border-color:var(--amber-dim); }
+  .add-row input::placeholder{ color:var(--text-dim); }
+  .add-row button{
+    flex:none; background:var(--amber); color:#1a1005; border:none; border-radius:12px;
+    padding:0 18px; font-size:20px; font-weight:700; cursor:pointer;
+  }
+  .add-row button:active{ transform:scale(.95); }
+
+  .list-title{ font-size:12px; color:var(--text-dim); letter-spacing:.1em; text-transform:uppercase; margin:0 4px 10px; }
+  .empty-note{ text-align:center; color:var(--text-dim); font-size:14px; padding:26px 10px; border:1px dashed var(--line); border-radius:14px; }
+
+  .bank-row{
+    display:flex; align-items:center; gap:10px;
+    background:linear-gradient(180deg,var(--steel-1),var(--steel-0));
+    border:1px solid var(--line); border-radius:14px;
+    padding:12px 14px; margin-bottom:10px;
+  }
+  .bank-row-name{ flex:1; font-size:15px; }
+  .bank-row-tag{ font-size:11px; color:var(--text-dim); }
+  .bank-delete{
+    flex:none; background:transparent; border:1px solid var(--line); color:var(--text-dim);
+    border-radius:10px; padding:8px 12px; font-size:13px; cursor:pointer;
+  }
+  .bank-delete:hover{ border-color:var(--danger); color:var(--danger); }
+  .bank-delete:disabled{ opacity:.35; cursor:not-allowed; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="header">
+    <div class="eyebrow">ניהול מטבח</div>
+    <h1>בנק טבחים</h1>
+  </div>
+
+  <a class="back-btn" href="./index.html">← חזרה למסך הראשי</a>
+
+  <div class="add-row">
+    <input id="chefNameInput" type="text" placeholder="שם טבח חדש...">
+    <button id="addChefBtn">+</button>
+  </div>
+
+  <div class="list-title">כל הטבחים בבנק</div>
+  <div id="emptyNote" class="empty-note">הבנק ריק - הוסף טבח ראשון למעלה</div>
+  <div id="bankList"></div>
+</div>
+
+<script>
+  const chefNameInput = document.getElementById('chefNameInput');
+  const addChefBtn = document.getElementById('addChefBtn');
+  const bankList = document.getElementById('bankList');
+  const emptyNote = document.getElementById('emptyNote');
+
+  const BANK_KEY = 'chefBank_v2';
+  const BREAKS_KEY = 'chefBreaks_v2';
+
+  let bank = [];
+  let breaksState = {};
+  let nextId = 1;
+
+  function loadBank(){
+    try{ const raw = localStorage.getItem(BANK_KEY); bank = raw ? JSON.parse(raw) : []; }
+    catch(e){ bank = []; }
+    nextId = bank.length ? Math.max(...bank.map(c=>c.id)) + 1 : 1;
+  }
+  function saveBank(){
+    try{ localStorage.setItem(BANK_KEY, JSON.stringify(bank)); } catch(e){}
+  }
+  function loadBreaks(){
+    try{ const raw = localStorage.getItem(BREAKS_KEY); breaksState = raw ? JSON.parse(raw) : {}; }
+    catch(e){ breaksState = {}; }
+  }
+  function hasActiveBreak(id){ return !!breaksState[id]; }
+
+  addChefBtn.addEventListener('click', addChef);
+  chefNameInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') addChef(); });
+
+  function addChef(){
+    const name = chefNameInput.value.trim();
+    if(!name) return;
+    bank.push({ id: nextId++, name, onShift: false });
+    chefNameInput.value = '';
+    saveBank();
+    render();
+  }
+
+  function deleteChef(id){
+    if(hasActiveBreak(id)) return;
+    bank = bank.filter(x=>x.id!==id);
+    saveBank();
+    render();
+  }
+
+  function render(){
+    bankList.innerHTML = '';
+    emptyNote.style.display = bank.length ? 'none' : 'block';
+    bank.forEach(c=>{
+      const locked = hasActiveBreak(c.id);
+      const row = document.createElement('div');
+      row.className = 'bank-row';
+      row.innerHTML = `
+        <div class="bank-row-name">${c.name}${locked ? ' <span class="bank-row-tag">(בהפסקה כרגע)</span>' : ''}</div>
+        <button class="bank-delete" data-delete-id="${c.id}" ${locked?'disabled':''}>מחק</button>
+      `;
+      bankList.appendChild(row);
+    });
+    bankList.querySelectorAll('[data-delete-id]').forEach(btn=>{
+      btn.addEventListener('click', ()=> deleteChef(parseInt(btn.dataset.deleteId,10)));
+    });
+  }
+
+  loadBank();
+  loadBreaks();
+  render();
+</script>
+
+</body>
+</html>

@@ -19,228 +19,90 @@
   @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@400;600;800&family=Oswald:wght@500;600;700&display=swap');
 
   :root{
-    --steel-0:#14181c;
-    --steel-1:#1d2328;
-    --steel-2:#262e34;
-    --steel-3:#2f383f;
-    --line:#3a444c;
-    --amber:#ff8c2f;
-    --amber-dim:#8a5322;
-    --text:#eef1f3;
-    --text-dim:#8b969e;
-    --danger:#ff3b30;
-    --danger-dim:#7a2622;
+    --steel-0:#14181c; --steel-1:#1d2328; --steel-2:#262e34; --steel-3:#2f383f;
+    --line:#3a444c; --amber:#ff8c2f; --amber-dim:#8a5322;
+    --text:#eef1f3; --text-dim:#8b969e; --danger:#ff3b30; --danger-dim:#7a2622;
   }
   *{box-sizing:border-box;}
   html,body{
-    margin:0;
-    min-height:100%;
+    margin:0; min-height:100%;
     background:radial-gradient(circle at 50% -10%, #232a30 0%, var(--steel-0) 55%);
-    color:var(--text);
-    font-family:'Rubik',sans-serif;
+    color:var(--text); font-family:'Rubik',sans-serif;
     -webkit-tap-highlight-color:transparent;
   }
-  body{
-    display:flex;
-    justify-content:center;
-    padding:24px 16px 60px;
-  }
+  body{ display:flex; justify-content:center; padding:24px 16px 60px; }
   .app{ width:100%; max-width:460px; }
   .header{ text-align:center; margin-bottom:20px; }
-  .eyebrow{
-    font-family:'Oswald',sans-serif;
-    letter-spacing:.14em;
-    font-size:12px;
-    color:var(--text-dim);
-    text-transform:uppercase;
-  }
-  h1{
-    font-family:'Oswald',sans-serif;
-    font-weight:700;
-    font-size:26px;
-    margin:4px 0 0;
-  }
+  .eyebrow{ font-family:'Oswald',sans-serif; letter-spacing:.14em; font-size:12px; color:var(--text-dim); text-transform:uppercase; }
+  h1{ font-family:'Oswald',sans-serif; font-weight:700; font-size:26px; margin:4px 0 0; }
 
-  .toolbar{
-    display:flex;
-    gap:8px;
-    margin-bottom:18px;
+  .nav-row{ display:flex; gap:8px; margin-bottom:18px; }
+  .nav-btn{
+    flex:1; background:var(--steel-1); border:1px solid var(--line); color:var(--text-dim);
+    border-radius:12px; padding:11px; font-size:13px; cursor:pointer; text-decoration:none;
+    text-align:center; font-family:'Rubik',sans-serif; display:block;
   }
-  .toolbar button{
-    flex:1;
-    background:var(--steel-1);
-    border:1px solid var(--line);
-    color:var(--text-dim);
-    border-radius:12px;
-    padding:10px;
-    font-size:13px;
-    cursor:pointer;
-    font-family:'Rubik',sans-serif;
-  }
-  .toolbar button:active{ transform:scale(.97); }
-  .toolbar button.active-toggle{ color:var(--amber); border-color:var(--amber-dim); }
+  .nav-btn:active{ transform:scale(.97); }
 
-  .list-title{
-    font-size:12px;
-    color:var(--text-dim);
-    letter-spacing:.1em;
-    text-transform:uppercase;
-    margin:0 4px 10px;
-  }
-  .empty-note{
-    text-align:center;
-    color:var(--text-dim);
-    font-size:14px;
-    padding:26px 10px;
-    border:1px dashed var(--line);
-    border-radius:14px;
-  }
+  .list-title{ font-size:12px; color:var(--text-dim); letter-spacing:.1em; text-transform:uppercase; margin:0 4px 10px; }
+  .empty-note{ text-align:center; color:var(--text-dim); font-size:14px; padding:26px 10px; border:1px dashed var(--line); border-radius:14px; }
 
-  /* --- פאנל בנק טבחים --- */
-  .bank-panel{
-    background:linear-gradient(180deg,var(--steel-1),var(--steel-0));
-    border:1px solid var(--line);
-    border-radius:18px;
-    padding:14px;
-    margin-bottom:22px;
-    position:relative;
-    overflow:hidden;
-  }
-  .bank-panel::before{
-    content:"";
-    position:absolute; top:0;left:0;right:0; height:4px;
-    background:linear-gradient(90deg,transparent,var(--amber),transparent);
-    opacity:.6;
-  }
-  .bank-add-row{ display:flex; gap:8px; margin-bottom:14px; }
-  .bank-add-row input{
-    flex:1;
-    background:var(--steel-2);
-    border:1px solid var(--line);
-    border-radius:12px;
-    padding:12px 14px;
-    color:var(--text);
-    font-size:15px;
-    font-family:'Rubik',sans-serif;
-    outline:none;
-  }
-  .bank-add-row input:focus{ border-color:var(--amber-dim); }
-  .bank-add-row input::placeholder{ color:var(--text-dim); }
-  .bank-add-row button{
-    flex:none;
-    background:var(--amber);
-    color:#1a1005;
-    border:none;
-    border-radius:12px;
-    padding:0 18px;
-    font-size:20px;
-    font-weight:700;
-    cursor:pointer;
-  }
-  .bank-add-row button:active{ transform:scale(.95); }
-
-  .bank-row{
-    display:flex;
-    align-items:center;
-    gap:10px;
-    padding:9px 4px;
-    border-bottom:1px solid var(--line);
-  }
-  .bank-row:last-child{ border-bottom:none; }
-  .bank-row-name{ flex:1; font-size:14px; }
-  .shift-toggle{
-    flex:none;
-    border:1px solid var(--line);
-    background:var(--steel-2);
-    color:var(--text-dim);
-    border-radius:10px;
-    padding:7px 12px;
-    font-size:12px;
-    cursor:pointer;
-  }
-  .shift-toggle.on{
-    background:var(--amber);
-    color:#1a1005;
-    border:none;
-    font-weight:600;
-  }
-  .bank-delete{
-    flex:none;
-    background:transparent;
-    border:none;
-    color:var(--text-dim);
-    font-size:17px;
-    cursor:pointer;
-    padding:4px 6px;
-  }
-  .bank-delete:hover{ color:var(--danger); }
-  .bank-delete:disabled{ opacity:.3; cursor:not-allowed; }
-  .shift-toggle:disabled{ opacity:.4; cursor:not-allowed; }
-
-  .notify-row{
-    margin-top:12px;
-    padding-top:12px;
-    border-top:1px solid var(--line);
-    text-align:center;
-  }
-  .notify-btn{
-    background:var(--steel-2);
-    border:1px solid var(--line);
-    color:var(--text-dim);
-    border-radius:10px;
-    padding:9px 16px;
-    font-size:13px;
-    cursor:pointer;
-  }
+  .notify-row{ text-align:center; margin-bottom:18px; }
+  .notify-btn{ background:var(--steel-1); border:1px solid var(--line); color:var(--text-dim); border-radius:10px; padding:9px 16px; font-size:13px; cursor:pointer; }
   .notify-btn.granted{ color:var(--amber); border-color:var(--amber-dim); }
 
-  /* --- כרטיסי משמרת --- */
   .cards{ display:flex; flex-direction:column; gap:12px; }
 
   .card{
     background:linear-gradient(180deg,var(--steel-1),var(--steel-0));
-    border:1px solid var(--line);
-    border-radius:16px;
-    padding:14px 16px;
+    border:1px solid var(--line); border-radius:16px; padding:14px 16px;
     box-shadow:0 12px 26px -16px rgba(0,0,0,.5);
   }
-  .card.is-done{
-    border-color:var(--danger-dim);
-    background:linear-gradient(180deg,#2a1a17,var(--steel-0));
+  .card.is-done{ border-color:var(--danger-dim); background:linear-gradient(180deg,#2a1a17,var(--steel-0)); }
+  .card.is-off{ opacity:.55; }
+
+  .card-row{ display:flex; align-items:center; gap:12px; }
+  .card-row.clickable{ cursor:pointer; }
+
+  .work-toggle{
+    flex:none;
+    width:44px; height:26px;
+    border-radius:14px;
+    background:var(--steel-2);
+    border:1px solid var(--line);
+    position:relative;
+    cursor:pointer;
+    padding:0;
   }
+  .work-toggle .knob{
+    position:absolute; top:2px; right:2px;
+    width:20px; height:20px; border-radius:50%;
+    background:var(--text-dim);
+    transition:transform .18s ease, background .18s ease;
+  }
+  .work-toggle.on{ border-color:var(--amber-dim); }
+  .work-toggle.on .knob{ background:var(--amber); transform:translateX(-18px); }
+  .work-toggle:disabled{ opacity:.4; cursor:not-allowed; }
 
-  .card-row{ display:flex; align-items:center; gap:14px; cursor:pointer; }
-  .card-row.no-click{ cursor:default; }
-
-  .ring-mini{ position:relative; width:56px; height:56px; flex:none; }
+  .ring-mini{ position:relative; width:52px; height:52px; flex:none; }
   .ring-mini svg{ transform:rotate(-90deg); }
   .ring-mini-bg{ fill:none; stroke:var(--steel-2); stroke-width:6; }
   .ring-mini-fg{ fill:none; stroke:var(--amber); stroke-width:6; stroke-linecap:round; }
   .ring-mini-fg.overtime{ stroke:var(--danger); animation:glow 1.4s ease-in-out infinite; }
-  @keyframes glow{
-    0%,100%{ opacity:1; }
-    50%{ opacity:.55; }
-  }
+  @keyframes glow{ 0%,100%{ opacity:1; } 50%{ opacity:.55; } }
   .ring-mini-num{
-    position:absolute; inset:0;
-    display:flex; align-items:center; justify-content:center;
-    font-family:'Oswald',sans-serif;
-    font-size:11px;
-    font-variant-numeric:tabular-nums;
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-family:'Oswald',sans-serif; font-size:10px; font-variant-numeric:tabular-nums;
   }
   .ring-mini-num.overtime{ color:var(--danger); font-weight:700; }
 
   .avatar{
-    width:56px; height:56px; flex:none;
-    border-radius:50%;
-    background:var(--steel-2);
-    border:1px solid var(--line);
+    width:52px; height:52px; flex:none; border-radius:50%;
+    background:var(--steel-2); border:1px solid var(--line);
     display:flex; align-items:center; justify-content:center;
-    font-family:'Oswald',sans-serif;
-    font-size:20px;
-    font-weight:600;
-    color:var(--amber);
+    font-family:'Oswald',sans-serif; font-size:18px; font-weight:600; color:var(--amber);
   }
+  .card.is-off .avatar{ color:var(--text-dim); }
 
   .card-body{ flex:1; min-width:0; }
   .card-title{ font-size:15px; font-weight:600; margin-bottom:2px; }
@@ -248,72 +110,30 @@
   .card.is-done .card-sub{ color:var(--danger); }
 
   .card-action{
-    flex:none;
-    border:1px solid var(--line);
-    background:transparent;
-    color:var(--text-dim);
-    border-radius:10px;
-    padding:9px 14px;
-    font-size:13px;
-    cursor:pointer;
+    flex:none; border:1px solid var(--line); background:transparent; color:var(--text-dim);
+    border-radius:10px; padding:9px 14px; font-size:13px; cursor:pointer;
   }
   .card-action:hover{ border-color:var(--danger); color:var(--danger); }
-  .card.is-done .card-action{
-    background:var(--danger);
-    color:#fff;
-    border:none;
-    font-weight:600;
+  .card.is-done .card-action.ack-btn{
+    background:var(--danger); color:#fff; border:none; font-weight:600;
     animation:pulseBtn 1s ease-in-out infinite;
   }
-  @keyframes pulseBtn{
-    0%,100%{ box-shadow:0 0 0 0 rgba(255,59,48,.5); }
-    50%{ box-shadow:0 0 0 10px rgba(255,59,48,0); }
+  .actions-group{ display:flex; gap:8px; flex:none; }
+  .muted-tag{
+    font-size:11px; color:var(--text-dim); align-self:center;
+    border:1px solid var(--line); border-radius:10px; padding:8px 10px;
   }
+  @keyframes pulseBtn{ 0%,100%{ box-shadow:0 0 0 0 rgba(255,59,48,.5); } 50%{ box-shadow:0 0 0 10px rgba(255,59,48,0); } }
 
-  .duration-row{
-    display:flex;
-    gap:10px;
-    margin-top:12px;
-    padding-top:12px;
-    border-top:1px solid var(--line);
-  }
-  .duration-btn{
-    flex:1;
-    background:var(--steel-2);
-    border:1px solid var(--line);
-    border-radius:12px;
-    padding:12px 6px;
-    color:var(--text);
-    cursor:pointer;
-    text-align:center;
-  }
+  .duration-row{ display:flex; gap:10px; margin-top:12px; padding-top:12px; border-top:1px solid var(--line); }
+  .duration-btn{ flex:1; background:var(--steel-2); border:1px solid var(--line); border-radius:12px; padding:12px 6px; color:var(--text); cursor:pointer; text-align:center; }
   .duration-btn:hover{ border-color:var(--amber-dim); background:#2b333a; }
   .duration-btn:active{ transform:scale(.95); }
-  .duration-num{
-    font-family:'Oswald',sans-serif;
-    font-size:20px; font-weight:700; color:var(--amber);
-    display:block; line-height:1;
-  }
+  .duration-num{ font-family:'Oswald',sans-serif; font-size:20px; font-weight:700; color:var(--amber); display:block; line-height:1; }
   .duration-label{ font-size:11px; color:var(--text-dim); margin-top:3px; display:block; }
-  .duration-cancel{
-    flex:none;
-    background:transparent;
-    border:1px solid var(--line);
-    color:var(--text-dim);
-    border-radius:12px;
-    padding:0 16px;
-    cursor:pointer;
-  }
+  .duration-cancel{ flex:none; background:transparent; border:1px solid var(--line); color:var(--text-dim); border-radius:12px; padding:0 16px; cursor:pointer; }
 
-  .wake-note{
-    text-align:center;
-    font-size:11px;
-    color:var(--text-dim);
-    margin-top:18px;
-    opacity:.7;
-  }
-
-  .hidden{ display:none !important; }
+  .wake-note{ text-align:center; font-size:11px; color:var(--text-dim); margin-top:18px; opacity:.7; }
 </style>
 </head>
 <body>
@@ -324,24 +144,16 @@
     <h1>הפסקות טבחים</h1>
   </div>
 
-  <div class="toolbar">
-    <button id="toggleBankBtn">ניהול בנק טבחים</button>
+  <div class="nav-row">
+    <a class="nav-btn" href="./bank.html">ניהול בנק טבחים</a>
   </div>
 
-  <div id="bankPanel" class="bank-panel hidden">
-    <div class="bank-add-row">
-      <input id="chefNameInput" type="text" placeholder="שם טבח חדש...">
-      <button id="addChefBtn">+</button>
-    </div>
-    <div id="bankList"></div>
-
-    <div class="notify-row">
-      <button id="notifyBtn" class="notify-btn">אפשר התראות מערכת</button>
-    </div>
+  <div class="notify-row">
+    <button id="notifyBtn" class="notify-btn">אפשר התראות מערכת</button>
   </div>
 
-  <div class="list-title">המשמרת הנוכחית</div>
-  <div id="emptyNote" class="empty-note">אין טבחים במשמרת - פתח את "ניהול בנק טבחים" והוסף למשמרת</div>
+  <div class="list-title">צוות המטבח - סמן מי עובד/ת היום</div>
+  <div id="emptyNote" class="empty-note">הבנק ריק - היכנס ל"ניהול בנק טבחים" והוסף טבחים</div>
   <div id="cards" class="cards"></div>
 
   <div class="wake-note">המסך יישאר דלוק כל עוד יש הפסקה פעילה</div>
@@ -350,53 +162,36 @@
 <script>
   const cardsEl = document.getElementById('cards');
   const emptyNote = document.getElementById('emptyNote');
-  const chefNameInput = document.getElementById('chefNameInput');
-  const addChefBtn = document.getElementById('addChefBtn');
-  const toggleBankBtn = document.getElementById('toggleBankBtn');
-  const bankPanel = document.getElementById('bankPanel');
-  const bankList = document.getElementById('bankList');
   const notifyBtn = document.getElementById('notifyBtn');
 
-  const RADIUS_MINI = 24;
+  const RADIUS_MINI = 22;
   const CIRC_MINI = 2 * Math.PI * RADIUS_MINI;
 
   const BANK_KEY = 'chefBank_v2';
   const BREAKS_KEY = 'chefBreaks_v2';
 
-  // בנק: { id, name, onShift }
   let bank = [];
-  let nextId = 1;
-  // הפסקות פעילות/שהסתיימו: id -> { minutes, endAt }  (endAt = חותמת זמן epoch ms)
   let breaksState = {};
-  // מצבי "בחירת משך" זמניים - לא נשמרים
   let choosingIds = new Set();
-  // מעקב מצב קודם לכל טבח, כדי לדעת מתי לבצע רינדור מלא מול עדכון קל בלבד
   let prevMode = {};
-  // רפרנסים ל-DOM לעדכון קל מדי שנייה בלי לפרק/לבנות מחדש
   let liveRefs = {};
-  // לולאות צפצוף פעילות
   let beepTimers = {};
+  let liveNotif = {};
+  let lastNotifUpdate = {};
 
   let audioCtx = null;
   let wakeLock = null;
-  let tickInterval = null;
 
-  // ---------- אחסון ----------
   function loadBank(){
-    try{
-      const raw = localStorage.getItem(BANK_KEY);
-      if(raw) bank = JSON.parse(raw);
-      nextId = bank.length ? Math.max(...bank.map(c=>c.id)) + 1 : 1;
-    } catch(e){ bank = []; }
+    try{ const raw = localStorage.getItem(BANK_KEY); bank = raw ? JSON.parse(raw) : []; }
+    catch(e){ bank = []; }
   }
   function saveBank(){
     try{ localStorage.setItem(BANK_KEY, JSON.stringify(bank)); } catch(e){}
   }
   function loadBreaks(){
-    try{
-      const raw = localStorage.getItem(BREAKS_KEY);
-      breaksState = raw ? JSON.parse(raw) : {};
-    } catch(e){ breaksState = {}; }
+    try{ const raw = localStorage.getItem(BREAKS_KEY); breaksState = raw ? JSON.parse(raw) : {}; }
+    catch(e){ breaksState = {}; }
   }
   function saveBreaks(){
     try{ localStorage.setItem(BREAKS_KEY, JSON.stringify(breaksState)); } catch(e){}
@@ -408,146 +203,15 @@
     return parts[0][0] + parts[1][0];
   }
 
-  // ---------- בנק טבחים ----------
-  toggleBankBtn.addEventListener('click', ()=>{
-    bankPanel.classList.toggle('hidden');
-    toggleBankBtn.classList.toggle('active-toggle');
-    if(!bankPanel.classList.contains('hidden')) renderBank();
-  });
+  function hasActiveBreak(id){ return !!breaksState[id]; }
 
-  addChefBtn.addEventListener('click', addChef);
-  chefNameInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') addChef(); });
-
-  function addChef(){
-    const name = chefNameInput.value.trim();
-    if(!name) return;
-    bank.push({ id: nextId++, name, onShift: true });
-    chefNameInput.value = '';
-    saveBank();
-    renderBank();
-    renderShift();
-  }
-
-  function hasActiveBreak(id){
-    return !!breaksState[id];
-  }
-
-  function toggleShift(id){
+  function toggleWorking(id){
     const c = bank.find(x=>x.id===id);
     if(!c) return;
-    if(c.onShift && hasActiveBreak(id)){
-      return; // אי אפשר להוציא ממשמרת באמצע הפסקה פעילה
-    }
+    if(c.onShift && hasActiveBreak(id)) return; // לא ניתן לבטל עבודה באמצע הפסקה
     c.onShift = !c.onShift;
     saveBank();
-    renderBank();
-    renderShift();
-  }
-
-  function deleteFromBank(id){
-    if(hasActiveBreak(id)) return; // אי אפשר למחוק באמצע הפסקה פעילה
-    bank = bank.filter(x=>x.id!==id);
-    saveBank();
-    renderBank();
-    renderShift();
-  }
-
-  function renderBank(){
-    bankList.innerHTML = '';
-    if(bank.length === 0){
-      bankList.innerHTML = '<div class="empty-note">הבנק ריק - הוסף טבח למעלה</div>';
-      return;
-    }
-    bank.forEach(c=>{
-      const locked = hasActiveBreak(c.id);
-      const row = document.createElement('div');
-      row.className = 'bank-row';
-      row.innerHTML = `
-        <div class="bank-row-name">${c.name}</div>
-        <button class="shift-toggle ${c.onShift ? 'on':''}" data-toggle-id="${c.id}" ${locked?'disabled':''}>
-          ${c.onShift ? '✓ במשמרת' : 'הוסף למשמרת'}
-        </button>
-        <button class="bank-delete" data-delete-id="${c.id}" ${locked?'disabled':''} title="מחק מהבנק">✕</button>
-      `;
-      bankList.appendChild(row);
-    });
-    bankList.querySelectorAll('[data-toggle-id]').forEach(btn=>{
-      btn.addEventListener('click', ()=> toggleShift(parseInt(btn.dataset.toggleId,10)));
-    });
-    bankList.querySelectorAll('[data-delete-id]').forEach(btn=>{
-      btn.addEventListener('click', ()=> deleteFromBank(parseInt(btn.dataset.deleteId,10)));
-    });
-  }
-
-  // ---------- התראות מערכת ----------
-  function refreshNotifyBtn(){
-    if(!('Notification' in window)){
-      notifyBtn.style.display = 'none';
-      return;
-    }
-    if(Notification.permission === 'granted'){
-      notifyBtn.textContent = '✓ התראות פעילות';
-      notifyBtn.classList.add('granted');
-    } else if(Notification.permission === 'denied'){
-      notifyBtn.textContent = 'התראות חסומות בדפדפן';
-      notifyBtn.disabled = true;
-    } else {
-      notifyBtn.textContent = 'אפשר התראות מערכת';
-      notifyBtn.classList.remove('granted');
-    }
-  }
-  notifyBtn.addEventListener('click', async ()=>{
-    if(!('Notification' in window)) return;
-    try{ await Notification.requestPermission(); } catch(e){}
-    refreshNotifyBtn();
-  });
-
-  function fireDoneAlert(chefName){
-    if('Notification' in window && Notification.permission === 'granted'){
-      try{
-        new Notification('ההפסקה הסתיימה', { body: `${chefName} - הזמן נגמר`, tag: 'chef-break-'+chefName });
-      } catch(e){}
-    }
-    if('vibrate' in navigator){
-      try{ navigator.vibrate([250,120,250,120,250]); } catch(e){}
-    }
-  }
-
-  // ---------- ניהול הפסקות ----------
-  function openChoice(id){
-    if(hasActiveBreak(id)) return;
-    choosingIds.add(id);
-    renderShift();
-  }
-  function closeChoice(id){
-    choosingIds.delete(id);
-    renderShift();
-  }
-
-  function startBreak(id, minutes){
-    ensureAudio();
-    choosingIds.delete(id);
-    breaksState[id] = { minutes, endAt: Date.now() + minutes*60000 };
-    saveBreaks();
-    renderShift();
-    updateWakeLock();
-  }
-
-  function cancelBreak(id){
-    stopBeepFor(id);
-    delete breaksState[id];
-    saveBreaks();
-    renderShift();
-    updateWakeLock();
-  }
-
-  // מאשר שראה שההפסקה הסתיימה - עוצר צפצוף ומאפס
-  function acknowledgeDone(id){
-    stopBeepFor(id);
-    delete breaksState[id];
-    saveBreaks();
-    renderShift();
-    updateWakeLock();
+    renderAll();
   }
 
   function computeMode(id){
@@ -557,27 +221,75 @@
     return (Date.now() >= b.endAt) ? 'done' : 'running';
   }
 
-  // ---------- רינדור מבני (רק כשמשהו משמעותי משתנה) ----------
-  function renderShift(){
-    const shiftChefs = bank.filter(c=>c.onShift);
+  function openChoice(id){
+    if(hasActiveBreak(id)) return;
+    choosingIds.add(id);
+    renderAll();
+  }
+  function closeChoice(id){
+    choosingIds.delete(id);
+    renderAll();
+  }
+
+  function startBreak(id, minutes){
+    ensureAudio();
+    choosingIds.delete(id);
+    breaksState[id] = { minutes, endAt: Date.now() + minutes*60000, muted: false };
+    saveBreaks();
+    renderAll();
+    updateWakeLock();
+    const c = bank.find(x=>x.id===id);
+    if(c) updateLiveNotification(c, 'running', `${minutes} דקות - התחיל עכשיו`, true);
+  }
+
+  function cancelBreak(id){
+    stopBeepFor(id);
+    closeLiveNotification(id);
+    delete breaksState[id];
+    saveBreaks();
+    renderAll();
+    updateWakeLock();
+  }
+
+  function acknowledgeDone(id){
+    stopBeepFor(id);
+    closeLiveNotification(id);
+    delete breaksState[id];
+    saveBreaks();
+    renderAll();
+    updateWakeLock();
+  }
+
+  function muteBreak(id){
+    stopBeepFor(id);
+    if(breaksState[id]){
+      breaksState[id].muted = true;
+      saveBreaks();
+    }
+    renderAll();
+  }
+
+  function renderAll(){
+    const chefs = bank;
     cardsEl.innerHTML = '';
     liveRefs = {};
-    emptyNote.style.display = shiftChefs.length ? 'none' : 'block';
+    emptyNote.style.display = chefs.length ? 'none' : 'block';
 
-    shiftChefs.forEach(c=>{
-      const mode = computeMode(c.id);
+    chefs.forEach(c=>{
+      const mode = c.onShift ? computeMode(c.id) : 'off';
       prevMode[c.id] = mode;
-      const card = buildCard(c, mode);
-      cardsEl.appendChild(card);
+      cardsEl.appendChild(buildCard(c, mode));
     });
 
-    bindShiftEvents();
+    bindEvents();
   }
 
   function buildCard(c, mode){
     const card = document.createElement('div');
-    card.className = 'card' + (mode==='done' ? ' is-done' : '');
+    card.className = 'card' + (mode==='done' ? ' is-done' : '') + (mode==='off' ? ' is-off' : '');
     card.dataset.chefId = c.id;
+
+    const toggleHtml = `<button class="work-toggle ${c.onShift?'on':''}" data-toggle-id="${c.id}" ${(c.onShift && hasActiveBreak(c.id))?'disabled':''}><span class="knob"></span></button>`;
 
     let avatarHtml, subText, actionHtml = '';
 
@@ -597,30 +309,34 @@
         const s = Math.floor(overtime%60).toString().padStart(2,'0');
         numText = '+'+m+':'+s;
         offset = 0;
-        ringClass = 'overtime';
-        numClass = 'overtime';
+        ringClass = 'overtime'; numClass = 'overtime';
         subText = 'הזמן נגמר - חורג';
       }
       avatarHtml = `
         <div class="ring-mini">
-          <svg width="56" height="56">
-            <circle class="ring-mini-bg" cx="28" cy="28" r="${RADIUS_MINI}"></circle>
-            <circle class="ring-mini-fg ${ringClass}" cx="28" cy="28" r="${RADIUS_MINI}"
+          <svg width="52" height="52">
+            <circle class="ring-mini-bg" cx="26" cy="26" r="${RADIUS_MINI}"></circle>
+            <circle class="ring-mini-fg ${ringClass}" cx="26" cy="26" r="${RADIUS_MINI}"
               stroke-dasharray="${CIRC_MINI}" stroke-dashoffset="${offset}"></circle>
           </svg>
           <div class="ring-mini-num ${numClass}">${numText}</div>
         </div>`;
-      actionHtml = `<button class="card-action" data-id="${c.id}" data-action="${mode==='done'?'ack':'cancel'}">
-        ${mode==='done' ? 'אישור' : 'בטל'}
-      </button>`;
+      actionHtml = mode==='done'
+        ? (b.muted
+            ? `<div class="actions-group"><span class="muted-tag">מושתק</span><button class="card-action ack-btn" data-id="${c.id}" data-action="ack">אישור</button></div>`
+            : `<div class="actions-group"><button class="card-action" data-id="${c.id}" data-action="mute">השתק</button><button class="card-action ack-btn" data-id="${c.id}" data-action="ack">אישור</button></div>`)
+        : `<button class="card-action" data-id="${c.id}" data-action="cancel">בטל</button>`;
     } else {
       avatarHtml = `<div class="avatar">${initials(c.name)}</div>`;
-      subText = mode === 'choosing' ? 'בחר משך הפסקה' : 'זמין - לחץ להתחלת הפסקה';
+      if(mode === 'off') subText = 'לא במשמרת היום';
+      else if(mode === 'choosing') subText = 'בחר משך הפסקה';
+      else subText = 'זמין - לחץ להתחלת הפסקה';
     }
 
     const rowClickable = mode === 'idle';
     card.innerHTML = `
-      <div class="card-row ${rowClickable ? '' : 'no-click'}" ${rowClickable ? `data-open-id="${c.id}"` : ''}>
+      <div class="card-row ${rowClickable ? 'clickable' : ''}" ${rowClickable ? `data-open-id="${c.id}"` : ''}>
+        ${toggleHtml}
         ${avatarHtml}
         <div class="card-body">
           <div class="card-title">${c.name}</div>
@@ -648,92 +364,93 @@
         subEl: card.querySelector('.card-sub')
       };
     }
-
     return card;
   }
 
-  function bindShiftEvents(){
+  function bindEvents(){
+    cardsEl.querySelectorAll('[data-toggle-id]').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{ e.stopPropagation(); toggleWorking(parseInt(btn.dataset.toggleId,10)); });
+    });
     cardsEl.querySelectorAll('[data-open-id]').forEach(el=>{
       el.addEventListener('click', ()=> openChoice(parseInt(el.dataset.openId,10)));
     });
     cardsEl.querySelectorAll('[data-start-id]').forEach(el=>{
-      el.addEventListener('click', ()=> startBreak(parseInt(el.dataset.startId,10), parseInt(el.dataset.min,10)));
+      el.addEventListener('click', (e)=>{ e.stopPropagation(); startBreak(parseInt(el.dataset.startId,10), parseInt(el.dataset.min,10)); });
     });
     cardsEl.querySelectorAll('[data-close-id]').forEach(el=>{
-      el.addEventListener('click', ()=> closeChoice(parseInt(el.dataset.closeId,10)));
+      el.addEventListener('click', (e)=>{ e.stopPropagation(); closeChoice(parseInt(el.dataset.closeId,10)); });
     });
     cardsEl.querySelectorAll('.card-action').forEach(btn=>{
       btn.addEventListener('click', (e)=>{
         e.stopPropagation();
         const id = parseInt(btn.dataset.id, 10);
         if(btn.dataset.action === 'cancel') cancelBreak(id);
+        else if(btn.dataset.action === 'mute') muteBreak(id);
         else acknowledgeDone(id);
       });
     });
   }
 
-  // ---------- טיק שקט - לא בונה מחדש, רק מעדכן טקסט/טבעת ----------
   function tick(){
-    const shiftChefs = bank.filter(c=>c.onShift);
-    let needsStructuralRebuild = false;
+    let needsRebuild = false;
 
-    shiftChefs.forEach(c=>{
-      const mode = computeMode(c.id);
+    bank.forEach(c=>{
+      const mode = c.onShift ? computeMode(c.id) : 'off';
       const prev = prevMode[c.id];
 
       if(mode !== prev){
-        // מעבר בין מצבים (למשל running -> done) - טעון רינדור מבני מלא
         if(prev === 'running' && mode === 'done'){
           fireDoneAlert(c.name);
           startBeepFor(c.id);
         }
-        needsStructuralRebuild = true;
+        needsRebuild = true;
         return;
       }
 
-      // אין שינוי מצב - עדכון קל בלבד דרך הרפרנסים השמורים
       if((mode === 'running' || mode === 'done') && liveRefs[c.id]){
         const b = breaksState[c.id];
         const refs = liveRefs[c.id];
+        let bodyText;
         if(mode === 'running'){
           const remaining = Math.max(0, Math.round((b.endAt - Date.now())/1000));
           const m = Math.floor(remaining/60).toString().padStart(2,'0');
           const s = Math.floor(remaining%60).toString().padStart(2,'0');
           refs.numEl.textContent = m+':'+s;
-          const offset = CIRC_MINI * (1 - remaining / (b.minutes*60));
-          refs.ringFg.style.strokeDashoffset = offset;
+          refs.ringFg.style.strokeDashoffset = CIRC_MINI * (1 - remaining / (b.minutes*60));
+          bodyText = `נותרו ${m}:${s}`;
         } else {
           const overtime = Math.max(0, Math.round((Date.now() - b.endAt)/1000));
           const m = Math.floor(overtime/60).toString().padStart(2,'0');
           const s = Math.floor(overtime%60).toString().padStart(2,'0');
           refs.numEl.textContent = '+'+m+':'+s;
+          bodyText = `חורג ב-${m}:${s}`;
+        }
+        const now = Date.now();
+        if(!lastNotifUpdate[c.id] || now - lastNotifUpdate[c.id] > 15000){
+          lastNotifUpdate[c.id] = now;
+          updateLiveNotification(c, mode, bodyText, false);
         }
       }
     });
 
-    if(needsStructuralRebuild) renderShift();
+    if(needsRebuild) renderAll();
   }
 
   // ---------- אודיו ----------
   function ensureAudio(){
-    if(!audioCtx){
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    }
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if(audioCtx.state === 'suspended') audioCtx.resume();
   }
   function beepOnce(){
     ensureAudio();
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
-    osc.type = 'square';
-    osc.frequency.value = 880;
+    osc.type = 'square'; osc.frequency.value = 880;
     gain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.3, audioCtx.currentTime + 0.02);
     gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.35);
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    osc.start();
-    osc.stop(audioCtx.currentTime + 0.4);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.4);
   }
   function startBeepFor(id){
     if(beepTimers[id]) return;
@@ -745,10 +462,80 @@
     loop();
   }
   function stopBeepFor(id){
-    if(beepTimers[id]){
-      clearTimeout(beepTimers[id]);
-      delete beepTimers[id];
+    if(beepTimers[id]){ clearTimeout(beepTimers[id]); delete beepTimers[id]; }
+  }
+
+  // ---------- התראות (כולל ניסיון להציג על מסך הנעילה) ----------
+  // הערה: בהרבה דפדפנים ניידים (בעיקר אנדרואיד) אי אפשר ליצור התראה ישירות עם `new Notification()` -
+  // חובה להעביר דרך ה-Service Worker. לכן כל התראה עוברת קודם בנתיב הזה, עם נפילה חזרה בטוחה לשיטה הישנה.
+  async function showAppNotification(title, options){
+    if(!('Notification' in window) || Notification.permission !== 'granted') return;
+    try{
+      if('serviceWorker' in navigator){
+        const reg = await Promise.race([
+          navigator.serviceWorker.ready,
+          new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')), 2000))
+        ]);
+        await reg.showNotification(title, options);
+        return;
+      }
+    } catch(e){ /* ניפול לשיטה הישנה למטה */ }
+    try{ new Notification(title, options); } catch(e){ /* אין תמיכה - מתעלמים בשקט */ }
+  }
+
+  async function closeAppNotification(tag){
+    try{
+      if('serviceWorker' in navigator){
+        const reg = await navigator.serviceWorker.ready;
+        const notifs = await reg.getNotifications({ tag });
+        notifs.forEach(n=>n.close());
+      }
+    } catch(e){}
+  }
+
+  function refreshNotifyBtn(){
+    if(!('Notification' in window)){ notifyBtn.style.display = 'none'; return; }
+    if(Notification.permission === 'granted'){
+      notifyBtn.textContent = '✓ התראות פעילות';
+      notifyBtn.classList.add('granted');
+    } else if(Notification.permission === 'denied'){
+      notifyBtn.textContent = 'התראות חסומות בדפדפן';
+      notifyBtn.disabled = true;
+    } else {
+      notifyBtn.textContent = 'אפשר התראות מערכת';
+      notifyBtn.classList.remove('granted');
     }
+  }
+  notifyBtn.addEventListener('click', async ()=>{
+    if(!('Notification' in window)) return;
+    try{ await Notification.requestPermission(); } catch(e){}
+    refreshNotifyBtn();
+  });
+
+  function fireDoneAlert(chefName){
+    showAppNotification('ההפסקה הסתיימה', {
+      body: `${chefName} - הזמן נגמר`,
+      tag: 'chef-break-'+chefName,
+      renotify: true,
+      requireInteraction: true,
+      vibrate: [250,120,250,120,250]
+    });
+    if('vibrate' in navigator){ try{ navigator.vibrate([250,120,250,120,250]); } catch(e){} }
+  }
+
+  // הודעה "חיה" שמתעדכנת לאורך ההפסקה - מוצגת גם במסך הנעילה כאשר המכשיר תומך בכך.
+  // חשוב: זו התראה רגילה של הדפדפן, לא ווידג'ט אמיתי - יש הבדלי תמיכה בין אנדרואיד לאייפון (ראה הסבר בצ'אט).
+  function updateLiveNotification(chef, mode, bodyText, loud){
+    showAppNotification('הפסקה: '+chef.name, {
+      body: bodyText,
+      tag: 'chef-live-'+chef.id,
+      silent: !loud,
+      renotify: !!loud
+    });
+  }
+  function closeLiveNotification(id){
+    closeAppNotification('chef-live-'+id);
+    delete lastNotifUpdate[id];
   }
 
   // ---------- נעילת מסך ----------
@@ -761,17 +548,16 @@
           wakeLock.addEventListener('release', ()=>{ wakeLock = null; });
         }
       } else if(wakeLock){
-        await wakeLock.release();
-        wakeLock = null;
+        await wakeLock.release(); wakeLock = null;
       }
     } catch(e){}
   }
   document.addEventListener('visibilitychange', ()=>{
     if(document.visibilityState === 'visible' && Object.keys(breaksState).length > 0){
       updateWakeLock();
-      // אם היינו ברקע וטיימר כבר הסתיים - נוודא שהצפצוף רץ
       Object.keys(breaksState).forEach(id=>{
-        if(computeMode(parseInt(id,10)) === 'done') startBeepFor(parseInt(id,10));
+        const numId = parseInt(id,10);
+        if(computeMode(numId) === 'done' && !breaksState[id].muted) startBeepFor(numId);
       });
     }
   });
@@ -779,19 +565,18 @@
   // ---------- אתחול ----------
   loadBank();
   loadBreaks();
-  bank.forEach(c=>{ prevMode[c.id] = computeMode(c.id); });
-  renderBank();
-  renderShift();
+  bank.forEach(c=>{ prevMode[c.id] = c.onShift ? computeMode(c.id) : 'off'; });
+  renderAll();
   refreshNotifyBtn();
   updateWakeLock();
 
-  // אם נטען מחדש כשכבר יש הפסקה שהסתיימה - נתחיל את הצפצוף (יתעורר בפועל אחרי אינטראקציה ראשונה עם הדף)
   Object.keys(breaksState).forEach(id=>{
-    if(computeMode(parseInt(id,10)) === 'done') startBeepFor(parseInt(id,10));
+    const numId = parseInt(id,10);
+    if(computeMode(numId) === 'done' && !breaksState[id].muted) startBeepFor(numId);
   });
   document.body.addEventListener('click', ensureAudio, { once:true });
 
-  tickInterval = setInterval(tick, 1000);
+  setInterval(tick, 1000);
 
   if('serviceWorker' in navigator){
     window.addEventListener('load', ()=>{
