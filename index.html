@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>הפסקות טבחים</title>
+
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#1d2328">
+
+<!-- iOS: הוספה למסך הבית כאפליקציה במסך מלא -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="הפסקות טבח">
+<link rel="apple-touch-icon" href="./icon-192.png">
+
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@400;600;800&family=Oswald:wght@500;600;700&display=swap');
+
+  :root{
+    --steel-0:#14181c;
+    --steel-1:#1d2328;
+    --steel-2:#262e34;
+    --steel-3:#2f383f;
+    --line:#3a444c;
+    --amber:#ff8c2f;
+    --amber-dim:#8a5322;
+    --text:#eef1f3;
+    --text-dim:#8b969e;
+    --danger:#ff3b30;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;
+    min-height:100%;
+    background:radial-gradient(circle at 50% -10%, #232a30 0%, var(--steel-0) 55%);
+    color:var(--text);
+    font-family:'Rubik',sans-serif;
+    -webkit-tap-highlight-color:transparent;
+  }
+  body{
+    display:flex;
+    justify-content:center;
+    padding:24px 16px 60px;
+  }
+  .app{
+    width:100%;
+    max-width:460px;
+  }
+  .header{
+    text-align:center;
+    margin-bottom:22px;
+  }
+  .eyebrow{
+    font-family:'Oswald',sans-serif;
+    letter-spacing:.14em;
+    font-size:12px;
+    color:var(--text-dim);
+    text-transform:uppercase;
+  }
+  h1{
+    font-family:'Oswald',sans-serif;
+    font-weight:700;
+    font-size:26px;
+    margin:4px 0 0;
+  }
+
+  .starter{
+    background:linear-gradient(180deg,var(--steel-1),var(--steel-0));
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:18px;
+    box-shadow:0 20px 40px -18px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.03);
+    margin-bottom:24px;
+    position:relative;
+    overflow:hidden;
+  }
+  .starter::before{
+    content:"";
+    position:absolute; top:0;left:0;right:0; height:4px;
+    background:linear-gradient(90deg,transparent,var(--amber),transparent);
+    opacity:.6;
+  }
+  .starter-label{
+    font-size:13px;
+    color:var(--text-dim);
+    margin-bottom:12px;
+    text-align:center;
+  }
+  .choices{ display:flex; gap:12px; }
+  .choice-btn{
+    flex:1;
+    background:var(--steel-2);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:18px 8px;
+    color:var(--text);
+    cursor:pointer;
+    text-align:center;
+    transition:transform .15s ease, border-color .15s ease, background .15s ease;
+  }
+  .choice-btn:hover{ border-color:var(--amber-dim); background:#2b333a; }
+  .choice-btn:active{ transform:scale(.95); }
+  .choice-num{
+    font-family:'Oswald',sans-serif;
+    font-size:28px; font-weight:700; color:var(--amber);
+    display:block; line-height:1;
+  }
+  .choice-label{ font-size:12px; color:var(--text-dim); margin-top:4px; display:block; }
+
+  .list-title{
+    font-size:12px;
+    color:var(--text-dim);
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    margin:0 4px 10px;
+  }
+  .empty-note{
+    text-align:center;
+    color:var(--text-dim);
+    font-size:14px;
+    padding:30px 10px;
+    border:1px dashed var(--line);
+    border-radius:14px;
+  }
+
+  .cards{ display:flex; flex-direction:column; gap:12px; }
+
+  .card{
+    background:linear-gradient(180deg,var(--steel-1),var(--steel-0));
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:14px 16px;
+    display:flex;
+    align-items:center;
+    gap:14px;
+    box-shadow:0 12px 26px -16px rgba(0,0,0,.5);
+    animation:slideIn .25s ease;
+  }
+  @keyframes slideIn{
+    from{ opacity:0; transform:translateY(-6px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+  .card.is-done{
+    border-color:var(--amber-dim);
+    background:linear-gradient(180deg,#2a2117,var(--steel-0));
+  }
+
+  .ring-mini{ position:relative; width:64px; height:64px; flex:none; }
+  .ring-mini svg{ transform:rotate(-90deg); }
+  .ring-mini-bg{ fill:none; stroke:var(--steel-2); stroke-width:6; }
+  .ring-mini-fg{ fill:none; stroke:var(--amber); stroke-width:6; stroke-linecap:round; transition:stroke-dashoffset 1s linear; }
+  .ring-mini-num{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Oswald',sans-serif;
+    font-size:13px;
+    font-variant-numeric:tabular-nums;
+  }
+
+  .card-body{ flex:1; min-width:0; }
+  .card-title{
+    font-size:14px;
+    font-weight:600;
+    margin-bottom:2px;
+  }
+  .card-sub{
+    font-size:12px;
+    color:var(--text-dim);
+  }
+  .card.is-done .card-sub{ color:var(--amber); }
+
+  .card-action{
+    flex:none;
+    border:1px solid var(--line);
+    background:transparent;
+    color:var(--text-dim);
+    border-radius:10px;
+    padding:9px 14px;
+    font-size:13px;
+    cursor:pointer;
+  }
+  .card-action:hover{ border-color:var(--danger); color:var(--danger); }
+  .card.is-done .card-action{
+    background:var(--amber);
+    color:#1a1005;
+    border:none;
+    font-weight:600;
+    animation:pulseBtn 1s ease-in-out infinite;
+  }
+  @keyframes pulseBtn{
+    0%,100%{ box-shadow:0 0 0 0 rgba(255,140,47,.5); }
+    50%{ box-shadow:0 0 0 10px rgba(255,140,47,0); }
+  }
+
+  .wake-note{
+    text-align:center;
+    font-size:11px;
+    color:var(--text-dim);
+    margin-top:18px;
+    opacity:.7;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="header">
+    <div class="eyebrow">ניהול מטבח</div>
+    <h1>הפסקות טבחים</h1>
+  </div>
+
+  <div class="starter">
+    <div class="starter-label">התחל הפסקה חדשה</div>
+    <div class="choices">
+      <button class="choice-btn" data-min="20">
+        <span class="choice-num">20</span>
+        <span class="choice-label">דקות</span>
+      </button>
+      <button class="choice-btn" data-min="30">
+        <span class="choice-num">30</span>
+        <span class="choice-label">דקות</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="list-title">הפסקות פעילות</div>
+  <div id="emptyNote" class="empty-note">אין כרגע הפסקות פעילות</div>
+  <div id="cards" class="cards"></div>
+
+  <div class="wake-note">המסך יישאר דלוק כל עוד יש הפסקה פעילה</div>
+</div>
+
+<script>
+  const cardsEl = document.getElementById('cards');
+  const emptyNote = document.getElementById('emptyNote');
+
+  const RADIUS_MINI = 26;
+  const CIRC_MINI = 2 * Math.PI * RADIUS_MINI;
+
+  let breaks = [];      // { id, minutes, totalSeconds, remaining, status, intervalId, beepTimeoutId }
+  let nextId = 1;
+  let audioCtx = null;
+  let wakeLock = null;
+
+  document.querySelectorAll('.choice-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const minutes = parseInt(btn.dataset.min, 10);
+      addBreak(minutes);
+      ensureAudio();
+    });
+  });
+
+  function addBreak(minutes){
+    const id = nextId++;
+    const totalSeconds = minutes * 60;
+    const b = {
+      id, minutes, totalSeconds,
+      remaining: totalSeconds,
+      status: 'running',
+      intervalId: null,
+      beepTimeoutId: null
+    };
+    breaks.push(b);
+
+    b.intervalId = setInterval(()=>{
+      b.remaining--;
+      if(b.remaining <= 0){
+        clearInterval(b.intervalId);
+        b.remaining = 0;
+        b.status = 'done';
+        startBeepFor(b);
+      }
+      renderAll();
+    }, 1000);
+
+    renderAll();
+    updateWakeLock();
+  }
+
+  function cancelBreak(id){
+    const b = breaks.find(x=>x.id===id);
+    if(!b) return;
+    clearInterval(b.intervalId);
+    clearTimeout(b.beepTimeoutId);
+    breaks = breaks.filter(x=>x.id!==id);
+    renderAll();
+    updateWakeLock();
+  }
+
+  function stopBreak(id){
+    const b = breaks.find(x=>x.id===id);
+    if(!b) return;
+    clearTimeout(b.beepTimeoutId);
+    breaks = breaks.filter(x=>x.id!==id);
+    renderAll();
+    updateWakeLock();
+  }
+
+  function renderAll(){
+    cardsEl.innerHTML = '';
+    emptyNote.style.display = breaks.length ? 'none' : 'block';
+
+    breaks.forEach(b=>{
+      const card = document.createElement('div');
+      card.className = 'card' + (b.status==='done' ? ' is-done' : '');
+
+      const fraction = b.status==='done' ? 0 : (b.remaining / b.totalSeconds);
+      const offset = CIRC_MINI * (1 - fraction);
+      const m = Math.floor(b.remaining/60).toString().padStart(2,'0');
+      const s = Math.floor(b.remaining%60).toString().padStart(2,'0');
+
+      card.innerHTML = `
+        <div class="ring-mini">
+          <svg width="64" height="64">
+            <circle class="ring-mini-bg" cx="32" cy="32" r="${RADIUS_MINI}"></circle>
+            <circle class="ring-mini-fg" cx="32" cy="32" r="${RADIUS_MINI}"
+              stroke-dasharray="${CIRC_MINI}" stroke-dashoffset="${offset}"></circle>
+          </svg>
+          <div class="ring-mini-num">${b.status==='done' ? '⏰' : m+':'+s}</div>
+        </div>
+        <div class="card-body">
+          <div class="card-title">הפסקה של ${b.minutes} דקות</div>
+          <div class="card-sub">${b.status==='done' ? 'הזמן נגמר' : 'בהפסקה כרגע'}</div>
+        </div>
+        <button class="card-action" data-id="${b.id}" data-action="${b.status==='done'?'stop':'cancel'}">
+          ${b.status==='done' ? 'עצור צפצוף' : 'בטל'}
+        </button>
+      `;
+      cardsEl.appendChild(card);
+    });
+
+    cardsEl.querySelectorAll('.card-action').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const id = parseInt(btn.dataset.id, 10);
+        if(btn.dataset.action === 'cancel') cancelBreak(id);
+        else stopBreak(id);
+      });
+    });
+  }
+
+  // --- audio ---
+  function ensureAudio(){
+    if(!audioCtx){
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if(audioCtx.state === 'suspended'){
+      audioCtx.resume();
+    }
+  }
+
+  function beepOnce(){
+    ensureAudio();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'square';
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.3, audioCtx.currentTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.35);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.4);
+  }
+
+  function startBeepFor(b){
+    const loop = ()=>{
+      const stillExists = breaks.find(x=>x.id===b.id && x.status==='done');
+      if(!stillExists) return;
+      beepOnce();
+      b.beepTimeoutId = setTimeout(loop, 700);
+    };
+    loop();
+  }
+
+  // --- wake lock: keeps screen on while at least one break is active ---
+  async function updateWakeLock(){
+    try{
+      if(breaks.length > 0){
+        if(!wakeLock && 'wakeLock' in navigator){
+          wakeLock = await navigator.wakeLock.request('screen');
+          wakeLock.addEventListener('release', ()=>{ wakeLock = null; });
+        }
+      } else {
+        if(wakeLock){
+          await wakeLock.release();
+          wakeLock = null;
+        }
+      }
+    } catch(e){
+      // מכשירים/דפדפנים ללא תמיכה - מתעלמים בשקט
+    }
+  }
+
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.visibilityState === 'visible' && breaks.length > 0){
+      updateWakeLock();
+    }
+  });
+
+  renderAll();
+
+  // רישום Service Worker - מאפשר פתיחה גם ללא אינטרנט לאחר ההתקנה
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', ()=>{
+      navigator.serviceWorker.register('./sw.js').catch(()=>{});
+    });
+  }
+</script>
+
+</body>
+</html>
