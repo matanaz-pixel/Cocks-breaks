@@ -134,6 +134,8 @@
   .duration-cancel{ flex:none; background:transparent; border:1px solid var(--line); color:var(--text-dim); border-radius:12px; padding:0 16px; cursor:pointer; }
 
   .wake-note{ text-align:center; font-size:11px; color:var(--text-dim); margin-top:18px; opacity:.7; }
+
+  .hidden{ display:none !important; }
 </style>
 </head>
 <body>
@@ -152,16 +154,28 @@
     <button id="notifyBtn" class="notify-btn">אפשר התראות מערכת</button>
   </div>
 
-  <div class="list-title">צוות המטבח - סמן מי עובד/ת היום</div>
-  <div id="emptyNote" class="empty-note">הבנק ריק - היכנס ל"ניהול בנק טבחים" והוסף טבחים</div>
-  <div id="cards" class="cards"></div>
+  <div id="bankEmptyNote" class="empty-note hidden">הבנק ריק - היכנס ל"ניהול בנק טבחים" והוסף טבחים</div>
+
+  <div id="cardsWrapper">
+    <div class="list-title">במשמרת</div>
+    <div id="onShiftEmptyNote" class="empty-note hidden">אין טבחים במשמרת - סמן למטה מי עובד/ת היום</div>
+    <div id="cardsOn" class="cards"></div>
+
+    <div class="list-title" style="margin-top:22px;">לא במשמרת</div>
+    <div id="offShiftEmptyNote" class="empty-note hidden">כולם במשמרת</div>
+    <div id="cardsOff" class="cards"></div>
+  </div>
 
   <div class="wake-note">המסך יישאר דלוק כל עוד יש הפסקה פעילה</div>
 </div>
 
 <script>
-  const cardsEl = document.getElementById('cards');
-  const emptyNote = document.getElementById('emptyNote');
+  const cardsOnEl = document.getElementById('cardsOn');
+  const cardsOffEl = document.getElementById('cardsOff');
+  const bankEmptyNote = document.getElementById('bankEmptyNote');
+  const onShiftEmptyNote = document.getElementById('onShiftEmptyNote');
+  const offShiftEmptyNote = document.getElementById('offShiftEmptyNote');
+  const cardsWrapper = document.getElementById('cardsWrapper');
   const notifyBtn = document.getElementById('notifyBtn');
 
   const RADIUS_MINI = 22;
@@ -271,14 +285,27 @@
 
   function renderAll(){
     const chefs = bank;
-    cardsEl.innerHTML = '';
+    cardsOnEl.innerHTML = '';
+    cardsOffEl.innerHTML = '';
     liveRefs = {};
-    emptyNote.style.display = chefs.length ? 'none' : 'block';
 
-    chefs.forEach(c=>{
-      const mode = c.onShift ? computeMode(c.id) : 'off';
+    bankEmptyNote.classList.toggle('hidden', chefs.length > 0);
+    cardsWrapper.classList.toggle('hidden', chefs.length === 0);
+
+    const onShiftChefs = chefs.filter(c=>c.onShift);
+    const offShiftChefs = chefs.filter(c=>!c.onShift);
+
+    onShiftEmptyNote.classList.toggle('hidden', onShiftChefs.length > 0);
+    offShiftEmptyNote.classList.toggle('hidden', offShiftChefs.length > 0);
+
+    onShiftChefs.forEach(c=>{
+      const mode = computeMode(c.id);
       prevMode[c.id] = mode;
-      cardsEl.appendChild(buildCard(c, mode));
+      cardsOnEl.appendChild(buildCard(c, mode));
+    });
+    offShiftChefs.forEach(c=>{
+      prevMode[c.id] = 'off';
+      cardsOffEl.appendChild(buildCard(c, 'off'));
     });
 
     bindEvents();
@@ -368,19 +395,19 @@
   }
 
   function bindEvents(){
-    cardsEl.querySelectorAll('[data-toggle-id]').forEach(btn=>{
+    cardsWrapper.querySelectorAll('[data-toggle-id]').forEach(btn=>{
       btn.addEventListener('click', (e)=>{ e.stopPropagation(); toggleWorking(parseInt(btn.dataset.toggleId,10)); });
     });
-    cardsEl.querySelectorAll('[data-open-id]').forEach(el=>{
+    cardsWrapper.querySelectorAll('[data-open-id]').forEach(el=>{
       el.addEventListener('click', ()=> openChoice(parseInt(el.dataset.openId,10)));
     });
-    cardsEl.querySelectorAll('[data-start-id]').forEach(el=>{
+    cardsWrapper.querySelectorAll('[data-start-id]').forEach(el=>{
       el.addEventListener('click', (e)=>{ e.stopPropagation(); startBreak(parseInt(el.dataset.startId,10), parseInt(el.dataset.min,10)); });
     });
-    cardsEl.querySelectorAll('[data-close-id]').forEach(el=>{
+    cardsWrapper.querySelectorAll('[data-close-id]').forEach(el=>{
       el.addEventListener('click', (e)=>{ e.stopPropagation(); closeChoice(parseInt(el.dataset.closeId,10)); });
     });
-    cardsEl.querySelectorAll('.card-action').forEach(btn=>{
+    cardsWrapper.querySelectorAll('.card-action').forEach(btn=>{
       btn.addEventListener('click', (e)=>{
         e.stopPropagation();
         const id = parseInt(btn.dataset.id, 10);
