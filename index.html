@@ -36,6 +36,13 @@
   .eyebrow{ font-family:'Oswald',sans-serif; letter-spacing:.14em; font-size:12px; color:var(--text-dim); text-transform:uppercase; }
   h1{ font-family:'Oswald',sans-serif; font-weight:700; font-size:26px; margin:4px 0 0; }
 
+  .sync-tag{
+    text-align:center; font-size:11px; color:var(--text-dim); margin-bottom:14px;
+    display:flex; align-items:center; justify-content:center; gap:6px;
+  }
+  .sync-dot{ width:7px; height:7px; border-radius:50%; background:var(--text-dim); }
+  .sync-dot.live{ background:#3ddc6a; }
+
   .nav-row{ display:flex; gap:8px; margin-bottom:18px; }
   .nav-btn{
     flex:1; background:var(--steel-1); border:1px solid var(--line); color:var(--text-dim);
@@ -64,20 +71,13 @@
   .card-row{ display:flex; align-items:center; gap:12px; }
 
   .work-toggle{
-    flex:none;
-    width:44px; height:26px;
-    border-radius:14px;
-    background:var(--steel-2);
-    border:1px solid var(--line);
-    position:relative;
-    cursor:pointer;
-    padding:0;
+    flex:none; width:44px; height:26px; border-radius:14px;
+    background:var(--steel-2); border:1px solid var(--line);
+    position:relative; cursor:pointer; padding:0;
   }
   .work-toggle .knob{
-    position:absolute; top:2px; right:2px;
-    width:20px; height:20px; border-radius:50%;
-    background:var(--text-dim);
-    transition:transform .18s ease, background .18s ease;
+    position:absolute; top:2px; right:2px; width:20px; height:20px; border-radius:50%;
+    background:var(--text-dim); transition:transform .18s ease, background .18s ease;
   }
   .work-toggle.on{ border-color:var(--amber-dim); }
   .work-toggle.on .knob{ background:var(--amber); transform:translateX(-18px); }
@@ -145,6 +145,10 @@
 
   .hidden{ display:none !important; }
 </style>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="./firebase-init.js"></script>
 </head>
 <body>
 
@@ -153,6 +157,8 @@
     <div class="eyebrow">ניהול מטבח</div>
     <h1>הפסקות טבחים</h1>
   </div>
+
+  <div class="sync-tag"><span class="sync-dot" id="syncDot"></span><span id="syncText">מתחבר...</span></div>
 
   <div class="nav-row">
     <a class="nav-btn" href="./bank.html">ניהול בנק טבחים</a>
@@ -174,7 +180,7 @@
     <div id="cardsOff" class="cards"></div>
   </div>
 
-  <div class="wake-note">המסך יישאר דלוק כל עוד יש הפסקה פעילה</div>
+  <div class="wake-note">המסך יישאר דלוק כל עוד יש הפסקה פעילה. הנתונים מסונכרנים בזמן אמת בין כל המכשירים.</div>
 </div>
 
 <script>
@@ -185,52 +191,27 @@
   const offShiftEmptyNote = document.getElementById('offShiftEmptyNote');
   const cardsWrapper = document.getElementById('cardsWrapper');
   const notifyBtn = document.getElementById('notifyBtn');
+  const syncDot = document.getElementById('syncDot');
+  const syncText = document.getElementById('syncText');
 
   const RADIUS_MINI = 22;
   const CIRC_MINI = 2 * Math.PI * RADIUS_MINI;
-
-  const BANK_KEY = 'chefBank_v2';
-  const BREAKS_KEY = 'chefBreaks_v2';
-  const HISTORY_KEY = 'chefHistory_v1';
   const MAX_HISTORY = 500;
 
-  let bank = [];
+  // bank/breaks מגיעים עכשיו מ-Firebase כאובייקטים { [id]: {...} }
+  let bank = {};
   let breaksState = {};
   let choosingIds = new Set();
   let prevMode = {};
   let liveRefs = {};
   let beepTimers = {};
-  let liveNotif = {};
   let lastNotifUpdate = {};
 
   let audioCtx = null;
   let wakeLock = null;
 
-  function loadBank(){
-    try{ const raw = localStorage.getItem(BANK_KEY); bank = raw ? JSON.parse(raw) : []; }
-    catch(e){ bank = []; }
-  }
-  function saveBank(){
-    try{ localStorage.setItem(BANK_KEY, JSON.stringify(bank)); } catch(e){}
-  }
-  function loadBreaks(){
-    try{ const raw = localStorage.getItem(BREAKS_KEY); breaksState = raw ? JSON.parse(raw) : {}; }
-    catch(e){ breaksState = {}; }
-  }
-  function saveBreaks(){
-    try{ localStorage.setItem(BREAKS_KEY, JSON.stringify(breaksState)); } catch(e){}
-  }
-
-  function loadHistory(){
-    try{ const raw = localStorage.getItem(HISTORY_KEY); return raw ? JSON.parse(raw) : []; }
-    catch(e){ return []; }
-  }
-  function logHistoryEntry(entry){
-    const history = loadHistory();
-    history.unshift(entry);
-    if(history.length > MAX_HISTORY) history.length = MAX_HISTORY;
-    try{ localStorage.setItem(HISTORY_KEY, JSON.stringify(history)); } catch(e){}
-  }
+  function bankArr(){ return Object.keys(bank).map(id => ({ id, ...bank[id] })); }
+  function findChef(id){ return bank[id] ? { id, ...bank[id] } : null; }
 
   function initials(name){
     const parts = name.trim().split(/\s+/);
@@ -241,12 +222,10 @@
   function hasActiveBreak(id){ return !!breaksState[id]; }
 
   function toggleWorking(id){
-    const c = bank.find(x=>x.id===id);
+    const c = findChef(id);
     if(!c) return;
     if(c.onShift && hasActiveBreak(id)) return; // לא ניתן לבטל עבודה באמצע הפסקה
-    c.onShift = !c.onShift;
-    saveBank();
-    renderAll();
+    db.ref('bank/'+id+'/onShift').set(!c.onShift);
   }
 
   function computeMode(id){
@@ -269,17 +248,18 @@
   function startBreak(id, minutes){
     ensureAudio();
     choosingIds.delete(id);
-    breaksState[id] = { minutes, endAt: Date.now() + minutes*60000, muted: false };
-    saveBreaks();
-    renderAll();
-    updateWakeLock();
-    const c = bank.find(x=>x.id===id);
+    db.ref('breaks/'+id).set({ minutes, endAt: Date.now() + minutes*60000, muted: false });
+    const c = findChef(id);
     if(c) updateLiveNotification(c, 'running', `${minutes} דקות - התחיל עכשיו`, true);
+  }
+
+  function logHistoryEntry(entry){
+    db.ref('history').push(entry);
   }
 
   function cancelBreak(id){
     const b = breaksState[id];
-    const c = bank.find(x=>x.id===id);
+    const c = findChef(id);
     if(b && c){
       logHistoryEntry({
         chefId: id, chefName: c.name, minutes: b.minutes,
@@ -289,15 +269,12 @@
     }
     stopBeepFor(id);
     closeLiveNotification(id);
-    delete breaksState[id];
-    saveBreaks();
-    renderAll();
-    updateWakeLock();
+    db.ref('breaks/'+id).remove();
   }
 
   function acknowledgeDone(id){
     const b = breaksState[id];
-    const c = bank.find(x=>x.id===id);
+    const c = findChef(id);
     if(b && c){
       const overtimeSeconds = Math.max(0, Math.round((Date.now() - b.endAt)/1000));
       logHistoryEntry({
@@ -308,23 +285,16 @@
     }
     stopBeepFor(id);
     closeLiveNotification(id);
-    delete breaksState[id];
-    saveBreaks();
-    renderAll();
-    updateWakeLock();
+    db.ref('breaks/'+id).remove();
   }
 
   function muteBreak(id){
     stopBeepFor(id);
-    if(breaksState[id]){
-      breaksState[id].muted = true;
-      saveBreaks();
-    }
-    renderAll();
+    db.ref('breaks/'+id+'/muted').set(true);
   }
 
   function renderAll(){
-    const chefs = bank;
+    const chefs = bankArr();
     cardsOnEl.innerHTML = '';
     cardsOffEl.innerHTML = '';
     liveRefs = {};
@@ -440,26 +410,24 @@
 
   function bindEvents(){
     cardsWrapper.querySelectorAll('[data-toggle-id]').forEach(btn=>{
-      btn.addEventListener('click', (e)=>{ e.stopPropagation(); toggleWorking(parseInt(btn.dataset.toggleId,10)); });
+      btn.addEventListener('click', (e)=>{ e.stopPropagation(); toggleWorking(btn.dataset.toggleId); });
     });
     cardsWrapper.querySelectorAll('[data-history-id]').forEach(el=>{
-      el.addEventListener('click', ()=>{
-        window.location.href = 'history.html?id=' + el.dataset.historyId;
-      });
+      el.addEventListener('click', ()=>{ window.location.href = 'history.html?id=' + el.dataset.historyId; });
     });
     cardsWrapper.querySelectorAll('[data-open-id]').forEach(el=>{
-      el.addEventListener('click', ()=> openChoice(parseInt(el.dataset.openId,10)));
+      el.addEventListener('click', ()=> openChoice(el.dataset.openId));
     });
     cardsWrapper.querySelectorAll('[data-start-id]').forEach(el=>{
-      el.addEventListener('click', (e)=>{ e.stopPropagation(); startBreak(parseInt(el.dataset.startId,10), parseInt(el.dataset.min,10)); });
+      el.addEventListener('click', (e)=>{ e.stopPropagation(); startBreak(el.dataset.startId, parseInt(el.dataset.min,10)); });
     });
     cardsWrapper.querySelectorAll('[data-close-id]').forEach(el=>{
-      el.addEventListener('click', (e)=>{ e.stopPropagation(); closeChoice(parseInt(el.dataset.closeId,10)); });
+      el.addEventListener('click', (e)=>{ e.stopPropagation(); closeChoice(el.dataset.closeId); });
     });
     cardsWrapper.querySelectorAll('.card-action').forEach(btn=>{
       btn.addEventListener('click', (e)=>{
         e.stopPropagation();
-        const id = parseInt(btn.dataset.id, 10);
+        const id = btn.dataset.id;
         if(btn.dataset.action === 'cancel') cancelBreak(id);
         else if(btn.dataset.action === 'mute') muteBreak(id);
         else acknowledgeDone(id);
@@ -470,7 +438,7 @@
   function tick(){
     let needsRebuild = false;
 
-    bank.forEach(c=>{
+    bankArr().forEach(c=>{
       const mode = c.onShift ? computeMode(c.id) : 'off';
       const prev = prevMode[c.id];
 
@@ -541,9 +509,7 @@
     if(beepTimers[id]){ clearTimeout(beepTimers[id]); delete beepTimers[id]; }
   }
 
-  // ---------- התראות (כולל ניסיון להציג על מסך הנעילה) ----------
-  // הערה: בהרבה דפדפנים ניידים (בעיקר אנדרואיד) אי אפשר ליצור התראה ישירות עם `new Notification()` -
-  // חובה להעביר דרך ה-Service Worker. לכן כל התראה עוברת קודם בנתיב הזה, עם נפילה חזרה בטוחה לשיטה הישנה.
+  // ---------- התראות ----------
   async function showAppNotification(title, options){
     if(!('Notification' in window) || Notification.permission !== 'granted') return;
     try{
@@ -555,10 +521,9 @@
         await reg.showNotification(title, options);
         return;
       }
-    } catch(e){ /* ניפול לשיטה הישנה למטה */ }
-    try{ new Notification(title, options); } catch(e){ /* אין תמיכה - מתעלמים בשקט */ }
+    } catch(e){}
+    try{ new Notification(title, options); } catch(e){}
   }
-
   async function closeAppNotification(tag){
     try{
       if('serviceWorker' in navigator){
@@ -568,7 +533,6 @@
       }
     } catch(e){}
   }
-
   function refreshNotifyBtn(){
     if(!('Notification' in window)){ notifyBtn.style.display = 'none'; return; }
     if(Notification.permission === 'granted'){
@@ -598,15 +562,9 @@
     });
     if('vibrate' in navigator){ try{ navigator.vibrate([250,120,250,120,250]); } catch(e){} }
   }
-
-  // הודעה "חיה" שמתעדכנת לאורך ההפסקה - מוצגת גם במסך הנעילה כאשר המכשיר תומך בכך.
-  // חשוב: זו התראה רגילה של הדפדפן, לא ווידג'ט אמיתי - יש הבדלי תמיכה בין אנדרואיד לאייפון (ראה הסבר בצ'אט).
   function updateLiveNotification(chef, mode, bodyText, loud){
     showAppNotification('הפסקה: '+chef.name, {
-      body: bodyText,
-      tag: 'chef-live-'+chef.id,
-      silent: !loud,
-      renotify: !!loud
+      body: bodyText, tag: 'chef-live-'+chef.id, silent: !loud, renotify: !!loud
     });
   }
   function closeLiveNotification(id){
@@ -632,24 +590,34 @@
     if(document.visibilityState === 'visible' && Object.keys(breaksState).length > 0){
       updateWakeLock();
       Object.keys(breaksState).forEach(id=>{
-        const numId = parseInt(id,10);
-        if(computeMode(numId) === 'done' && !breaksState[id].muted) startBeepFor(numId);
+        if(computeMode(id) === 'done' && !breaksState[id].muted) startBeepFor(id);
       });
     }
   });
 
-  // ---------- אתחול ----------
-  loadBank();
-  loadBreaks();
-  bank.forEach(c=>{ prevMode[c.id] = c.onShift ? computeMode(c.id) : 'off'; });
-  renderAll();
-  refreshNotifyBtn();
-  updateWakeLock();
-
-  Object.keys(breaksState).forEach(id=>{
-    const numId = parseInt(id,10);
-    if(computeMode(numId) === 'done' && !breaksState[id].muted) startBeepFor(numId);
+  // ---------- חיבור ל-Firebase בזמן אמת ----------
+  db.ref('.info/connected').on('value', snap=>{
+    const connected = snap.val() === true;
+    syncDot.classList.toggle('live', connected);
+    syncText.textContent = connected ? 'מחובר - מסונכרן בזמן אמת' : 'מתחבר...';
   });
+
+  db.ref('bank').on('value', snap=>{
+    bank = snap.val() || {};
+    bankArr().forEach(c=>{ if(!(c.id in prevMode)) prevMode[c.id] = c.onShift ? computeMode(c.id) : 'off'; });
+    renderAll();
+  });
+
+  db.ref('breaks').on('value', snap=>{
+    breaksState = snap.val() || {};
+    Object.keys(breaksState).forEach(id=>{
+      if(computeMode(id) === 'done' && !breaksState[id].muted) startBeepFor(id);
+    });
+    renderAll();
+    updateWakeLock();
+  });
+
+  refreshNotifyBtn();
   document.body.addEventListener('click', ensureAudio, { once:true });
 
   setInterval(tick, 1000);
