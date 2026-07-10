@@ -63,7 +63,7 @@
   .empty-note{ text-align:center; color:var(--text-dim); font-size:14px; padding:26px 10px; border:1px dashed var(--line); border-radius:14px; }
 
   .bank-row{
-    display:flex; align-items:center; gap:10px;
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
     background:linear-gradient(180deg,var(--steel-1),var(--steel-0));
     border:1px solid var(--line); border-radius:14px;
     padding:12px 14px; margin-bottom:10px;
@@ -83,15 +83,26 @@
     display:flex; align-items:center; justify-content:center;
     font-size:10px; border:2px solid var(--steel-0);
   }
-  .bank-row-name{ flex:1; font-size:15px; }
+  .bank-row-name{ flex:1; min-width:90px; font-size:15px; }
   .bank-row-tag{ font-size:11px; color:var(--text-dim); }
-  .bank-delete{
+  .bank-btn{
     flex:none; background:transparent; border:1px solid var(--line); color:var(--text-dim);
     border-radius:10px; padding:8px 12px; font-size:13px; cursor:pointer;
   }
-  .bank-delete:hover{ border-color:var(--danger); color:var(--danger); }
-  .bank-delete:disabled{ opacity:.35; cursor:not-allowed; }
+  .bank-btn.danger:hover{ border-color:var(--danger); color:var(--danger); }
+  .bank-btn.share{ color:var(--amber); border-color:var(--amber-dim); }
+  .bank-btn:disabled{ opacity:.35; cursor:not-allowed; }
   .photo-input{ display:none; }
+
+  .share-row{ flex-basis:100%; margin-top:8px; }
+  .share-box{
+    display:flex; gap:6px; align-items:center;
+    background:var(--steel-2); border:1px solid var(--line); border-radius:10px; padding:8px 10px;
+  }
+  .share-box input{
+    flex:1; background:transparent; border:none; color:var(--text-dim); font-size:11px; outline:none;
+    direction:ltr; text-align:left;
+  }
 </style>
 </head>
 <body>
@@ -110,35 +121,26 @@
   </div>
 
   <div class="list-title">כל הטבחים בבנק</div>
-  <div id="emptyNote" class="empty-note">הבנק ריק - הוסף טבח ראשון למעלה</div>
+  <div id="emptyNote" class="empty-note hidden">הבנק ריק - הוסף טבח ראשון למעלה</div>
   <div id="bankList"></div>
 </div>
 
+<style>.hidden{display:none !important;}</style>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="./firebase-init.js"></script>
 <script>
   const chefNameInput = document.getElementById('chefNameInput');
   const addChefBtn = document.getElementById('addChefBtn');
   const bankList = document.getElementById('bankList');
   const emptyNote = document.getElementById('emptyNote');
 
-  const BANK_KEY = 'chefBank_v2';
-  const BREAKS_KEY = 'chefBreaks_v2';
-
-  let bank = [];
+  let bank = {};
   let breaksState = {};
-  let nextId = 1;
+  let openShareId = null;
 
-  function loadBank(){
-    try{ const raw = localStorage.getItem(BANK_KEY); bank = raw ? JSON.parse(raw) : []; }
-    catch(e){ bank = []; }
-    nextId = bank.length ? Math.max(...bank.map(c=>c.id)) + 1 : 1;
-  }
-  function saveBank(){
-    try{ localStorage.setItem(BANK_KEY, JSON.stringify(bank)); } catch(e){}
-  }
-  function loadBreaks(){
-    try{ const raw = localStorage.getItem(BREAKS_KEY); breaksState = raw ? JSON.parse(raw) : {}; }
-    catch(e){ breaksState = {}; }
-  }
+  function bankArr(){ return Object.keys(bank).map(id => ({ id, ...bank[id] })); }
   function hasActiveBreak(id){ return !!breaksState[id]; }
 
   function initials(name){
@@ -181,15 +183,13 @@
     if(!file) return;
     try{
       const dataUrl = await resizeImageFile(file);
-      const c = bank.find(x=>x.id===id);
-      if(c){ c.photo = dataUrl; saveBank(); render(); }
+      await db.ref('bank/'+id+'/photo').set(dataUrl);
     } catch(e){ /* קובץ לא תקין - מתעלמים בשקט */ }
     fileInput.value = '';
   }
 
   function removePhoto(id){
-    const c = bank.find(x=>x.id===id);
-    if(c){ delete c.photo; saveBank(); render(); }
+    db.ref('bank/'+id+'/photo').remove();
   }
 
   addChefBtn.addEventListener('click', addChef);
@@ -198,27 +198,31 @@
   function addChef(){
     const name = chefNameInput.value.trim();
     if(!name) return;
-    bank.push({ id: nextId++, name, onShift: false });
+    db.ref('bank').push({ name, onShift: false });
     chefNameInput.value = '';
-    saveBank();
-    render();
   }
 
   function deleteChef(id){
     if(hasActiveBreak(id)) return;
-    bank = bank.filter(x=>x.id!==id);
-    saveBank();
+    db.ref('bank/'+id).remove();
+  }
+
+  function toggleShare(id){
+    openShareId = (openShareId === id) ? null : id;
     render();
   }
 
   function render(){
+    const bankChefs = bankArr();
     bankList.innerHTML = '';
-    emptyNote.style.display = bank.length ? 'none' : 'block';
-    bank.forEach(c=>{
+    emptyNote.classList.toggle('hidden', bankChefs.length > 0);
+
+    bankChefs.forEach(c=>{
       const locked = hasActiveBreak(c.id);
       const row = document.createElement('div');
       row.className = 'bank-row';
       const avatarStyle = c.photo ? `style="background-image:url('${c.photo}')"` : '';
+      const personalUrl = window.location.origin + window.location.pathname.replace('bank.html','chef.html') + '?id=' + c.id;
       row.innerHTML = `
         <div class="bank-avatar" data-pick-id="${c.id}" ${avatarStyle}>
           ${c.photo ? '' : initials(c.name)}
@@ -226,29 +230,50 @@
         </div>
         <input type="file" id="photoInput-${c.id}" class="photo-input" accept="image/*">
         <div class="bank-row-name">${c.name}${locked ? ' <span class="bank-row-tag">(בהפסקה כרגע)</span>' : ''}</div>
-        ${c.photo ? `<button class="bank-delete" data-remove-photo-id="${c.id}">הסר תמונה</button>` : ''}
-        <button class="bank-delete" data-delete-id="${c.id}" ${locked?'disabled':''}>מחק</button>
+        ${c.photo ? `<button class="bank-btn" data-remove-photo-id="${c.id}">הסר תמונה</button>` : ''}
+        <button class="bank-btn share" data-share-id="${c.id}">קישור אישי</button>
+        <button class="bank-btn danger" data-delete-id="${c.id}" ${locked?'disabled':''}>מחק</button>
+        ${openShareId === c.id ? `
+          <div class="share-row">
+            <div class="share-box">
+              <input type="text" readonly value="${personalUrl}" onclick="this.select()">
+              <button class="bank-btn" data-copy-id="${c.id}" data-url="${personalUrl}">העתק</button>
+            </div>
+          </div>
+        ` : ''}
       `;
       bankList.appendChild(row);
     });
+
     bankList.querySelectorAll('[data-delete-id]').forEach(btn=>{
-      btn.addEventListener('click', ()=> deleteChef(parseInt(btn.dataset.deleteId,10)));
+      btn.addEventListener('click', ()=> deleteChef(btn.dataset.deleteId));
     });
     bankList.querySelectorAll('[data-pick-id]').forEach(el=>{
-      el.addEventListener('click', ()=> triggerPhotoPick(parseInt(el.dataset.pickId,10)));
+      el.addEventListener('click', ()=> triggerPhotoPick(el.dataset.pickId));
     });
     bankList.querySelectorAll('[data-remove-photo-id]').forEach(btn=>{
-      btn.addEventListener('click', ()=> removePhoto(parseInt(btn.dataset.removePhotoId,10)));
+      btn.addEventListener('click', ()=> removePhoto(btn.dataset.removePhotoId));
     });
-    bank.forEach(c=>{
+    bankList.querySelectorAll('[data-share-id]').forEach(btn=>{
+      btn.addEventListener('click', ()=> toggleShare(btn.dataset.shareId));
+    });
+    bankList.querySelectorAll('[data-copy-id]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        try{
+          await navigator.clipboard.writeText(btn.dataset.url);
+          btn.textContent = 'הועתק ✓';
+          setTimeout(()=>{ btn.textContent = 'העתק'; }, 1500);
+        } catch(e){ /* דפדפן ללא תמיכה בהעתקה - המשתמש יכול לסמן ולהעתיק ידנית */ }
+      });
+    });
+    bankChefs.forEach(c=>{
       const input = document.getElementById('photoInput-'+c.id);
       if(input) input.addEventListener('change', ()=> onPhotoSelected(c.id, input));
     });
   }
 
-  loadBank();
-  loadBreaks();
-  render();
+  db.ref('bank').on('value', snap=>{ bank = snap.val() || {}; render(); });
+  db.ref('breaks').on('value', snap=>{ breaksState = snap.val() || {}; render(); });
 </script>
 
 </body>
