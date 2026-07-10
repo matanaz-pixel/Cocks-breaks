@@ -1,7 +1,8 @@
-const CACHE_NAME = 'chef-breaks-v5';
+const CACHE_NAME = 'chef-breaks-v6';
 const FILES_TO_CACHE = [
   './index.html',
   './bank.html',
+  './history.html',
   './manifest.json',
   './icon-192.png',
   './icon-512.png'
