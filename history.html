@@ -99,12 +99,12 @@
   <div id="entries"></div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="./firebase-init.js"></script>
 <script>
   const params = new URLSearchParams(window.location.search);
-  const chefId = parseInt(params.get('id'), 10);
-
-  const BANK_KEY = 'chefBank_v2';
-  const HISTORY_KEY = 'chefHistory_v1';
+  const chefId = params.get('id');
 
   function initials(name){
     const parts = name.trim().split(/\s+/);
@@ -112,76 +112,81 @@
     return parts[0][0] + parts[1][0];
   }
 
-  let bank = [];
-  try{ const raw = localStorage.getItem(BANK_KEY); bank = raw ? JSON.parse(raw) : []; } catch(e){}
-  let history = [];
-  try{ const raw = localStorage.getItem(HISTORY_KEY); history = raw ? JSON.parse(raw) : []; } catch(e){}
+  const STATIONS = { tabun: 'טאבון', cold: 'פס קר', hot: 'פס חם', wash: 'שטיפה' };
+  function stationLabel(key){ return key ? (STATIONS[key] || key) : 'לא במשמרת היום'; }
 
-  const chef = bank.find(c => c.id === chefId);
-  const chefEntries = history.filter(h => h.chefId === chefId);
-  const chefName = chef ? chef.name : (chefEntries[0] ? chefEntries[0].chefName : 'טבח');
+  Promise.all([
+    db.ref('bank/'+chefId).once('value'),
+    db.ref('history').once('value')
+  ]).then(([bankSnap, historySnap])=>{
+    const chef = bankSnap.val();
+    const historyObj = historySnap.val() || {};
+    const allHistory = Object.values(historyObj);
+    const chefEntries = allHistory
+      .filter(h => h.chefId === chefId)
+      .sort((a,b) => b.finishedAt - a.finishedAt);
 
-  const profileEl = document.getElementById('profile');
-  profileEl.innerHTML = `
-    <div class="profile-avatar">${chef && chef.photo ? `<img src="${chef.photo}" alt="">` : initials(chefName)}</div>
-    <div>
-      <div class="profile-name">${chefName}</div>
-      <div class="profile-sub">${chef ? (chef.onShift ? 'במשמרת היום' : 'לא במשמרת היום') : 'הוסר מהבנק'}</div>
-    </div>
-  `;
+    const chefName = chef ? chef.name : (chefEntries[0] ? chefEntries[0].chefName : 'טבח');
 
-  const completed = chefEntries.filter(h => h.status === 'completed');
-  const totalBreaks = chefEntries.length;
-  const totalOvertimeSec = completed.reduce((sum,h)=> sum + (h.overtimeSeconds||0), 0);
-  const overtimeCount = completed.filter(h => (h.overtimeSeconds||0) > 0).length;
+    const profileEl = document.getElementById('profile');
+    profileEl.innerHTML = `
+      <div class="profile-avatar">${chef && chef.photo ? `<img src="${chef.photo}" alt="">` : initials(chefName)}</div>
+      <div>
+        <div class="profile-name">${chefName}</div>
+        <div class="profile-sub">${chef ? stationLabel(chef.station) : 'הוסר מהבנק'}</div>
+      </div>
+    `;
 
-  const summaryRow = document.getElementById('summaryRow');
-  function fmtMinutes(totalSec){
-    const m = Math.round(totalSec/60);
-    return m + " דק'";
-  }
-  summaryRow.innerHTML = `
-    <div class="summary-card"><div class="summary-num">${totalBreaks}</div><div class="summary-label">סה"כ הפסקות</div></div>
-    <div class="summary-card"><div class="summary-num">${overtimeCount}</div><div class="summary-label">עם חריגה</div></div>
-    <div class="summary-card"><div class="summary-num">${fmtMinutes(totalOvertimeSec)}</div><div class="summary-label">חריגה מצטברת</div></div>
-  `;
+    const completed = chefEntries.filter(h => h.status === 'completed');
+    const totalBreaks = chefEntries.length;
+    const totalOvertimeSec = completed.reduce((sum,h)=> sum + (h.overtimeSeconds||0), 0);
+    const overtimeCount = completed.filter(h => (h.overtimeSeconds||0) > 0).length;
 
-  const entriesEl = document.getElementById('entries');
-  const emptyNote = document.getElementById('emptyNote');
+    const summaryRow = document.getElementById('summaryRow');
+    function fmtMinutes(totalSec){ return Math.round(totalSec/60) + " דק'"; }
+    summaryRow.innerHTML = `
+      <div class="summary-card"><div class="summary-num">${totalBreaks}</div><div class="summary-label">סה"כ הפסקות</div></div>
+      <div class="summary-card"><div class="summary-num">${overtimeCount}</div><div class="summary-label">עם חריגה</div></div>
+      <div class="summary-card"><div class="summary-num">${fmtMinutes(totalOvertimeSec)}</div><div class="summary-label">חריגה מצטברת</div></div>
+    `;
 
-  if(chefEntries.length === 0){
-    emptyNote.classList.remove('hidden');
-  } else {
-    chefEntries.forEach(h=>{
-      const d = new Date(h.finishedAt);
-      const day = d.getDate();
-      const month = d.toLocaleDateString('he-IL', { month: 'short' });
-      const timeStr = d.toLocaleTimeString('he-IL', { hour:'2-digit', minute:'2-digit' });
+    const entriesEl = document.getElementById('entries');
+    const emptyNote = document.getElementById('emptyNote');
 
-      let subText;
-      if(h.status === 'cancelled'){
-        subText = `הפסקה של ${h.minutes} דק' - בוטלה מוקדם`;
-      } else if(h.overtimeSeconds > 0){
-        const om = Math.floor(h.overtimeSeconds/60).toString().padStart(2,'0');
-        const os = Math.floor(h.overtimeSeconds%60).toString().padStart(2,'0');
-        subText = `הפסקה של ${h.minutes} דק' - <span class="entry-overtime">חריגה של ${om}:${os}</span>`;
-      } else {
-        subText = `הפסקה של ${h.minutes} דק' - בזמן`;
-      }
+    if(chefEntries.length === 0){
+      emptyNote.classList.remove('hidden');
+    } else {
+      chefEntries.forEach(h=>{
+        const d = new Date(h.finishedAt);
+        const day = d.getDate();
+        const month = d.toLocaleDateString('he-IL', { month: 'short' });
+        const timeStr = d.toLocaleTimeString('he-IL', { hour:'2-digit', minute:'2-digit' });
 
-      const row = document.createElement('div');
-      row.className = 'entry' + (h.status === 'cancelled' ? ' cancelled' : '');
-      row.innerHTML = `
-        <div class="entry-date"><div class="entry-day">${day}</div><div class="entry-month">${month}</div></div>
-        <div class="entry-body">
-          <div class="entry-title">${h.status === 'cancelled' ? 'בוטלה' : 'הושלמה'}</div>
-          <div class="entry-sub">${subText}</div>
-        </div>
-        <div class="entry-time">${timeStr}</div>
-      `;
-      entriesEl.appendChild(row);
-    });
-  }
+        let subText;
+        if(h.status === 'cancelled'){
+          subText = `הפסקה של ${h.minutes} דק' - בוטלה מוקדם`;
+        } else if(h.overtimeSeconds > 0){
+          const om = Math.floor(h.overtimeSeconds/60).toString().padStart(2,'0');
+          const os = Math.floor(h.overtimeSeconds%60).toString().padStart(2,'0');
+          subText = `הפסקה של ${h.minutes} דק' - <span class="entry-overtime">חריגה של ${om}:${os}</span>`;
+        } else {
+          subText = `הפסקה של ${h.minutes} דק' - בזמן`;
+        }
+
+        const row = document.createElement('div');
+        row.className = 'entry' + (h.status === 'cancelled' ? ' cancelled' : '');
+        row.innerHTML = `
+          <div class="entry-date"><div class="entry-day">${day}</div><div class="entry-month">${month}</div></div>
+          <div class="entry-body">
+            <div class="entry-title">${h.status === 'cancelled' ? 'בוטלה' : 'הושלמה'}</div>
+            <div class="entry-sub">${subText}</div>
+          </div>
+          <div class="entry-time">${timeStr}</div>
+        `;
+        entriesEl.appendChild(row);
+      });
+    }
+  });
 </script>
 
 </body>

@@ -70,18 +70,13 @@
 
   .card-row{ display:flex; align-items:center; gap:12px; }
 
-  .work-toggle{
-    flex:none; width:44px; height:26px; border-radius:14px;
-    background:var(--steel-2); border:1px solid var(--line);
-    position:relative; cursor:pointer; padding:0;
+  .station-select{
+    flex:none; width:84px;
+    background:var(--steel-2); border:1px solid var(--line); color:var(--text);
+    border-radius:10px; padding:8px 6px; font-size:11px; font-family:'Rubik',sans-serif;
+    cursor:pointer;
   }
-  .work-toggle .knob{
-    position:absolute; top:2px; right:2px; width:20px; height:20px; border-radius:50%;
-    background:var(--text-dim); transition:transform .18s ease, background .18s ease;
-  }
-  .work-toggle.on{ border-color:var(--amber-dim); }
-  .work-toggle.on .knob{ background:var(--amber); transform:translateX(-18px); }
-  .work-toggle:disabled{ opacity:.4; cursor:not-allowed; }
+  .station-select:disabled{ opacity:.4; cursor:not-allowed; }
 
   .ring-mini{ position:relative; width:52px; height:52px; flex:none; }
   .ring-mini svg{ transform:rotate(-90deg); }
@@ -170,29 +165,28 @@
 
   <div id="bankEmptyNote" class="empty-note hidden">הבנק ריק - היכנס ל"ניהול בנק טבחים" והוסף טבחים</div>
 
-  <div id="cardsWrapper">
-    <div class="list-title">במשמרת</div>
-    <div id="onShiftEmptyNote" class="empty-note hidden">אין טבחים במשמרת - סמן למטה מי עובד/ת היום</div>
-    <div id="cardsOn" class="cards"></div>
-
-    <div class="list-title" style="margin-top:22px;">לא במשמרת</div>
-    <div id="offShiftEmptyNote" class="empty-note hidden">כולם במשמרת</div>
-    <div id="cardsOff" class="cards"></div>
-  </div>
+  <div id="cardsWrapper"></div>
 
   <div class="wake-note">המסך יישאר דלוק כל עוד יש הפסקה פעילה. הנתונים מסונכרנים בזמן אמת בין כל המכשירים.</div>
 </div>
 
 <script>
-  const cardsOnEl = document.getElementById('cardsOn');
-  const cardsOffEl = document.getElementById('cardsOff');
   const bankEmptyNote = document.getElementById('bankEmptyNote');
-  const onShiftEmptyNote = document.getElementById('onShiftEmptyNote');
-  const offShiftEmptyNote = document.getElementById('offShiftEmptyNote');
   const cardsWrapper = document.getElementById('cardsWrapper');
   const notifyBtn = document.getElementById('notifyBtn');
   const syncDot = document.getElementById('syncDot');
   const syncText = document.getElementById('syncText');
+
+  const STATIONS = [
+    { key: 'tabun', label: 'טאבון' },
+    { key: 'cold', label: 'פס קר' },
+    { key: 'hot', label: 'פס חם' },
+    { key: 'wash', label: 'שטיפה' }
+  ];
+  function stationLabel(key){
+    const s = STATIONS.find(x=>x.key===key);
+    return s ? s.label : 'לא במשמרת';
+  }
 
   const RADIUS_MINI = 22;
   const CIRC_MINI = 2 * Math.PI * RADIUS_MINI;
@@ -221,11 +215,9 @@
 
   function hasActiveBreak(id){ return !!breaksState[id]; }
 
-  function toggleWorking(id){
-    const c = findChef(id);
-    if(!c) return;
-    if(c.onShift && hasActiveBreak(id)) return; // לא ניתן לבטל עבודה באמצע הפסקה
-    db.ref('bank/'+id+'/onShift').set(!c.onShift);
+  function setStation(id, station){
+    if(hasActiveBreak(id)) return; // לא ניתן לשנות משמרת באמצע הפסקה פעילה
+    db.ref('bank/'+id+'/station').set(station);
   }
 
   function computeMode(id){
@@ -295,27 +287,41 @@
 
   function renderAll(){
     const chefs = bankArr();
-    cardsOnEl.innerHTML = '';
-    cardsOffEl.innerHTML = '';
     liveRefs = {};
 
     bankEmptyNote.classList.toggle('hidden', chefs.length > 0);
     cardsWrapper.classList.toggle('hidden', chefs.length === 0);
+    cardsWrapper.innerHTML = '';
 
-    const onShiftChefs = chefs.filter(c=>c.onShift);
-    const offShiftChefs = chefs.filter(c=>!c.onShift);
+    const groups = STATIONS.map(s => ({ key: s.key, label: s.label, chefs: chefs.filter(c=>c.station===s.key) }));
+    groups.push({ key: '', label: 'לא במשמרת', chefs: chefs.filter(c=>!c.station) });
 
-    onShiftEmptyNote.classList.toggle('hidden', onShiftChefs.length > 0);
-    offShiftEmptyNote.classList.toggle('hidden', offShiftChefs.length > 0);
+    groups.forEach((group, idx)=>{
+      const section = document.createElement('div');
+      if(idx > 0) section.style.marginTop = '22px';
 
-    onShiftChefs.forEach(c=>{
-      const mode = computeMode(c.id);
-      prevMode[c.id] = mode;
-      cardsOnEl.appendChild(buildCard(c, mode));
-    });
-    offShiftChefs.forEach(c=>{
-      prevMode[c.id] = 'off';
-      cardsOffEl.appendChild(buildCard(c, 'off'));
+      const title = document.createElement('div');
+      title.className = 'list-title';
+      title.textContent = group.label;
+      section.appendChild(title);
+
+      if(group.chefs.length === 0){
+        const note = document.createElement('div');
+        note.className = 'empty-note';
+        note.textContent = group.key ? `אין כרגע אף אחד ב${group.label}` : 'כולם במשמרת';
+        section.appendChild(note);
+      } else {
+        const cardsDiv = document.createElement('div');
+        cardsDiv.className = 'cards';
+        group.chefs.forEach(c=>{
+          const mode = c.station ? computeMode(c.id) : 'off';
+          prevMode[c.id] = mode;
+          cardsDiv.appendChild(buildCard(c, mode));
+        });
+        section.appendChild(cardsDiv);
+      }
+
+      cardsWrapper.appendChild(section);
     });
 
     bindEvents();
@@ -326,7 +332,14 @@
     card.className = 'card' + (mode==='done' ? ' is-done' : '') + (mode==='off' ? ' is-off' : '');
     card.dataset.chefId = c.id;
 
-    const toggleHtml = `<button class="work-toggle ${c.onShift?'on':''}" data-toggle-id="${c.id}" ${(c.onShift && hasActiveBreak(c.id))?'disabled':''}><span class="knob"></span></button>`;
+    const stationOptions = STATIONS.map(s =>
+      `<option value="${s.key}" ${c.station===s.key?'selected':''}>${s.label}</option>`
+    ).join('');
+    const selectHtml = `
+      <select class="station-select" data-station-id="${c.id}" ${hasActiveBreak(c.id)?'disabled':''}>
+        <option value="" ${!c.station?'selected':''}>לא במשמרת</option>
+        ${stationOptions}
+      </select>`;
 
     let avatarHtml, subText, actionHtml = '';
 
@@ -377,7 +390,7 @@
 
     card.innerHTML = `
       <div class="card-row">
-        ${toggleHtml}
+        ${selectHtml}
         ${avatarHtml}
         <div class="card-body" data-history-id="${c.id}">
           <div class="card-title">${c.name}</div>
@@ -409,8 +422,9 @@
   }
 
   function bindEvents(){
-    cardsWrapper.querySelectorAll('[data-toggle-id]').forEach(btn=>{
-      btn.addEventListener('click', (e)=>{ e.stopPropagation(); toggleWorking(btn.dataset.toggleId); });
+    cardsWrapper.querySelectorAll('[data-station-id]').forEach(sel=>{
+      sel.addEventListener('click', (e)=> e.stopPropagation());
+      sel.addEventListener('change', (e)=>{ e.stopPropagation(); setStation(sel.dataset.stationId, sel.value); });
     });
     cardsWrapper.querySelectorAll('[data-history-id]').forEach(el=>{
       el.addEventListener('click', ()=>{ window.location.href = 'history.html?id=' + el.dataset.historyId; });
@@ -439,7 +453,7 @@
     let needsRebuild = false;
 
     bankArr().forEach(c=>{
-      const mode = c.onShift ? computeMode(c.id) : 'off';
+      const mode = c.station ? computeMode(c.id) : 'off';
       const prev = prevMode[c.id];
 
       if(mode !== prev){
@@ -604,7 +618,7 @@
 
   db.ref('bank').on('value', snap=>{
     bank = snap.val() || {};
-    bankArr().forEach(c=>{ if(!(c.id in prevMode)) prevMode[c.id] = c.onShift ? computeMode(c.id) : 'off'; });
+    bankArr().forEach(c=>{ if(!(c.id in prevMode)) prevMode[c.id] = c.station ? computeMode(c.id) : 'off'; });
     renderAll();
   });
 

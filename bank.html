@@ -198,7 +198,7 @@
   function addChef(){
     const name = chefNameInput.value.trim();
     if(!name) return;
-    db.ref('bank').push({ name, onShift: false });
+    db.ref('bank').push({ name, station: '' });
     chefNameInput.value = '';
   }
 
