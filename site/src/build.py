@@ -43,7 +43,7 @@ for s in SERVICES:
 
 def fragment(html):
     """Publish mode: the host wraps the main page in its own skeleton, so emit title, styles, scripts and body content only."""
-    title = re.search(r"<title>.*?</title>", html, re.S).group(0)
+    title = "<title>אתר הדרכת הורים ושינה</title>"
     head = re.search(r"<head>(.*)</head>", html, re.S).group(1)
     styles = "".join(re.findall(r"<style>.*?</style>", head, re.S))
     scripts = "".join(re.findall(r"<script[^>]*>.*?</script>", head, re.S))
