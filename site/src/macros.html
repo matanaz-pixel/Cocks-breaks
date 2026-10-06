@@ -1,0 +1,36 @@
+{% macro ic(n) %}<svg class="ic" aria-hidden="true"><use href="#i-{{ n }}"/></svg>{% endmacro %}
+
+{% macro faq(items) %}<div class="faq">{% for f in items %}
+ <details><summary>{{ f.q }}{{ ic('chev') }}</summary><p>{{ f.a }}</p></details>{% endfor %}
+</div>{% endmacro %}
+
+{% macro review(t, badge=None) %}<figure class="review">{{ ic('quote') }}<blockquote><p>{{ t.text }}</p></blockquote>
+ <figcaption class="who"><span>{{ t.who }}</span>{% if badge %}<span class="badge" style="--c:{{ badge.pastel }}">{{ badge.short }}</span>{% endif %}{% if t.sample %}<span class="sample-tag">דוגמה</span>{% endif %}</figcaption></figure>{% endmacro %}
+
+{% macro funding(compact=False) %}
+<section id="funding" class="funding{% if compact %} compact{% endif %}"{% if compact %} style="padding-top:30px"{% endif %}><div class="wrap"><div class="box">
+ <div class="head"><span class="tag">השתתפות כספית</span><h2>{{ H.funding_title }}</h2><p>{{ H.funding_intro }}</p></div>
+ {% if not compact %}<div class="fcards">{% for c in H.funding_cards %}
+  <div class="fcard"><div class="ico">{{ ic(c.icon) }}</div><div><h3>{{ c.title }}</h3><p>{{ c.text }}</p></div></div>{% endfor %}
+ </div>{% endif %}
+ <ol class="fsteps">{% for s in H.funding_steps %}<li>{{ s }}</li>{% endfor %}</ol>
+ <p class="fnote">{{ H.funding_note }}{% if compact %} <a href="index.html#funding">לפרטים נוספים</a>{% endif %}</p>
+ <div class="actions" style="justify-content:center;margin-top:22px"><a class="btn" href="{{ page_wa }}" target="_blank" rel="noopener">{{ ic('whatsapp') }}לבדוק זכאות בשיחת היכרות</a></div>
+</div></div></section>
+{% endmacro %}
+
+{% macro contact(title, sub, chips=None) %}
+<section id="contact" class="contact" style="padding-top:30px"><div class="wrap"><div class="box-dark">
+ <h2>{{ title }}</h2>
+ <p class="lead">{{ sub }}</p>
+ {% if chips %}<p class="pick">{{ H.contact_pick }}</p>
+ <ul class="wa-chips">{% for c in chips %}<li><a href="{{ wa(c.text) }}" target="_blank" rel="noopener">{{ ic('whatsapp') }}{{ c.label }}</a></li>{% endfor %}</ul>
+ {% else %}<div class="row2"><a class="btn light" href="{{ page_wa }}" target="_blank" rel="noopener">{{ ic('whatsapp') }}שלחו הודעה בוואטסאפ</a></div>{% endif %}
+ <div class="row2"><a class="btn ghost-w" href="tel:+{{ B.phone_intl }}">{{ ic('phone') }}{{ B.phone }}</a></div>
+ <a class="mail" href="mailto:{{ B.email }}">{{ ic('mail') }}{{ B.email }}</a>
+ <div class="social">
+  <a href="{{ B.instagram }}" target="_blank" rel="noopener" aria-label="אינסטגרם">{{ ic('instagram') }}</a>
+  <a href="{{ B.facebook }}" target="_blank" rel="noopener" aria-label="פייסבוק">{{ ic('facebook') }}</a>
+ </div>
+</div></div></section>
+{% endmacro %}

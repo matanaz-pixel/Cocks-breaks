@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% block main %}
+<div class="s-hero" id="top"><div class="wrap">
+ <div>
+  <nav class="crumbs" aria-label="מיקום באתר"><a href="index.html">דף הבית</a><span aria-hidden="true">/</span><a href="index.html#services">שירותים</a><span aria-hidden="true">/</span><span aria-current="page">{{ S.short }}</span></nav>
+  <span class="eyebrow">{{ S.eyebrow }}</span>
+  <h1>{{ S.hero_title }}</h1>
+  <p class="sub">{{ S.hero_sub }}</p>
+  <ul class="hl">{% for x in S.highlights %}<li>{{ m.ic('check') }}{{ x }}</li>{% endfor %}</ul>
+  <div class="actions">
+   <a class="btn" href="{{ page_wa }}" target="_blank" rel="noopener">{{ m.ic('whatsapp') }}לשיחת היכרות בוואטסאפ</a>
+   <a class="btn line" href="#included">{{ S.included_title }}</a>
+  </div>
+  <p class="fund-line">{{ m.ic('wallet') }}<span>אפשר לקבל השתתפות כספית דרך סל ההריון או המילואים, לפי זכאות. <a href="#funding">לפרטים</a></span></p>
+ </div>
+ <div class="s-art" role="img" aria-label="מקום לתמונה">{{ m.ic(S.icon) }}<small>כאן אפשר להוסיף תמונה</small></div>
+</div></div>
+
+<div class="switch"><div class="wrap"><nav aria-label="שירותים נוספים"><ul><li>שירותים:</li>
+ {% for s in SV %}<li><a href="{{ s.file }}"{% if s.slug == S.slug %} aria-current="page"{% endif %}>{{ m.ic(s.icon) }}{{ s.short }}</a></li>{% endfor %}
+</ul></nav></div></div>
+
+<section id="fits"><div class="wrap">
+ <div class="head"><h2>{{ S.fits_title }}</h2></div>
+ <ul class="fits">{% for x in S.fits %}<li>{{ m.ic('check') }}<span>{{ x }}</span></li>{% endfor %}</ul>
+ <div class="actions" style="justify-content:center;margin-top:30px"><a class="btn" href="{{ page_wa }}" target="_blank" rel="noopener">{{ m.ic('whatsapp') }}נשמע כמונו? בואו נדבר</a></div>
+</div></section>
+
+{% if S.get('approach') %}
+<section id="approach" class="white-bg r-top on-white"><div class="wrap">
+ <div class="head"><span class="tag">הגישה</span><h2>{{ S.approach_title }}</h2><p>{{ S.approach_intro }}</p></div>
+ <div class="cards4">{% for p in S.get('approach') %}
+  <div class="card"><div class="ico">{{ m.ic(p.icon) }}</div><h3>{{ p.title }}</h3><p>{{ p.text }}</p></div>{% endfor %}
+ </div>
+</div></section>
+{% endif %}
+
+<section id="included"{% if not S.get('approach') %} class="white-bg r-top on-white"{% endif %}><div class="wrap">
+ <div class="head"><span class="tag">מה מקבלים</span><h2>{{ S.included_title }}</h2></div>
+ <div class="cards4">{% for p in S.included %}
+  <div class="card"><div class="ico">{{ m.ic(p.icon) }}</div><h3>{{ p.title }}</h3><p>{{ p.text }}</p></div>{% endfor %}
+ </div>
+</div></section>
+
+<section id="how"{% if S.get('approach') %} class="white-bg on-white"{% endif %}><div class="wrap">
+ <div class="head"><span class="tag">התהליך</span><h2>{{ S.steps_title }}</h2></div>
+ <div class="timeline">{% for s in S.steps %}
+  <div class="tstep"><div><h3>{{ s.title }}</h3><p>{{ s.text }}</p></div></div>{% endfor %}
+ </div>
+ <p class="note">{{ S.note }}</p>
+</div></section>
+
+<section id="related"><div class="wrap">
+ <div class="head"><span class="tag">מבט הוליסטי</span><h2>איך זה מתחבר לשאר השירותים</h2><p>הילד הוא אחד. לכן אפשר להתחיל משירות אחד ולהוסיף עוד כשצריך.</p></div>
+ <div class="related">{% for r in S.related %}{% set o = SVM[r.slug] %}
+  <a class="rel" href="{{ o.file }}" style="--accent:{{ o.accent }}"><h3>{{ m.ic(o.icon) }}{{ o.short }}</h3><p>{{ r.text }}</p><span class="go">לעמוד השירות {{ m.ic('arrow') }}</span></a>{% endfor %}
+ </div>
+</div></section>
+
+{{ m.funding(True) }}
+
+<section id="reviews" class="band" style="margin-top:50px"><div class="wrap">
+ <div class="head"><h2>{{ H.testimonials_title }}</h2></div>
+ <div class="reviews-grid{% if S.testimonials|length == 1 %} one{% endif %}">{% for t in S.testimonials %}{{ m.review(t, S) }}{% endfor %}</div>
+</div></section>
+
+<section id="faq" style="padding-top:60px"><div class="wrap">
+ <div class="head"><h2>שאלות נפוצות על {{ S.short }}</h2></div>
+ {{ m.faq(S.faq) }}
+</div></section>
+
+{{ m.contact('רוצים לדבר על ' ~ S.short ~ '?', H.contact_sub) }}
+{% endblock %}
