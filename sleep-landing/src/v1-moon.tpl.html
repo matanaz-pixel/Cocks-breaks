@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ c.name }} | {{ c.role }}</title>
+<meta name="description" content="{{ c.meta_desc }}">
+<meta name="theme-color" content="#1b2a4e">
+<meta property="og:title" content="{{ c.name }} | {{ c.role }}">
+<meta property="og:description" content="{{ c.meta_desc }}">
+<meta property="og:locale" content="he_IL">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;500;700&family=Heebo:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--night:#16213e;--night2:#26356b;--indigo:#3a4a86;--gold:#f0cf8b;--lav:#c9c6f0;--cream:#fbf7ef;--paper:#fff;--text:#2a3150;--muted:#5d6482;--radius:22px}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;scroll-padding-top:72px}
+body{font-family:'Heebo',system-ui,-apple-system,'Segoe UI',Arial,sans-serif;background:var(--cream);color:var(--text);line-height:1.75;font-size:17px;overflow-x:hidden}
+h1,h2,h3{font-family:'Frank Ruhl Libre','David Libre',Georgia,serif;font-weight:500;line-height:1.25;color:var(--night)}
+img,svg{max-width:100%}
+a{color:inherit}
+.ic{width:1.4em;height:1.4em;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+:focus-visible{outline:3px solid var(--gold);outline-offset:3px;border-radius:6px}
+.skip{position:absolute;inset-inline-start:12px;top:-60px;background:#fff;color:#000;padding:10px 16px;border-radius:8px;z-index:100}
+.skip:focus{top:10px}
+
+/* nav */
+header{position:fixed;top:0;inset-inline:0;z-index:50;background:rgba(22,33,62,.82);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.08)}
+.nav{display:flex;align-items:center;justify-content:space-between;height:64px}
+.brand{display:flex;align-items:center;gap:10px;color:#fff;text-decoration:none;font-family:'Frank Ruhl Libre',serif;font-size:1.2rem}
+.brand .ic{color:var(--gold)}
+.menu{display:flex;gap:22px;list-style:none}
+.menu a{color:#dfe3f6;text-decoration:none;font-size:.95rem;padding:6px 2px;border-bottom:2px solid transparent;transition:.2s}
+.menu a:hover{color:#fff;border-color:var(--gold)}
+.burger{display:none;background:none;border:0;color:#fff;cursor:pointer;padding:8px}
+.burger .ic{width:28px;height:28px}
+
+/* hero */
+.hero{position:relative;color:#fff;text-align:center;padding:150px 0 120px;overflow:hidden;
+background:radial-gradient(ellipse at 50% 0%,#40529a 0%,transparent 60%),linear-gradient(180deg,#16213e 0%,#26356b 70%,#3a4a86 100%)}
+.stars{position:absolute;inset:0;pointer-events:none;
+background-image:radial-gradient(3px 3px at 12% 22%,#fff,transparent),radial-gradient(2.2px 2.2px at 28% 62%,#fff,transparent),radial-gradient(3px 3px at 44% 14%,#fff,transparent),radial-gradient(2.2px 2.2px at 63% 48%,#fff,transparent),radial-gradient(3.5px 3.5px at 78% 20%,#fff,transparent),radial-gradient(2.2px 2.2px at 90% 70%,#fff,transparent),radial-gradient(3px 3px at 8% 80%,#fff,transparent),radial-gradient(2.2px 2.2px at 55% 85%,#fff,transparent),radial-gradient(3px 3px at 35% 38%,#ffe9b0,transparent),radial-gradient(3px 3px at 85% 42%,#ffe9b0,transparent);animation:tw 6s ease-in-out infinite alternate}
+@keyframes tw{from{opacity:.55}to{opacity:1}}
+.moon{width:96px;height:96px;border-radius:50%;margin:0 auto 26px;background:radial-gradient(circle at 35% 35%,#fffbe8,#f0cf8b 70%);box-shadow:0 0 60px 14px rgba(240,207,139,.35);position:relative}
+.eyebrow{display:inline-block;font-size:.9rem;letter-spacing:.06em;color:var(--gold);border:1px solid rgba(240,207,139,.5);padding:4px 16px;border-radius:99px;margin-bottom:18px}
+.hero h1{color:#fff;font-size:clamp(2.3rem,6vw,4rem);margin-bottom:18px}
+.hero p.sub{max-width:560px;margin:0 auto 32px;color:#dfe3f6;font-size:1.15rem;font-weight:300}
+.btn{display:inline-flex;align-items:center;gap:10px;background:var(--gold);color:#2a2410;text-decoration:none;font-weight:700;padding:14px 28px;border-radius:99px;transition:.2s;box-shadow:0 8px 24px rgba(0,0,0,.2)}
+.btn:hover{transform:translateY(-2px);background:#f7dca0}
+.btn.ghost{background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,.5);box-shadow:none;margin-inline-start:10px}
+.btn.ghost:hover{background:rgba(255,255,255,.1)}
+.trust{display:flex;justify-content:center;flex-wrap:wrap;gap:12px 28px;list-style:none;margin-top:44px;color:#cfd5f2;font-size:.95rem}
+.trust li{display:flex;align-items:center;gap:8px}
+.trust .ic{color:var(--gold);width:1.1em;height:1.1em}
+.hero::after{content:"";position:absolute;bottom:-1px;inset-inline:0;height:70px;background:var(--cream);clip-path:ellipse(60% 100% at 50% 100%)}
+
+/* sections */
+section{padding:84px 0}
+.head{text-align:center;max-width:620px;margin:0 auto 46px}
+.head h2{font-size:clamp(1.9rem,4vw,2.6rem);margin-bottom:12px}
+.head p{color:var(--muted)}
+.head .mark{display:block;margin:0 auto 10px;width:34px;height:34px;color:#c7a24f}
+.about{display:grid;grid-template-columns:1fr 1.3fr;gap:50px;align-items:center}
+.portrait{aspect-ratio:4/5;border-radius:200px 200px var(--radius) var(--radius);background:linear-gradient(160deg,#26356b,#5d6fb8);display:grid;place-items:center;color:#f0cf8b;position:relative;overflow:hidden;box-shadow:0 20px 50px rgba(38,53,107,.25)}
+.portrait .ic{width:84px;height:84px;stroke-width:1.2}
+.portrait small{position:absolute;bottom:18px;color:#cfd5f2;font-size:.85rem}
+.about h2{font-size:clamp(1.9rem,4vw,2.6rem);margin-bottom:16px}
+.about p{margin-bottom:14px;color:var(--muted)}
+.cred{list-style:none;margin-top:20px;display:grid;gap:10px}
+.cred li{display:flex;gap:10px;align-items:center;font-weight:500}
+.cred .ic{color:#fff;background:var(--indigo);border-radius:50%;padding:4px;width:26px;height:26px;stroke-width:2.4}
+
+.dark{background:linear-gradient(180deg,#1b2a4e,#16213e);color:#dfe3f6}
+.dark h2,.dark h3{color:#fff}
+.dark .head p{color:#b9c0e4}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+.card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--radius);padding:28px 22px;text-align:center;transition:.25s}
+.card:hover{transform:translateY(-4px);background:rgba(255,255,255,.1)}
+.card .ic{width:40px;height:40px;color:var(--gold);margin-bottom:14px}
+.card h3{font-size:1.3rem;margin-bottom:8px}
+.card p{font-size:.97rem;color:#c3c9e8}
+
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;counter-reset:s;position:relative}
+.step{background:var(--paper);border-radius:var(--radius);padding:30px 22px 26px;box-shadow:0 10px 30px rgba(38,53,107,.08);position:relative;counter-increment:s}
+.step::before{content:counter(s);display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:var(--night2);color:var(--gold);font-family:'Frank Ruhl Libre',serif;font-size:1.3rem;margin-bottom:14px}
+.step h3{font-size:1.25rem;margin-bottom:6px}
+.step p{font-size:.97rem;color:var(--muted)}
+
+.quotes{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+blockquote{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:var(--radius);padding:30px 24px;position:relative}
+blockquote .ic{color:var(--gold);width:30px;height:30px;margin-bottom:10px}
+blockquote p{font-size:1.05rem;color:#eef0fb;margin-bottom:16px}
+blockquote footer{font-size:.9rem;color:var(--gold)}
+.sample-tag{display:inline-block;margin-inline-start:8px;font-size:.7rem;border:1px dashed currentColor;padding:0 8px;border-radius:99px;opacity:.75}
+
+.gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.tile{aspect-ratio:4/3;border-radius:var(--radius);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#fff;position:relative;overflow:hidden;background:linear-gradient(145deg,var(--a),var(--b))}
+.tile:nth-child(1){--a:#26356b;--b:#5d6fb8}.tile:nth-child(2){--a:#3a4a86;--b:#8d82c9}.tile:nth-child(3){--a:#4b3f7a;--b:#c08fb5}
+.tile:nth-child(4){--a:#1e2c57;--b:#4a5cab}.tile:nth-child(5){--a:#2f5f78;--b:#7fb5c2}.tile:nth-child(6){--a:#c58b4e;--b:#f0cf8b}
+.tile .ic{width:46px;height:46px;stroke-width:1.3;opacity:.95}
+.tile span{font-family:'Frank Ruhl Libre',serif;font-size:1.15rem}
+.tile::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 80% 15%,rgba(255,255,255,.28),transparent 45%)}
+
+.faq{max-width:760px;margin:0 auto;display:grid;gap:12px}
+details{background:var(--paper);border-radius:16px;box-shadow:0 6px 20px rgba(38,53,107,.07);overflow:hidden}
+summary{list-style:none;cursor:pointer;padding:18px 22px;font-weight:700;color:var(--night);display:flex;justify-content:space-between;align-items:center;gap:12px}
+summary::-webkit-details-marker{display:none}
+summary .ic{transition:.25s;color:var(--indigo)}
+details[open] summary .ic{transform:rotate(180deg)}
+details p{padding:0 22px 20px;color:var(--muted)}
+
+.contact{text-align:center;color:#fff;background:radial-gradient(ellipse at 50% 0%,#40529a,transparent 60%),#16213e}
+.contact h2{color:#fff;font-size:clamp(2rem,5vw,3rem);margin-bottom:12px}
+.contact p.lead{color:#cfd5f2;max-width:520px;margin:0 auto 30px}
+.contact .row{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-bottom:28px}
+.contact .info{display:flex;flex-wrap:wrap;justify-content:center;gap:10px 28px;color:#dfe3f6;margin-bottom:24px}
+.contact .info a{display:inline-flex;gap:8px;align-items:center;text-decoration:none}
+.contact .info a:hover{color:var(--gold)}
+.social{display:flex;gap:12px;justify-content:center}
+.social a{width:46px;height:46px;border-radius:50%;border:1px solid rgba(255,255,255,.3);display:grid;place-items:center;transition:.2s}
+.social a:hover{background:var(--gold);color:#2a2410;border-color:var(--gold)}
+footer.site{background:#0f1730;color:#9aa3cc;text-align:center;padding:26px 0;font-size:.88rem}
+
+@media (max-width:900px){
+ .portrait{width:100%}
+ .cards,.steps{grid-template-columns:repeat(2,1fr)}
+ .quotes{grid-template-columns:1fr}
+ .about{grid-template-columns:1fr}
+ .portrait{max-width:300px;margin:0 auto}
+}
+@media (max-width:720px){
+ body{font-size:16px}
+ section{padding:62px 0}
+ .burger{display:block}
+ .menu{display:none;position:absolute;top:64px;inset-inline:0;background:#16213e;flex-direction:column;gap:0;padding:8px 20px 18px;border-bottom:1px solid rgba(255,255,255,.1)}
+ .menu.open{display:flex}
+ .menu a{display:block;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+ .hero{padding:120px 0 100px}
+ .gallery{grid-template-columns:repeat(2,1fr)}
+ .btn.ghost{margin:10px 0 0}
+}
+@media (max-width:480px){.cards,.steps{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">דלגו לתוכן</a>
+{{ sprite }}
+<header>
+ <div class="wrap nav">
+  <a class="brand" href="#top"><svg class="ic" aria-hidden="true"><use href="#i-moon"/></svg>{{ c.name }}</a>
+  <button class="burger" id="burger" aria-label="פתיחת תפריט" aria-expanded="false" aria-controls="menu"><svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg></button>
+  <ul class="menu" id="menu">
+   {% for id, label in c.nav %}<li><a href="#{{ id }}">{{ label }}</a></li>
+   {% endfor %}
+  </ul>
+ </div>
+</header>
+
+<main id="main">
+<div class="hero" id="top">
+ <div class="stars"></div>
+ <div class="wrap" style="position:relative">
+  <div class="moon" aria-hidden="true"></div>
+  <span class="eyebrow">{{ c.role }}</span>
+  <h1>{{ c.hero_title }}</h1>
+  <p class="sub">{{ c.hero_sub }}</p>
+  <a class="btn" href="{{ c.wa_link }}" target="_blank" rel="noopener"><svg class="ic" aria-hidden="true"><use href="#i-whatsapp"/></svg>דברו איתי בוואטסאפ</a>
+  <a class="btn ghost" href="#approach">הכירו את הגישה</a>
+  <ul class="trust">{% for t in c.trust_points %}<li><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg>{{ t }}</li>{% endfor %}</ul>
+ </div>
+</div>
+
+<section id="about"><div class="wrap about">
+ <div class="portrait" role="img" aria-label="מקום לתמונה אישית"><svg class="ic" aria-hidden="true"><use href="#i-moon"/></svg><small>כאן תהיה התמונה שלי</small></div>
+ <div>
+  <h2>{{ c.about_title }}</h2>
+  {% for p in c.about %}<p>{{ p }}</p>{% endfor %}
+  <ul class="cred">{% for x in c.credentials %}<li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>{{ x }}</li>{% endfor %}</ul>
+ </div>
+</div></section>
+
+<section id="approach" class="dark"><div class="wrap">
+ <div class="head"><svg class="ic mark" aria-hidden="true"><use href="#i-star"/></svg><h2>{{ c.approach_title }}</h2><p>{{ c.approach_intro }}</p></div>
+ <div class="cards">{% for p in c.principles %}
+  <div class="card"><svg class="ic" aria-hidden="true"><use href="#i-{{ p.icon }}"/></svg><h3>{{ p.title }}</h3><p>{{ p.text }}</p></div>{% endfor %}
+ </div>
+</div></section>
+
+<section id="how"><div class="wrap">
+ <div class="head"><h2>{{ c.steps_title }}</h2><p>{{ c.steps_intro }}</p></div>
+ <div class="steps">{% for s in c.steps %}
+  <div class="step"><h3>{{ s.title }}</h3><p>{{ s.text }}</p></div>{% endfor %}
+ </div>
+</div></section>
+
+<section id="reviews" class="dark"><div class="wrap">
+ <div class="head"><h2>{{ c.testimonials_title }}</h2></div>
+ <div class="quotes">{% for t in c.testimonials %}
+  <blockquote><svg class="ic" aria-hidden="true"><use href="#i-quote"/></svg><p>{{ t.text }}</p><footer>{{ t.who }}{% if t.sample %}<span class="sample-tag">דוגמה</span>{% endif %}</footer></blockquote>{% endfor %}
+ </div>
+</div></section>
+
+<section id="gallery"><div class="wrap">
+ <div class="head"><h2>{{ c.gallery_title }}</h2></div>
+ <div class="gallery">{% for g in c.gallery %}
+  <div class="tile" role="img" aria-label="{{ g.caption }}"><svg class="ic" aria-hidden="true"><use href="#i-{{ g.icon }}"/></svg><span>{{ g.caption }}</span></div>{% endfor %}
+ </div>
+</div></section>
+
+<section id="faq" style="padding-top:20px"><div class="wrap">
+ <div class="head"><h2>{{ c.faq_title }}</h2></div>
+ <div class="faq">{% for f in c.faq %}
+  <details><summary>{{ f.q }}<svg class="ic" aria-hidden="true"><use href="#i-chev"/></svg></summary><p>{{ f.a }}</p></details>{% endfor %}
+ </div>
+</div></section>
+
+<section id="contact" class="contact"><div class="wrap">
+ <h2>{{ c.contact_title }}</h2>
+ <p class="lead">{{ c.contact_sub }}</p>
+ <div class="row">
+  <a class="btn" href="{{ c.wa_link }}" target="_blank" rel="noopener"><svg class="ic" aria-hidden="true"><use href="#i-whatsapp"/></svg>וואטסאפ</a>
+  <a class="btn ghost" style="margin:0" href="{{ c.tel_link }}"><svg class="ic" aria-hidden="true"><use href="#i-phone"/></svg>{{ c.phone }}</a>
+ </div>
+ <div class="info"><a href="mailto:{{ c.email }}"><svg class="ic" aria-hidden="true"><use href="#i-mail"/></svg>{{ c.email }}</a></div>
+ <div class="social">
+  <a href="{{ c.instagram }}" target="_blank" rel="noopener" aria-label="אינסטגרם"><svg class="ic" aria-hidden="true"><use href="#i-instagram"/></svg></a>
+  <a href="{{ c.facebook }}" target="_blank" rel="noopener" aria-label="פייסבוק"><svg class="ic" aria-hidden="true"><use href="#i-facebook"/></svg></a>
+ </div>
+</div></section>
+</main>
+<footer class="site"><div class="wrap">© {{ c.name }} · {{ c.role }}<br>{{ c.disclaimer }}</div></footer>
+<script>
+(function(){var b=document.getElementById('burger'),m=document.getElementById('menu');
+function set(o){m.classList.toggle('open',o);b.setAttribute('aria-expanded',o)}
+b.addEventListener('click',function(){set(!m.classList.contains('open'))});
+m.addEventListener('click',function(e){if(e.target.tagName==='A')set(false)});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')set(false)});})();
+</script>
+</body>
+</html>

@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ c.name }} | {{ c.role }}</title>
+<meta name="description" content="{{ c.meta_desc }}">
+<meta name="theme-color" content="#ffffff">
+<meta property="og:title" content="{{ c.name }} | {{ c.role }}">
+<meta property="og:description" content="{{ c.meta_desc }}">
+<meta property="og:locale" content="he_IL">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@200;300;400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fdfdfb;--ink:#1f2622;--muted:#69736d;--line:#e4e8e3;--sage:#6f8f7a;--sage-l:#e9f0ea;--sage-d:#47624f;--tint:#f3f6f2}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+body{font-family:'Heebo',system-ui,-apple-system,'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.8;font-size:17px;font-weight:300;overflow-x:hidden}
+h1,h2,h3{font-weight:300;line-height:1.2;letter-spacing:-.01em}
+b,strong{font-weight:500}
+a{color:inherit}
+.ic{width:1.3em;height:1.3em;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round;flex:none}
+:focus-visible{outline:2px solid var(--sage);outline-offset:4px}
+.skip{position:absolute;inset-inline-start:12px;top:-60px;background:#fff;padding:10px 16px;border:1px solid var(--line);z-index:100}.skip:focus{top:10px}
+
+.layout{display:grid;grid-template-columns:270px 1fr;min-height:100vh}
+aside{position:sticky;top:0;height:100vh;padding:44px 34px;border-inline-end:1px solid var(--line);display:flex;flex-direction:column;justify-content:space-between;background:var(--bg)}
+.brand{display:block;text-decoration:none;margin-bottom:46px}
+.brand .mark{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;border:1px solid var(--ink);margin-bottom:14px}
+.brand strong{display:block;font-size:1.35rem;font-weight:500}
+.brand span{font-size:.88rem;color:var(--muted)}
+nav ol{list-style:none;counter-reset:n;display:grid;gap:4px}
+nav a{display:flex;gap:12px;align-items:baseline;text-decoration:none;color:var(--muted);padding:6px 0;font-size:.98rem;transition:.2s;counter-increment:n}
+nav a::before{content:"0" counter(n);font-size:.75rem;color:var(--sage);font-variant-numeric:tabular-nums}
+nav a:hover,nav a.on{color:var(--ink)}
+nav a.on{font-weight:500}
+.side-cta{display:inline-flex;gap:10px;align-items:center;text-decoration:none;font-weight:500;border:1px solid var(--ink);padding:12px 20px;border-radius:99px;justify-content:center;transition:.2s}
+.side-cta:hover{background:var(--ink);color:#fff}
+.mtop{display:none}
+.mnav{display:none}
+
+main{padding:0 clamp(24px,6vw,90px)}
+.hero{min-height:88vh;display:flex;flex-direction:column;justify-content:center;padding:70px 0;border-bottom:1px solid var(--line)}
+.hero .eyebrow{color:var(--sage-d);font-size:.95rem;font-weight:500;margin-bottom:22px;display:flex;gap:12px;align-items:center}
+.hero .eyebrow::before{content:"";width:40px;height:1px;background:var(--sage)}
+.hero h1{font-size:clamp(3rem,8vw,6.6rem);font-weight:200;margin-bottom:28px}
+.hero p.sub{font-size:1.3rem;max-width:560px;color:var(--muted);margin-bottom:38px}
+.btn{display:inline-flex;gap:10px;align-items:center;background:var(--ink);color:#fff;text-decoration:none;padding:15px 30px;border-radius:99px;font-weight:500;transition:.2s;align-self:flex-start}
+.btn:hover{background:var(--sage-d)}
+.trust{display:flex;flex-wrap:wrap;gap:8px 34px;list-style:none;margin-top:56px;padding-top:26px;border-top:1px solid var(--line);color:var(--muted);font-size:.95rem}
+.trust li{display:flex;gap:10px;align-items:center}
+.trust .ic{color:var(--sage);width:1.1em;height:1.1em}
+
+section{padding:96px 0;border-bottom:1px solid var(--line)}
+.num{font-size:.85rem;color:var(--sage);letter-spacing:.14em;margin-bottom:14px;display:block}
+section>h2,.sh{font-size:clamp(2.1rem,4.5vw,3.4rem);margin-bottom:22px}
+.intro{color:var(--muted);max-width:600px;font-size:1.12rem;margin-bottom:46px}
+
+.about-grid{display:grid;grid-template-columns:240px 1fr;gap:50px;align-items:start}
+.photo{aspect-ratio:3/4;background:var(--sage-l);border-radius:4px;display:grid;place-items:center;color:var(--sage);position:relative}
+.photo .ic{width:64px;height:64px;stroke-width:1}
+.photo small{position:absolute;bottom:14px;font-size:.8rem;color:var(--sage-d)}
+.about-grid p{color:var(--muted);margin-bottom:16px;font-size:1.1rem}
+.cred{list-style:none;margin-top:26px}
+.cred li{display:flex;gap:14px;align-items:center;padding:13px 0;border-top:1px solid var(--line);font-weight:400}
+.cred li:last-child{border-bottom:1px solid var(--line)}
+.cred .ic{color:var(--sage)}
+
+.list{border-top:1px solid var(--ink)}
+.item{display:grid;grid-template-columns:70px 280px 1fr;gap:24px;align-items:baseline;padding:28px 0;border-bottom:1px solid var(--line);transition:.25s}
+.item:hover{background:var(--tint);padding-inline:16px}
+.item .k{color:var(--sage);display:flex}
+.item .k .ic{width:30px;height:30px;stroke-width:1.2}
+.item h3{font-size:1.6rem;font-weight:400}
+.item p{color:var(--muted)}
+.steps .item .k{font-size:1.1rem;color:var(--sage);font-variant-numeric:tabular-nums}
+.steps{counter-reset:s}
+.steps .item{counter-increment:s}
+.steps .item .k::before{content:"0" counter(s);font-size:2.2rem;font-weight:200;line-height:1}
+
+.q{padding:38px 0;border-bottom:1px solid var(--line);display:grid;grid-template-columns:70px 1fr;gap:24px}
+.q:first-of-type{border-top:1px solid var(--ink)}
+.list .item:last-child,.q:last-child,.faq details:last-child{border-bottom:0}
+.q .ic{width:38px;height:38px;color:var(--sage);stroke-width:1.2}
+.q p{font-size:clamp(1.3rem,2.4vw,1.8rem);font-weight:300;line-height:1.5;margin-bottom:14px}
+.q cite{font-style:normal;color:var(--muted);font-size:.95rem}
+.sample-tag{display:inline-block;margin-inline-start:10px;font-size:.72rem;border:1px dashed var(--muted);padding:0 8px;border-radius:99px}
+
+.gallery{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+.tile{aspect-ratio:1/1.35;background:var(--c);display:flex;flex-direction:column;justify-content:space-between;padding:16px;border-radius:4px;transition:.25s}
+.tile:nth-child(1){--c:#e9f0ea}.tile:nth-child(2){--c:#f1ece3}.tile:nth-child(3){--c:#e4ecf0}
+.tile:nth-child(4){--c:#f0e8e8}.tile:nth-child(5){--c:#eceee1}.tile:nth-child(6){--c:#efe9f1}
+.tile:hover{transform:translateY(-6px)}
+.tile .ic{width:34px;height:34px;color:var(--sage-d);stroke-width:1.2}
+.tile span{font-size:.9rem;line-height:1.4;font-weight:400}
+
+.faq details{border-bottom:1px solid var(--line)}
+.faq details:first-child{border-top:1px solid var(--ink)}
+.faq summary{list-style:none;cursor:pointer;padding:24px 0;font-size:1.3rem;font-weight:400;display:flex;justify-content:space-between;gap:16px;align-items:center}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";font-size:1.8rem;font-weight:200;color:var(--sage);transition:.25s;line-height:1}
+.faq details[open] summary::after{transform:rotate(45deg)}
+.faq p{padding:0 0 26px;color:var(--muted);max-width:680px}
+
+.contact h2{font-size:clamp(2.4rem,7vw,5.2rem);font-weight:200}
+.contact .links{display:grid;gap:0;margin-top:40px;border-top:1px solid var(--ink)}
+.contact .links a{display:flex;justify-content:space-between;align-items:center;padding:22px 0;border-bottom:1px solid var(--line);text-decoration:none;font-size:1.3rem;transition:.2s}
+.contact .links a:hover{padding-inline:14px;background:var(--tint)}
+.contact .links a span{display:flex;gap:14px;align-items:center}
+.contact .links .ic{color:var(--sage)}
+.contact .links small{color:var(--muted);font-size:.95rem;direction:ltr}
+footer.site{padding:36px 0 50px;color:var(--muted);font-size:.88rem}
+
+@media (max-width:1000px){
+ .layout{grid-template-columns:1fr}
+ aside{display:none}
+ .mtop{display:flex;position:sticky;top:0;z-index:40;background:rgba(253,253,251,.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--line);align-items:center;justify-content:space-between;padding:12px 22px;height:62px}
+ .mtop a.b{text-decoration:none;font-weight:500;font-size:1.1rem}
+ .mtop button{background:none;border:1px solid var(--line);border-radius:99px;padding:6px 10px;cursor:pointer;color:var(--ink)}
+ .mtop button .ic{width:24px;height:24px;display:block}
+ .mnav{display:none;position:fixed;top:62px;inset-inline:0;bottom:0;background:var(--bg);z-index:39;padding:20px 28px;overflow:auto}
+ .mnav.open{display:block}
+ .mnav a{display:block;text-decoration:none;font-size:1.6rem;font-weight:300;padding:14px 0;border-bottom:1px solid var(--line)}
+ .hero{min-height:auto;padding:60px 0 50px}
+}
+@media (max-width:800px){
+ body{font-size:16px}
+ section{padding:66px 0}
+ .about-grid{grid-template-columns:1fr;gap:28px}
+ .photo{max-width:200px;aspect-ratio:1}
+ .item{grid-template-columns:44px 1fr;gap:6px 16px}
+ .item p{grid-column:2}
+ .item:hover{padding-inline:0;background:none}
+ .q{grid-template-columns:1fr;gap:8px}
+ .gallery{grid-template-columns:repeat(2,1fr)}
+ .tile{aspect-ratio:1}
+ .contact .links small{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">דלגו לתוכן</a>
+{{ sprite }}
+<div class="mtop">
+ <a class="b" href="#top">{{ c.name }}</a>
+ <button id="burger" aria-label="פתיחת תפריט" aria-expanded="false" aria-controls="mnav"><svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg></button>
+</div>
+<div class="mnav" id="mnav">{% for id, label in c.nav %}<a href="#{{ id }}">{{ label }}</a>{% endfor %}</div>
+
+<div class="layout">
+<aside>
+ <div>
+  <a class="brand" href="#top"><span class="mark"><svg class="ic" aria-hidden="true"><use href="#i-moon"/></svg></span><strong>{{ c.name }}</strong><span>{{ c.role }}</span></a>
+  <nav aria-label="ראשי"><ol>{% for id, label in c.nav %}<li><a href="#{{ id }}">{{ label }}</a></li>{% endfor %}</ol></nav>
+ </div>
+ <a class="side-cta" href="{{ c.wa_link }}" target="_blank" rel="noopener"><svg class="ic" aria-hidden="true"><use href="#i-whatsapp"/></svg>שיחה בוואטסאפ</a>
+</aside>
+
+<main id="main">
+<div class="hero" id="top">
+ <span class="eyebrow">{{ c.role }}</span>
+ <h1>{{ c.hero_title }}</h1>
+ <p class="sub">{{ c.hero_sub }}</p>
+ <a class="btn" href="{{ c.wa_link }}" target="_blank" rel="noopener"><svg class="ic" aria-hidden="true"><use href="#i-whatsapp"/></svg>בואו נתחיל לדבר</a>
+ <ul class="trust">{% for t in c.trust_points %}<li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>{{ t }}</li>{% endfor %}</ul>
+</div>
+
+<section id="about">
+ <span class="num">01</span>
+ <h2>{{ c.about_title }}</h2>
+ <div class="about-grid">
+  <div class="photo" role="img" aria-label="מקום לתמונה אישית"><svg class="ic" aria-hidden="true"><use href="#i-moon"/></svg><small>תמונה אישית</small></div>
+  <div>{% for p in c.about %}<p>{{ p }}</p>{% endfor %}
+   <ul class="cred">{% for x in c.credentials %}<li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>{{ x }}</li>{% endfor %}</ul>
+  </div>
+ </div>
+</section>
+
+<section id="approach">
+ <span class="num">02</span>
+ <h2>{{ c.approach_title }}</h2>
+ <p class="intro">{{ c.approach_intro }}</p>
+ <div class="list">{% for p in c.principles %}
+  <div class="item"><div class="k"><svg class="ic" aria-hidden="true"><use href="#i-{{ p.icon }}"/></svg></div><h3>{{ p.title }}</h3><p>{{ p.text }}</p></div>{% endfor %}
+ </div>
+</section>
+
+<section id="how">
+ <span class="num">03</span>
+ <h2>{{ c.steps_title }}</h2>
+ <p class="intro">{{ c.steps_intro }}</p>
+ <div class="list steps">{% for s in c.steps %}
+  <div class="item"><div class="k"></div><h3>{{ s.title }}</h3><p>{{ s.text }}</p></div>{% endfor %}
+ </div>
+</section>
+
+<section id="reviews">
+ <span class="num">04</span>
+ <h2>{{ c.testimonials_title }}</h2>
+ <div style="margin-top:40px">{% for t in c.testimonials %}
+  <figure class="q"><svg class="ic" aria-hidden="true"><use href="#i-quote"/></svg><div><p>{{ t.text }}</p><cite>{{ t.who }}</cite>{% if t.sample %}<span class="sample-tag">דוגמה</span>{% endif %}</div></figure>{% endfor %}
+ </div>
+</section>
+
+<section id="gallery">
+ <span class="num">05</span>
+ <h2>{{ c.gallery_title }}</h2>
+ <div class="gallery" style="margin-top:40px">{% for g in c.gallery %}
+  <div class="tile" role="img" aria-label="{{ g.caption }}"><svg class="ic" aria-hidden="true"><use href="#i-{{ g.icon }}"/></svg><span>{{ g.caption }}</span></div>{% endfor %}
+ </div>
+</section>
+
+<section id="faq" class="faq">
+ <span class="num">06</span>
+ <h2>{{ c.faq_title }}</h2>
+ <div style="margin-top:40px">{% for f in c.faq %}
+  <details><summary>{{ f.q }}</summary><p>{{ f.a }}</p></details>{% endfor %}
+ </div>
+</section>
+
+<section id="contact" class="contact" style="border-bottom:0">
+ <span class="num">07</span>
+ <h2>{{ c.contact_title }}</h2>
+ <p class="intro" style="margin-top:20px;margin-bottom:0">{{ c.contact_sub }}</p>
+ <div class="links">
+  <a href="{{ c.wa_link }}" target="_blank" rel="noopener"><span><svg class="ic" aria-hidden="true"><use href="#i-whatsapp"/></svg>וואטסאפ</span><small>{{ c.phone }}</small></a>
+  <a href="{{ c.tel_link }}"><span><svg class="ic" aria-hidden="true"><use href="#i-phone"/></svg>טלפון</span><small>{{ c.phone }}</small></a>
+  <a href="mailto:{{ c.email }}"><span><svg class="ic" aria-hidden="true"><use href="#i-mail"/></svg>אימייל</span><small>{{ c.email }}</small></a>
+  <a href="{{ c.instagram }}" target="_blank" rel="noopener"><span><svg class="ic" aria-hidden="true"><use href="#i-instagram"/></svg>אינסטגרם</span><small>@instagram</small></a>
+  <a href="{{ c.facebook }}" target="_blank" rel="noopener"><span><svg class="ic" aria-hidden="true"><use href="#i-facebook"/></svg>פייסבוק</span><small>facebook</small></a>
+ </div>
+</section>
+<footer class="site">© {{ c.name }} · {{ c.role }}<br>{{ c.disclaimer }}</footer>
+</main>
+</div>
+<script>
+(function(){var b=document.getElementById('burger'),m=document.getElementById('mnav');
+function set(o){m.classList.toggle('open',o);b.setAttribute('aria-expanded',o)}
+b.addEventListener('click',function(){set(!m.classList.contains('open'))});
+m.addEventListener('click',function(e){if(e.target.tagName==='A')set(false)});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')set(false)});
+var links=[].slice.call(document.querySelectorAll('aside nav a'));
+if('IntersectionObserver' in window){var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){links.forEach(function(l){l.classList.toggle('on',l.getAttribute('href')==='#'+e.target.id)})}})},{rootMargin:'-40% 0px -55% 0px'});
+links.forEach(function(l){var t=document.querySelector(l.getAttribute('href'));if(t)io.observe(t)})}})();
+</script>
+</body>
+</html>
