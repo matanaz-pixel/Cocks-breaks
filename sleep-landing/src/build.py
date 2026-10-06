@@ -14,7 +14,9 @@ env = Environment(loader=FileSystemLoader(str(here)), undefined=StrictUndefined,
 sprite = (here / "sprite.html").read_text(encoding="utf-8")
 out = here.parent
 for tpl in sorted(here.glob("v*.tpl.html")):
-    html = env.get_template(tpl.name).render(c=c, sprite=sprite)
+    fp = here / "fonts" / (tpl.name.split("-")[0] + ".css")
+    fonts_css = fp.read_text(encoding="utf-8") if fp.exists() else ""
+    html = env.get_template(tpl.name).render(c=c, sprite=sprite, fonts_css=fonts_css)
     target = out / (tpl.name.replace(".tpl", ""))
     target.write_text(html, encoding="utf-8")
     print("built", target.name, len(html) // 1024, "KB")

@@ -9,11 +9,11 @@
 <meta property="og:title" content="{{ c.name }} | {{ c.role }}">
 <meta property="og:description" content="{{ c.meta_desc }}">
 <meta property="og:locale" content="he_IL">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600;700&family=Varela+Round&display=swap" rel="stylesheet">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='32' fill='%23a85a39'/%3E%3Cpath d='M44 36.5A14 14 0 1 1 28.6 19.8a11 11 0 0 0 15.4 16.7z' fill='%23fffaf3'/%3E%3C/svg%3E">
+<script type="application/ld+json">{{ {"@context":"https://schema.org","@type":"ProfessionalService","name":c.name,"description":c.meta_desc,"telephone":"+"~c.phone_intl,"email":c.email,"sameAs":[c.instagram,c.facebook],"inLanguage":"he"}|tojson }}</script>
 <style>
-:root{--sand:#f6ecdf;--sand2:#efdfcb;--clay:#c8714d;--clay-d:#a85a39;--sage:#8aa088;--sage-d:#5f7a5e;--ink:#3b2c25;--muted:#6f5d52;--white:#fffaf3;--r:28px}
+{{ fonts_css }}
+:root{--sand:#f6ecdf;--sand2:#efdfcb;--clay:#a85a39;--clay-d:#8a4a2f;--sage:#8aa088;--sage-d:#4a6549;--ink:#3b2c25;--muted:#6f5d52;--white:#fffaf3;--r:28px}
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth;scroll-padding-top:80px}
 body{font-family:'Assistant',system-ui,-apple-system,'Segoe UI',Arial,sans-serif;background:var(--sand);color:var(--ink);line-height:1.75;font-size:18px;overflow-x:hidden}
@@ -44,7 +44,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(246,236,223,.9);backdrop
 .hero h1{font-size:clamp(2.5rem,6vw,4.4rem);color:var(--ink);margin-bottom:20px}
 .hero h1 em{font-style:normal;color:var(--clay)}
 .hero p.sub{font-size:1.2rem;color:var(--muted);margin-bottom:30px;max-width:520px}
-.btn{display:inline-flex;align-items:center;gap:10px;background:var(--clay);color:#fff;text-decoration:none;font-weight:700;padding:15px 30px;border-radius:99px;transition:.2s;box-shadow:0 10px 24px rgba(200,113,77,.3)}
+.btn{display:inline-flex;align-items:center;gap:10px;background:var(--clay);color:#fff;text-decoration:none;font-weight:700;padding:15px 30px;border-radius:99px;transition:.2s;box-shadow:0 10px 24px rgba(168,90,57,.3)}
 .btn:hover{background:var(--clay-d);transform:translateY(-2px)}
 .btn.line{background:transparent;color:var(--ink);border:2px solid var(--ink);box-shadow:none;margin-inline-start:10px}
 .btn.line:hover{background:var(--ink);color:#fff}
@@ -52,7 +52,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(246,236,223,.9);backdrop
 .trust li{background:var(--white);padding:6px 16px;border-radius:99px;font-size:.92rem;display:flex;gap:8px;align-items:center;box-shadow:0 2px 8px rgba(59,44,37,.06)}
 .trust .ic{color:var(--sage-d);width:1.1em;height:1.1em}
 .arch{position:relative;aspect-ratio:3/4;max-width:420px;margin-inline:auto;width:100%}
-.arch .shape{position:absolute;inset:0;border-radius:999px 999px 36px 36px;background:linear-gradient(170deg,#e9b79a,var(--clay))}
+.arch .shape{position:absolute;inset:0;border-radius:999px 999px 36px 36px;background:linear-gradient(170deg,#d99a7a,var(--clay))}
 .arch .shape.b{inset:auto;width:70%;height:50%;bottom:-24px;inset-inline-start:-30px;border-radius:999px;background:var(--sage);opacity:.85;z-index:-1}
 .arch .shape.c{inset:auto;width:90px;height:90px;top:30px;inset-inline-end:-24px;border-radius:50%;background:#f1c97e;z-index:-1}
 .arch .in{position:absolute;inset:0;display:grid;place-items:center;color:#fff;text-align:center;border-radius:999px 999px 36px 36px;overflow:hidden}
@@ -67,21 +67,21 @@ section{padding:84px 0}
 
 .about{background:var(--white);border-radius:60px 60px 0 0}
 .about .wrap{display:grid;grid-template-columns:1fr 1.2fr;gap:60px;align-items:center}
-.about .photo{aspect-ratio:1;border-radius:50% 50% 50% 12%;background:linear-gradient(140deg,var(--sage),#b9c9b6);display:grid;place-items:center;color:#fff;position:relative;max-width:420px;width:100%;margin-inline:auto}
+.about .photo{aspect-ratio:1;border-radius:50% 50% 50% 12%;background:linear-gradient(140deg,var(--sage-d),#8fa88c);display:grid;place-items:center;color:#fff;position:relative;max-width:420px;width:100%;margin-inline:auto}
 .about .photo .ic{width:90px;height:90px;stroke-width:1.1}
 .about .photo small{position:absolute;bottom:22px;font-size:.9rem}
 .about h2{font-size:clamp(2rem,4vw,2.8rem);margin-bottom:16px}
 .about p{color:var(--muted);margin-bottom:14px}
 .cred{list-style:none;margin-top:20px;display:grid;gap:10px}
 .cred li{display:flex;gap:12px;align-items:center;font-weight:600}
-.cred .ic{background:var(--sage);color:#fff;border-radius:50%;padding:5px;width:28px;height:28px;stroke-width:2.4}
+.cred .ic{background:var(--sage-d);color:#fff;border-radius:50%;padding:5px;width:28px;height:28px;stroke-width:2.4}
 
 .approach{background:var(--white)}
 .rows{display:grid;gap:18px;max-width:860px;margin:0 auto}
 .row{display:grid;grid-template-columns:84px 1fr;gap:22px;align-items:center;background:var(--sand);border-radius:var(--r);padding:22px 28px;transition:.25s}
 .row:hover{transform:translateX(-6px);background:var(--sand2)}
 .row .ico{width:84px;height:84px;border-radius:50% 50% 50% 14px;display:grid;place-items:center;background:var(--clay);color:#fff}
-.row:nth-child(2) .ico{background:var(--sage)}.row:nth-child(3) .ico{background:#e0a75a}.row:nth-child(4) .ico{background:#b97a8f}
+.row:nth-child(2) .ico{background:var(--sage-d)}.row:nth-child(3) .ico{background:#a8651f}.row:nth-child(4) .ico{background:#8f4f68}
 .row .ico .ic{width:36px;height:36px}
 .row h3{font-size:1.4rem;margin-bottom:4px}
 .row p{color:var(--muted)}
@@ -140,6 +140,9 @@ details p{padding:0 26px 22px;color:var(--muted)}
 .social{display:flex;gap:12px;justify-content:center}
 .social a{width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.18);display:grid;place-items:center;transition:.2s}
 .social a:hover{background:#fff;color:var(--clay-d)}
+.fab{display:none;position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:60;width:60px;height:60px;border-radius:50%;background:var(--clay);color:#fff;place-items:center;box-shadow:0 8px 22px rgba(59,44,37,.35);opacity:0;transform:translateY(14px) scale(.9);pointer-events:none;transition:opacity .25s,transform .25s}
+.fab.show{opacity:1;transform:none;pointer-events:auto}
+.fab .ic{width:30px;height:30px}
 footer.site{text-align:center;padding:34px 0 40px;color:var(--muted);font-size:.9rem}
 
 @media (max-width:900px){
@@ -160,6 +163,8 @@ footer.site{text-align:center;padding:34px 0 40px;color:var(--muted);font-size:.
  .menu a{display:block;padding:12px 14px}
  .menu li:last-child a{text-align:center;margin-top:6px}
  .btn.line{margin:10px 0 0}
+ .fab{display:grid}
+ footer.site{padding-bottom:96px}
  .row{grid-template-columns:64px 1fr;padding:18px;gap:16px}
  .row .ico{width:64px;height:64px}
  .about,.reviews,.contact .box{border-radius:36px}
@@ -259,13 +264,18 @@ footer.site{text-align:center;padding:34px 0 40px;color:var(--muted);font-size:.
  </div>
 </div></div></section>
 </main>
+<a class="fab" id="fab" href="{{ c.wa_link }}" target="_blank" rel="noopener" aria-label="שלחו הודעה בוואטסאפ"><svg class="ic" aria-hidden="true"><use href="#i-whatsapp"/></svg></a>
 <footer class="site"><div class="wrap">© {{ c.name }} · {{ c.role }}<br>{{ c.disclaimer }}</div></footer>
 <script>
 (function(){var b=document.getElementById('burger'),m=document.getElementById('menu');
 function set(o){m.classList.toggle('open',o);b.setAttribute('aria-expanded',o)}
 b.addEventListener('click',function(){set(!m.classList.contains('open'))});
 m.addEventListener('click',function(e){if(e.target.tagName==='A')set(false)});
-document.addEventListener('keydown',function(e){if(e.key==='Escape')set(false)});})();
+document.addEventListener('keydown',function(e){if(e.key==='Escape')set(false)});
+var f=document.getElementById('fab'),ct=document.getElementById('contact'),inC=false;
+function fab(){f.classList.toggle('show',window.scrollY>480&&!inC)}
+if('IntersectionObserver' in window){new IntersectionObserver(function(es){inC=es[0].isIntersecting;fab()},{threshold:.15}).observe(ct)}
+window.addEventListener('scroll',fab,{passive:true});fab();})();
 </script>
 </body>
 </html>
