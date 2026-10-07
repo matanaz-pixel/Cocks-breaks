@@ -11,6 +11,9 @@ object WorkerProtocol {
     const val MSG_TEST = 3
     const val MSG_RESULT = 4
 
+    /** Bundle key holding the request sequence number. The worker echoes it back in the result. */
+    const val SEQ = "seq"
+
     fun requestToBundle(r: TestRequest) = Bundle().apply {
         putLong("pk", r.pk)
         putString("uri", r.uri)

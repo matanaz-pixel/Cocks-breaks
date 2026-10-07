@@ -2,7 +2,6 @@ package il.gallerydoctor.worker
 
 import android.app.Service
 import android.content.Intent
-import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.IBinder
@@ -35,14 +34,15 @@ abstract class BaseScannerService : Service() {
                         reply.send(Message.obtain(null, WorkerProtocol.MSG_PONG, Process.myPid(), msg.arg1))
 
                     WorkerProtocol.MSG_TEST -> {
+                        val seq = msg.data.getInt(WorkerProtocol.SEQ)
                         val req = WorkerProtocol.bundleToRequest(msg.data)
                         val result = try {
                             tester.test(req)
                         } catch (e: Throwable) {
                             FileResult(listOf(Reason.DECODE_FAIL))
                         }
-                        val out = Message.obtain(null, WorkerProtocol.MSG_RESULT, 0, msg.arg1)
-                        out.data = Bundle(WorkerProtocol.resultToBundle(result))
+                        val out = Message.obtain(null, WorkerProtocol.MSG_RESULT)
+                        out.data = WorkerProtocol.resultToBundle(result).apply { putInt(WorkerProtocol.SEQ, seq) }
                         reply.send(out)
                     }
                 }

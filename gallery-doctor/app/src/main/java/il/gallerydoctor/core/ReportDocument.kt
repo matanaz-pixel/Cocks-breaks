@@ -131,7 +131,7 @@ object CsvWriter {
         if (s.any { it == ',' || it == '"' || it == '\n' || it == '\r' }) "\"" + s.replace("\"", "\"\"") + "\"" else s
 
     fun row(r: ProblemRow): String = listOf(
-        r.status.name, Reason.toCsv(r.reasons + emptyList()), r.reasonsHe, r.name, r.folder, r.sizeBytes.toString(),
+        r.status.name, Reason.toCsv(r.reasons), r.reasonsHe, r.name, r.folder, r.sizeBytes.toString(),
         r.mime ?: "", r.width.toString(), r.height.toString(), r.durationMs.toString(), r.volume, r.uri,
     ).joinToString(",") { escape(it) }
 

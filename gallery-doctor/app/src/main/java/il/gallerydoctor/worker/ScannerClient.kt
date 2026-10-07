@@ -40,6 +40,7 @@ class ScannerClient(
     @Volatile private var connection: ServiceConnection? = null
     @Volatile private var service: Messenger? = null
     @Volatile private var workerPid = 0
+    @Volatile private var lastKilledPid = 0
     @Volatile private var pending: Pending? = null
     @Volatile private var pongWaiter: CompletableDeferred<Unit>? = null
 
@@ -51,7 +52,7 @@ class ScannerClient(
             }
             WorkerProtocol.MSG_RESULT -> {
                 val p = pending ?: return
-                if (p.seq != msg.arg2) return // stale answer from a previous request
+                if (p.seq != msg.data.getInt(WorkerProtocol.SEQ)) return // stale answer from a previous request
                 p.result.complete(WorkerOutcome.Done(WorkerProtocol.bundleToResult(msg.data)))
             }
         }
@@ -84,7 +85,7 @@ class ScannerClient(
                 pongWaiter = waiter
                 try {
                     m.send(Message.obtain(null, WorkerProtocol.MSG_PING, seqGen.getAndIncrement(), 0).also { it.replyTo = replyMessenger })
-                    if (withTimeoutOrNull(10_000) { waiter.await() } != null) return
+                    if (withTimeoutOrNull(10_000) { waiter.await() } != null && workerPid != lastKilledPid) return
                 } catch (_: Exception) {
                 }
             }
@@ -97,6 +98,7 @@ class ScannerClient(
     private fun died(source: ServiceConnection) {
         if (connection !== source) return // an old connection we already replaced
         service = null
+        workerPid = 0 // the process is gone; never signal a PID that may be reused by another process
         pending?.result?.complete(WorkerOutcome.Died)
     }
 
@@ -107,7 +109,10 @@ class ScannerClient(
         if (conn != null) try { ctx.unbindService(conn) } catch (_: Exception) { }
         val pid = workerPid
         workerPid = 0
-        if (pid > 0 && pid != Process.myPid()) Process.killProcess(pid)
+        if (pid > 0 && pid != Process.myPid()) {
+            lastKilledPid = pid
+            Process.killProcess(pid)
+        }
     }
 
     override suspend fun run(pk: Long, timeoutMs: Long): WorkerOutcome {
@@ -123,8 +128,8 @@ class ScannerClient(
         pending = p
         try {
             val m = service ?: return WorkerOutcome.Died
-            val msg = Message.obtain(null, WorkerProtocol.MSG_TEST, 0, p.seq)
-            msg.data = WorkerProtocol.requestToBundle(request)
+            val msg = Message.obtain(null, WorkerProtocol.MSG_TEST)
+            msg.data = WorkerProtocol.requestToBundle(request).apply { putInt(WorkerProtocol.SEQ, p.seq) }
             msg.replyTo = replyMessenger
             try {
                 m.send(msg)

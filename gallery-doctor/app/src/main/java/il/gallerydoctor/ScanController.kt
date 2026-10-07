@@ -196,7 +196,7 @@ object ScanController {
             val clients = (0 until workerCount(app)).map { ScannerClient(app, workerServices[it], db, deep) }
             val thermal = ThermalGate(app) { msg -> publish { s -> s.copy(message = msg) } }
             try {
-                ScanCoordinator(
+                withContext(Dispatchers.IO) { ScanCoordinator(
                     store = db,
                     channels = clients,
                     gate = { thermal.await() },
@@ -213,7 +213,7 @@ object ScanController {
                         }
                     },
                     onWorkerRestart = { restarts.incrementAndGet() },
-                ).run()
+                ).run() }
             } finally {
                 clients.forEach { it.close() }
             }

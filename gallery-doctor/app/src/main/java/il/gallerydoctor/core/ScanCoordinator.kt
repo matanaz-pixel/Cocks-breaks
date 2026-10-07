@@ -1,6 +1,5 @@
 package il.gallerydoctor.core
 
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
@@ -129,8 +128,9 @@ class ScanCoordinator(
                     }
                 }
             }
-        } catch (e: CancellationException) {
-            // A user cancel is not the file's fault: drop the marker without charging an attempt.
+        } catch (e: Throwable) {
+            // A user cancel, or the worker process failing to start, is not the file's fault:
+            // drop the marker without charging an attempt.
             withContext(NonCancellable) { store.clearTesting(worker) }
             throw e
         }

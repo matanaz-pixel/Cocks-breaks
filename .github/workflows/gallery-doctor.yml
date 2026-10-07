@@ -1,0 +1,52 @@
+name: Gallery Doctor
+
+on:
+  push:
+    paths:
+      - 'gallery-doctor/**'
+      - '.github/workflows/gallery-doctor.yml'
+  pull_request:
+    paths:
+      - 'gallery-doctor/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: gallery-doctor
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Unit tests
+        run: ./gradlew testDebugUnitTest --stacktrace
+
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Check manifest has no INTERNET / MANAGE_EXTERNAL_STORAGE permission
+        run: |
+          if tr '\n' ' ' < app/src/main/AndroidManifest.xml | grep -E '<uses-permission[^>]*(INTERNET|MANAGE_EXTERNAL_STORAGE)'; then
+            echo "Forbidden permission declared"; exit 1
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gallery-doctor-debug-apk
+          path: gallery-doctor/app/build/outputs/apk/debug/app-debug.apk
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unit-test-reports
+          path: gallery-doctor/app/build/reports/tests/
