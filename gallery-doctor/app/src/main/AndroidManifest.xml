@@ -74,8 +74,10 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
-        <!-- Isolated decoder workers. Each runs in its own OS process, so a native crash inside a
-             media decoder kills only that worker, never the UI. One file at a time per worker. -->
+        <!-- Isolated decoder workers. Each runs in its own OS process, so a native crash inside a media
+             decoder kills only that worker, never the UI. One file at a time per worker. There are twelve
+             process names because Android refuses to restart a process that crashed twice within a minute;
+             the app rotates over them (see ProcessPool). -->
         <service
             android:name=".worker.ScannerService"
             android:exported="false"
@@ -88,6 +90,42 @@
             android:name=".worker.ScannerService3"
             android:exported="false"
             android:process=":scanner3" />
+        <service
+            android:name=".worker.ScannerService4"
+            android:exported="false"
+            android:process=":scanner4" />
+        <service
+            android:name=".worker.ScannerService5"
+            android:exported="false"
+            android:process=":scanner5" />
+        <service
+            android:name=".worker.ScannerService6"
+            android:exported="false"
+            android:process=":scanner6" />
+        <service
+            android:name=".worker.ScannerService7"
+            android:exported="false"
+            android:process=":scanner7" />
+        <service
+            android:name=".worker.ScannerService8"
+            android:exported="false"
+            android:process=":scanner8" />
+        <service
+            android:name=".worker.ScannerService9"
+            android:exported="false"
+            android:process=":scanner9" />
+        <service
+            android:name=".worker.ScannerService10"
+            android:exported="false"
+            android:process=":scanner10" />
+        <service
+            android:name=".worker.ScannerService11"
+            android:exported="false"
+            android:process=":scanner11" />
+        <service
+            android:name=".worker.ScannerService12"
+            android:exported="false"
+            android:process=":scanner12" />
 
         <!-- Shares the generated report (PDF/CSV, written to the app cache only). -->
         <provider

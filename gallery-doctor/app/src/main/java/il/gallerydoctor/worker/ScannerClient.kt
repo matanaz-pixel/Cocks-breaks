@@ -10,23 +10,33 @@ import android.os.Looper
 import android.os.Message
 import android.os.Messenger
 import android.os.Process
+import android.os.SystemClock
+import il.gallerydoctor.core.FileResult
+import il.gallerydoctor.core.ProcessPool
 import il.gallerydoctor.core.WorkerChannel
 import il.gallerydoctor.core.WorkerOutcome
 import il.gallerydoctor.data.StateDb
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.atomic.AtomicInteger
 
 class WorkerUnavailableException(message: String) : Exception(message)
 
+/** One pool shared by every [ScannerClient] of a scan, so two workers never use the same process. */
+fun newScannerPool() = ProcessPool(ScannerServices.size, SystemClock::elapsedRealtime)
+
 /**
  * One isolated decoder process, seen from the UI process. Implements the watchdog: if the worker
  * does not answer within the deadline it is killed (and the file reported as TimedOut); if the
  * process dies on its own the file is reported as Died.
+ *
+ * Every (re)start takes a process from [pool] that has not crashed in the last minute, because Android
+ * stops restarting a process that crashed twice within 60 seconds.
  */
 class ScannerClient(
     private val ctx: Context,
-    private val serviceClass: Class<*>,
+    private val pool: ProcessPool,
     private val db: StateDb,
     private val decodeEnabled: Boolean,
 ) : WorkerChannel {
@@ -41,6 +51,8 @@ class ScannerClient(
     @Volatile private var service: Messenger? = null
     @Volatile private var workerPid = 0
     @Volatile private var lastKilledPid = 0
+    @Volatile private var poolIndex = -1
+    @Volatile private var diedOnItsOwn = false
     @Volatile private var pending: Pending? = null
     @Volatile private var pongWaiter: CompletableDeferred<Unit>? = null
 
@@ -58,12 +70,26 @@ class ScannerClient(
         }
     }
 
-    /** Binds and handshakes with a fresh worker process. Retries a few times, then gives up loudly. */
+    /** Waits for a process that has not crashed recently; null if the system refused every process. */
+    private suspend fun acquireProcess(): Int? {
+        while (true) {
+            val i = pool.tryAcquire()
+            if (i >= 0) return i
+            val wait = pool.msUntilAvailable() ?: return null
+            delay(wait.coerceIn(200L, 5_000L))
+        }
+    }
+
+    /** Binds and handshakes with a fresh worker process. Retries with other processes, then gives up loudly. */
     private suspend fun ensureReady() {
         if (service != null && connection != null) return
         if (connection != null) teardown() // the process died on its own earlier; drop the stale binding
         var lastError = "no answer"
-        repeat(3) {
+        repeat(pool.usableCount() + 2) {
+            val index = acquireProcess() ?: throw WorkerUnavailableException(
+                "אנדרואיד חסם את תהליכי הבדיקה ($lastError). אפשר לסגור את האפליקציה, לפתוח אותה שוב ולהמשיך את הסריקה.",
+            )
+            poolIndex = index
             val connected = CompletableDeferred<Messenger?>()
             val conn = object : ServiceConnection {
                 override fun onServiceConnected(name: ComponentName, binder: IBinder) {
@@ -78,8 +104,16 @@ class ScannerClient(
                 override fun onNullBinding(name: ComponentName) { connected.complete(null) }
             }
             connection = conn
-            val ok = ctx.bindService(Intent(ctx, serviceClass), conn, Context.BIND_AUTO_CREATE)
-            val m = if (ok) withTimeoutOrNull(10_000) { connected.await() } else null
+            val ok = ctx.bindService(Intent(ctx, ScannerServices[index]), conn, Context.BIND_AUTO_CREATE)
+            if (!ok) {
+                // The system will not start this process (typically "process is bad" after repeated crashes).
+                lastError = "bindService refused"
+                pool.markDead(index)
+                poolIndex = -1
+                dropConnection()
+                return@repeat
+            }
+            val m = withTimeoutOrNull(10_000) { connected.await() }
             if (m != null) {
                 val waiter = CompletableDeferred<Unit>()
                 pongWaiter = waiter
@@ -89,7 +123,7 @@ class ScannerClient(
                 } catch (_: Exception) {
                 }
             }
-            lastError = if (ok) "worker did not start in time" else "bindService refused"
+            lastError = "worker did not start in time"
             teardown()
         }
         throw WorkerUnavailableException("לא ניתן להפעיל את תהליך הבדיקה ($lastError)")
@@ -97,27 +131,36 @@ class ScannerClient(
 
     private fun died(source: ServiceConnection) {
         if (connection !== source) return // an old connection we already replaced
+        diedOnItsOwn = true
         service = null
         workerPid = 0 // the process is gone; never signal a PID that may be reused by another process
         pending?.result?.complete(WorkerOutcome.Died)
     }
 
-    private fun teardown() {
+    private fun dropConnection() {
         val conn = connection
         connection = null
         service = null
         if (conn != null) try { ctx.unbindService(conn) } catch (_: Exception) { }
+    }
+
+    private fun teardown() {
+        dropConnection()
         val pid = workerPid
         workerPid = 0
         if (pid > 0 && pid != Process.myPid()) {
             lastKilledPid = pid
             Process.killProcess(pid)
         }
+        val index = poolIndex
+        poolIndex = -1
+        if (index >= 0) pool.release(index, crashed = diedOnItsOwn)
+        diedOnItsOwn = false
     }
 
     override suspend fun run(pk: Long, timeoutMs: Long): WorkerOutcome {
         ensureReady()
-        val row = db.getRow(pk) ?: return WorkerOutcome.Done(il.gallerydoctor.core.FileResult())
+        val row = db.getRow(pk) ?: return WorkerOutcome.Done(FileResult())
         val request = TestRequest(
             pk = pk, uri = row.uri, name = row.name, mime = row.mime, isVideo = row.isVideo, size = row.size,
             decode = decodeEnabled,
@@ -134,6 +177,7 @@ class ScannerClient(
             try {
                 m.send(msg)
             } catch (_: Exception) {
+                diedOnItsOwn = true
                 return WorkerOutcome.Died
             }
             return withTimeoutOrNull(timeoutMs) { p.result.await() } ?: WorkerOutcome.TimedOut

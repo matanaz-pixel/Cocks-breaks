@@ -18,9 +18,7 @@ import il.gallerydoctor.scan.MediaEnumerator
 import il.gallerydoctor.scan.SafEnumerator
 import il.gallerydoctor.scan.StorageInfo
 import il.gallerydoctor.worker.ScannerClient
-import il.gallerydoctor.worker.ScannerService
-import il.gallerydoctor.worker.ScannerService2
-import il.gallerydoctor.worker.ScannerService3
+import il.gallerydoctor.worker.newScannerPool
 import il.gallerydoctor.worker.WorkerUnavailableException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -52,7 +50,7 @@ sealed interface ScanState {
         val crashers: Int = 0,
     ) : ScanState
     data class Done(val report: ReportData) : ScanState
-    data class Failed(val message: String) : ScanState
+    data class Failed(val message: String, val canResume: Boolean = false) : ScanState
 }
 
 data class ScanOptions(val deep: Boolean, val treeUri: String?, val resume: Boolean)
@@ -67,7 +65,6 @@ object ScanController {
     private val _state = MutableStateFlow<ScanState>(ScanState.Idle())
     val state: StateFlow<ScanState> = _state.asStateFlow()
     private var job: Job? = null
-    private val workerServices = listOf(ScannerService::class.java, ScannerService2::class.java, ScannerService3::class.java)
 
     fun isRunning() = job?.isActive == true
 
@@ -193,7 +190,8 @@ object ScanController {
             val phaseStart = System.currentTimeMillis()
             publish { it.copy(phase = Phase.CHECKING, done = alreadyDone, total = total, etaSeconds = null) }
 
-            val clients = (0 until workerCount(app)).map { ScannerClient(app, workerServices[it], db, deep) }
+            val pool = newScannerPool()
+            val clients = (0 until workerCount(app)).map { ScannerClient(app, pool, db, deep) }
             val thermal = ThermalGate(app) { msg -> publish { s -> s.copy(message = msg) } }
             try {
                 withContext(Dispatchers.IO) { ScanCoordinator(
@@ -252,7 +250,8 @@ object ScanController {
 
     private fun fail(db: StateDb, message: String) {
         db.putMeta("state", "FAILED")
-        _state.value = ScanState.Failed(message)
+        // Everything scanned so far is kept in the database, so a failed scan can be continued.
+        _state.value = ScanState.Failed(message, canResume = db.remainingToScan() > 0)
     }
 
     private fun workerCount(ctx: Context): Int {

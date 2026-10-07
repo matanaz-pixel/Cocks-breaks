@@ -37,7 +37,7 @@
     <string name="eta_minutes">עוד כ-%1$d דקות</string>
     <string name="eta_hours">עוד כ-%1$d שעות ו-%2$d דקות</string>
     <string name="progress_crashers">נמצאו %1$d קבצים שגרמו לקריסה או לתקיעה. הבדיקה ממשיכה בלעדיהם.</string>
-    <string name="progress_restarts">תהליך הבדיקה אותחל מחדש %1$d פעמים</string>
+    <string name="progress_restarts">%1$d פעמים תהליך הבדיקה קרס על קובץ פגום ואותחל. הסריקה עצמה ממשיכה כרגיל.</string>
     <string name="btn_cancel">עצירת הסריקה</string>
 
     <!-- Report screen -->

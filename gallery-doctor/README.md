@@ -109,7 +109,7 @@ UI (Compose, 3 מסכים)
   └─ ScanController + ScanService (foreground)     ← תהליך ראשי: אורקסטרציה, מסד נתונים, ניתוח
         ├─ MediaEnumerator / SafEnumerator          ← MediaStore ותיקייה שנבחרה, בקבוצות של 1,000
         ├─ FsWalker                                 ← יתומים וקבצים זמניים בתיקיות המדיה
-        ├─ ScanCoordinator  ──(Messenger)──►  :scanner, :scanner2, :scanner3   ← תהליכי מפענחים מבודדים
+        ├─ ScanCoordinator  ──(Messenger)──►  :scanner … :scanner12 (בסיבוב; עד 3 בו-זמנית)   ← תהליכי מפענחים מבודדים
         │      watchdog, ניסיון חוזר, סימון CRASHER        FileTester: L1 + L2 + L3, קריאה בלבד
         ├─ DuplicateFinder, IndexStability
         └─ Analyzer → ReportDocument → טקסט / PDF / CSV

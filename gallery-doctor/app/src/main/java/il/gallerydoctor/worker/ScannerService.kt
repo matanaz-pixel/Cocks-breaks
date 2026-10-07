@@ -14,6 +14,8 @@ import il.gallerydoctor.core.Reason
 /**
  * Isolated decoder worker. Each subclass is declared in the manifest with its own android:process,
  * so up to three files are tested in parallel and a crash is always attributable to one file.
+ * There are twelve process names, rotated by [il.gallerydoctor.core.ProcessPool], because Android
+ * refuses to restart a process that crashed twice within a minute.
  *
  * All work happens on a dedicated thread; if it hangs, the client kills this whole process.
  */
@@ -61,3 +63,20 @@ abstract class BaseScannerService : Service() {
 class ScannerService : BaseScannerService()
 class ScannerService2 : BaseScannerService()
 class ScannerService3 : BaseScannerService()
+class ScannerService4 : BaseScannerService()
+class ScannerService5 : BaseScannerService()
+class ScannerService6 : BaseScannerService()
+class ScannerService7 : BaseScannerService()
+class ScannerService8 : BaseScannerService()
+class ScannerService9 : BaseScannerService()
+class ScannerService10 : BaseScannerService()
+class ScannerService11 : BaseScannerService()
+class ScannerService12 : BaseScannerService()
+
+/** Must match the <service> entries in AndroidManifest.xml, one process each. */
+val ScannerServices: List<Class<*>> = listOf(
+    ScannerService::class.java, ScannerService2::class.java, ScannerService3::class.java,
+    ScannerService4::class.java, ScannerService5::class.java, ScannerService6::class.java,
+    ScannerService7::class.java, ScannerService8::class.java, ScannerService9::class.java,
+    ScannerService10::class.java, ScannerService11::class.java, ScannerService12::class.java,
+)

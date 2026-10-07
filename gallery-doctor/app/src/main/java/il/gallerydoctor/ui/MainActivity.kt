@@ -38,7 +38,7 @@ private fun App() {
     Scaffold(modifier = Modifier.fillMaxSize(), containerColor = MaterialTheme.colorScheme.surface) { padding ->
         when (val s = state) {
             is ScanState.Idle -> StartScreen(padding, s, error = null)
-            is ScanState.Failed -> StartScreen(padding, ScanState.Idle(), error = s.message)
+            is ScanState.Failed -> StartScreen(padding, ScanState.Idle(canResume = s.canResume, hasReport = s.canResume), error = s.message)
             is ScanState.Running -> ProgressScreen(padding, s)
             is ScanState.Done -> ReportScreen(padding, s.report)
         }
