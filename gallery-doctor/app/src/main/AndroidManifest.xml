@@ -15,6 +15,10 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- The optional background recorder (a periodic, read-only reading of the media index) and its restart after a reboot. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <!-- Lets the report list ALL installed apps that can interfere with the gallery (cleaners, sync tools,
          file managers). Without it Android 11+ hides other apps and that part of the report is shorter. -->
     <uses-permission
@@ -85,6 +89,23 @@
             android:name=".ScanService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <!-- Optional background recorder: samples the media index every few minutes into a small local log. -->
+        <service
+            android:name=".recorder.RecorderService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="read-only monitoring of the media index to diagnose gallery problems" />
+        </service>
+        <receiver
+            android:name=".recorder.BootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
 
         <!-- Isolated decoder workers. Each runs in its own OS process, so a native crash inside a media
              decoder kills only that worker, never the UI. One file at a time per worker. There are twelve

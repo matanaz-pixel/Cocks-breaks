@@ -103,7 +103,26 @@ object Continuity {
         return (top == "DCIM" || top == "Pictures") && !rel.contains("WhatsApp") && !rel.contains("Telegram")
     }
 
+    /** Where the space went across the whole shared storage, media or not. */
+    fun storageLines(i: ReportInput): List<String> = buildList {
+        if (i.storageDirs.isEmpty()) return@buildList
+        val total = i.volumes.firstOrNull { !it.removable }
+        val used = total?.let { it.totalBytes - it.freeBytes }
+        val tops = i.storageDirs.filter { '/' !in it.path }.sortedByDescending { it.bytes }
+        val listed = tops.sumOf { it.bytes }
+        add("התיקיות הגדולות ביותר באחסון הפנימי" + (used?.let { " (סה\"כ תפוס ${He.bytes(it)}, מתוכו ${He.bytes(listed)} בתיקיות שמוצגות)" } ?: "") + ":")
+        for (d in tops.take(12)) {
+            add("${d.path}: ${He.bytes(d.bytes)} (${He.files(d.count)})")
+            for (c in i.storageDirs.filter { it.path.startsWith(d.path + "/") && it.path.count { ch -> ch == '/' } == 1 }.sortedByDescending { it.bytes }) {
+                add("    ↳ ${c.path.substringAfter('/')}: ${He.bytes(c.bytes)} (${He.files(c.count)})")
+            }
+        }
+        if (used != null && used > listed * 12 / 10 + (4L shl 30)) add("${He.bytes(used - listed)} תפוסים במקומות שהאפליקציה לא מורשית לראות, כמו נתוני אפליקציות (Android/data), המערכת והאפליקציות עצמן. את הגדלים שלהם רואים בהגדרות ← אחסון.")
+        if (!i.storageWalkComplete) add("הסריקה של כל האחסון הופסקה לפני הסוף, לכן הגדלים חלקיים.")
+    }
+
     fun lines(i: ReportInput): List<String> = buildList {
+        addAll(Timeline.lines(i.timeline))
         i.favorites?.let {
             add("מועדפים באינדקס המדיה של אנדרואיד: ${He.num(it)}. גלריית Xiaomi ו-Google Photos שומרות מועדפים במסד נתונים משלהן, ולכן המספר עשוי להיות 0 גם כשיש מועדפים. הוא נשמר להשוואה בסריקה הבאה.")
         }

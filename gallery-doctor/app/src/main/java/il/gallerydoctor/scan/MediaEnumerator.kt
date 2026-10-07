@@ -92,6 +92,15 @@ object MediaEnumerator {
         return total
     }
 
+    /** Number of images and videos the index lists for one volume (a cheap count, ids only). */
+    fun countVolume(ctx: Context, volume: String): Int {
+        var n = 0
+        for (video in listOf(false, true)) {
+            ctx.contentResolver.query(baseUri(volume, video), arrayOf(MediaStore.MediaColumns._ID), null, null, null)?.use { n += it.count }
+        }
+        return n
+    }
+
     /** Favorites in Android's media index (API 30+), or -1 when it cannot be read. Never writes anything. */
     fun countFavorites(ctx: Context): Int {
         if (Build.VERSION.SDK_INT < 30) return -1

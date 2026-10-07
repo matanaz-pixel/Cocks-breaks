@@ -22,6 +22,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         window.decorView.layoutDirection = View.LAYOUT_DIRECTION_RTL
         enableEdgeToEdge()
+        // the recorder is the one thing that should keep running: bring it back if Android stopped it
+        if (il.gallerydoctor.recorder.RecorderLog.isEnabled(this)) {
+            try { il.gallerydoctor.recorder.RecorderService.start(this) } catch (_: Exception) { }
+        }
         setContent {
             GalleryDoctorTheme { App() }
         }

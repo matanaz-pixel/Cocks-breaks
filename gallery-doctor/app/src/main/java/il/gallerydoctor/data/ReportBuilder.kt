@@ -9,7 +9,10 @@ import il.gallerydoctor.core.Status
 import il.gallerydoctor.core.DateChecker
 import il.gallerydoctor.core.IssueSummary
 import il.gallerydoctor.core.NameChecker
+import il.gallerydoctor.core.FolderStat
 import il.gallerydoctor.core.HiddenDir
+import il.gallerydoctor.core.Timeline
+import il.gallerydoctor.recorder.RecorderLog
 import il.gallerydoctor.core.IndexBursts
 import il.gallerydoctor.core.NomediaDir
 import il.gallerydoctor.core.OwnerChurn
@@ -104,6 +107,9 @@ object ReportBuilder {
             ownExits = OwnExits.collect(ctx, started),
             systemicReasons = systemic,
             bursts = bursts,
+            timeline = Timeline.summarize(RecorderLog.readAll(ctx)),
+            storageDirs = db.extraRows("STORAGE_DIR", 30).map { FolderStat(it.first, it.third?.toIntOrNull() ?: 0, it.second) },
+            storageWalkComplete = db.meta("storagewalk_complete") != "0",
             favorites = db.metaLong("favorites")?.toInt()?.takeIf { it >= 0 },
             previous = if (started > 0) ScanHistory.previous(ctx, started) else null,
             nomediaDirs = db.extraRows("NOMEDIA", 30).map { NomediaDir(it.first, it.second.toInt()) },

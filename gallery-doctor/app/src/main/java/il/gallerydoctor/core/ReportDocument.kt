@@ -125,6 +125,13 @@ object ReportDocument {
         Continuity.lines(i).forEach { out += Block.Bullet(it) }
         out += Block.Gap
 
+        val storage = Continuity.storageLines(i)
+        if (storage.isNotEmpty()) {
+            out += Block.Heading("לאן הלך המקום באחסון")
+            storage.forEach { out += Block.Bullet(it) }
+            out += Block.Gap
+        }
+
         out += Block.Heading("מגבלות הבדיקה")
         a.limits.forEach { out += Block.Bullet(it) }
         return out

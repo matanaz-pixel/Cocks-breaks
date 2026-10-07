@@ -75,6 +75,8 @@ fun ReportScreen(padding: PaddingValues, data: ReportData) {
     val crashLines = remember(data) { EnvLines.crashLogLines(i) }
     val healthyLines = remember(data) { EnvLines.healthyLines(i) }
     val continuityLines = remember(data) { Continuity.lines(i) }
+    val storageLines = remember(data) { Continuity.storageLines(i) }
+    val tStorageMap = stringResource(R.string.sec_storage_map)
     val guide = remember(data) { RecoveryGuide.steps(i) }
     val tGuide = stringResource(R.string.sec_recovery)
     val tContinuity = stringResource(R.string.sec_continuity)
@@ -168,6 +170,7 @@ fun ReportScreen(padding: PaddingValues, data: ReportData) {
         bulletSection("device", tDevice, deviceLines)
         bulletSection("crashlog", tCrashLog, crashLines)
         bulletSection("continuity", tContinuity, continuityLines)
+        bulletSection("storage-map", tStorageMap, storageLines)
 
         // ---- 4. tables ----
         item(key = "h-tables") { SectionTitle(stringResource(R.string.sec_tables)) }

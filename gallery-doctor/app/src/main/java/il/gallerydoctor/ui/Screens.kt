@@ -51,6 +51,9 @@ import il.gallerydoctor.ScanController
 import il.gallerydoctor.ScanOptions
 import il.gallerydoctor.ScanState
 import il.gallerydoctor.core.He
+import il.gallerydoctor.core.TimelineEvent
+import il.gallerydoctor.recorder.RecorderLog
+import il.gallerydoctor.recorder.RecorderService
 import il.gallerydoctor.scan.SafEnumerator
 
 private fun mediaPermissions(): Array<String> =
@@ -85,6 +88,20 @@ fun StartScreen(padding: PaddingValues, idle: ScanState.Idle, error: String?) {
             permissionProblem = false
             ScanController.start(ctx, ScanOptions(deep = !quick, treeUri = tree, resume = resumeAfterPermission))
         } else permissionProblem = true
+    }
+
+    var recorderOn by remember { mutableStateOf(RecorderLog.isEnabled(ctx)) }
+    val recorderPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        if (hasMediaAccess(ctx)) {
+            RecorderService.start(ctx)
+            recorderOn = true
+            permissionProblem = false
+        } else permissionProblem = true
+    }
+    fun setRecorder(on: Boolean) {
+        if (!on) { RecorderService.stop(ctx); recorderOn = false; return }
+        if (hasMediaAccess(ctx)) { RecorderService.start(ctx); recorderOn = true }
+        else recorderPermission.launch(if (Build.VERSION.SDK_INT >= 33) mediaPermissions() + Manifest.permission.POST_NOTIFICATIONS else mediaPermissions())
     }
 
     fun begin(resume: Boolean) {
@@ -149,6 +166,24 @@ fun StartScreen(padding: PaddingValues, idle: ScanState.Idle, error: String?) {
         if (idle.hasReport) {
             OutlinedButton(onClick = { ScanController.showLastReport(ctx) }, modifier = Modifier.fillMaxWidth().height(60.dp)) {
                 Text(stringResource(R.string.btn_last_report))
+            }
+        }
+
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.recorder_title), style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(R.string.recorder_desc), style = MaterialTheme.typography.bodySmall)
+                    }
+                    Switch(checked = recorderOn, onCheckedChange = { setRecorder(it) })
+                }
+                val samples = remember(recorderOn) { RecorderLog.readAll(ctx).filterIsInstance<TimelineEvent.Sample>() }
+                Text(
+                    if (samples.isEmpty()) stringResource(R.string.recorder_status_none)
+                    else stringResource(R.string.recorder_status, He.num(samples.size), java.text.SimpleDateFormat("dd/MM HH:mm", java.util.Locale.US).format(java.util.Date(samples.last().ts))),
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
         }
 

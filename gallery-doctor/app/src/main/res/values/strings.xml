@@ -4,6 +4,13 @@
 
     <!-- Notification -->
     <string name="notif_channel">התקדמות הסריקה</string>
+    <string name="recorder_channel">מקליט רקע</string>
+    <string name="recorder_notif_text">מתעד שינויים באינדקס המדיה (קריאה בלבד)</string>
+    <string name="recorder_title">מקליט רקע</string>
+    <string name="recorder_desc">רושם כל כמה דקות מצב קטן של אינדקס המדיה, כדי לתפוס תקלה שבאה והולכת, כמו אינדקס שנבנה מחדש או כיבוי מסוללה ריקה. אין בו קריאה של תוכן הקבצים. השאירו אותו פועל יום-יומיים.</string>
+    <string name="recorder_status_none">עדיין לא נאספו דגימות.</string>
+    <string name="recorder_status">דגימות: %1$s, האחרונה: %2$s</string>
+    <string name="recorder_perm">כדי להקליט צריך לאשר גישה לתמונות ולסרטונים, ואת ההתראות.</string>
     <string name="notif_text_starting">הסריקה מתחילה…</string>
 
     <!-- Phases -->
@@ -54,6 +61,7 @@
     <string name="sec_crashlog">יומן הקריסות של המערכת</string>
     <string name="sec_recovery">מדריך: שחזור וניקוי בסדר הנכון</string>
     <string name="sec_continuity">שינויים באינדקס ובין סריקות</string>
+    <string name="sec_storage_map">לאן הלך המקום באחסון</string>
     <string name="sec_tables">רשימות לבדיקה ידנית</string>
     <string name="sec_export">שיתוף הדוח</string>
     <string name="sec_limits">מגבלות הבדיקה</string>

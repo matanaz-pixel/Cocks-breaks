@@ -106,6 +106,10 @@ data class ReportInput(
     val nomediaDirs: List<NomediaDir> = emptyList(),
     val hiddenDirs: List<HiddenDir> = emptyList(),
     val thumbEntries: Int? = null,
+    val timeline: TimelineSummary = TimelineSummary(),
+    /** Biggest folders of the whole shared storage (media or not): where the space actually went. */
+    val storageDirs: List<FolderStat> = emptyList(),
+    val storageWalkComplete: Boolean = true,
     val crashLog: CrashLogInfo = CrashLogInfo(),
     val ownExits: OwnExitInfo = OwnExitInfo(),
     /** Checks that failed on an implausibly large share of files and were therefore NOT counted as corrupt files. */

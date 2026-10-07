@@ -19,6 +19,7 @@ import il.gallerydoctor.scan.IndexStability
 import il.gallerydoctor.scan.MediaEnumerator
 import il.gallerydoctor.scan.SafEnumerator
 import il.gallerydoctor.scan.StorageInfo
+import il.gallerydoctor.scan.StorageWalker
 import il.gallerydoctor.worker.ScannerClient
 import il.gallerydoctor.worker.newScannerPool
 import il.gallerydoctor.worker.WorkerUnavailableException
@@ -183,6 +184,14 @@ object ScanController {
                     db.putMeta("dirs_inaccessible", r.inaccessibleDirs.toString())
                 }
                 if (job.isActive) db.putMeta("fswalk", "1")
+            }
+
+            // ---- 3b. where the space went, across the whole shared storage ----
+            if (db.meta("storagewalk") != "1") {
+                withContext(Dispatchers.IO) {
+                    StorageInfo.volumes(app).firstOrNull { !it.removable }?.root?.let { StorageWalker.walk(it, db, active) }
+                }
+                if (job.isActive) db.putMeta("storagewalk", "1")
             }
 
             // ---- 4. integrity scan in isolated worker processes ----

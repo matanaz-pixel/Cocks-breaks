@@ -44,7 +44,7 @@ object Analyzer {
             incompleteFiles(i), orphans(i), brokenFiles(i), heavyFolders(i), stressFiles(i),
             galleryCrash(i), devSettings(i), volumeProblems(i), providerDisabled(i), galleryAppState(i),
             suspectApps(i), fileNames(i), lowResources(i), systemOutdated(i), xiaomiBackground(i),
-            indexRebuilds(i), indexShrank(i), nomediaHidden(i), hiddenFolders(i),
+            indexRebuilds(i), recorderEvents(i), indexShrank(i), nomediaHidden(i), hiddenFolders(i),
         ).let { it + listOfNotNull(galleryPrivateDb(i, it)) }
         val strongest = found.maxOfOrNull { it.score } ?: 0
         val baseline = baseline(i, if (strongest >= 50) 30 else 45)
@@ -772,6 +772,32 @@ object Analyzer {
         )
     }
 
+    private fun recorderEvents(i: ReportInput): Hypothesis? {
+        val t = i.timeline
+        if (!t.hasData || t.samples < Timeline.MIN_SAMPLES || !t.anyEvent) return null
+        val recovered = t.countDrops.any { it.recoveredAt != null }
+        val score = when {
+            t.databaseRecreated -> 92
+            recovered -> 72
+            t.countDrops.isNotEmpty() -> 60
+            else -> 42
+        }
+        val evidence = buildList {
+            add("מקליט הרקע עקב אחרי אינדקס המדיה כ-${t.spanHours} שעות (${He.num(t.samples)} דגימות). אלה תצפיות ישירות ולא הערכות.")
+            addAll(Timeline.lines(t).drop(1).filter { !it.startsWith("זה מעט") })
+            if (t.databaseRecreated) add("מסד נתונים שנוצר מחדש הוא בדיוק מה שמאפס מועדפים ומציג רשימה חלקית עד שהסריקה מסתיימת.")
+        }
+        return Hypothesis(
+            "RECORDER_EVENTS", if (t.databaseRecreated) "מסד נתוני המדיה נוצר מחדש בזמן ההקלטה" else "האינדקס התכווץ או שהטלפון כבה בצורה לא תקינה בזמן ההקלטה",
+            score, evidence,
+            listOf(
+                backup("אירוע שבו המסד נוצר מחדש יכול לחזור, ובו הגלריה עלולה לאבד מועדפים ואלבומים."),
+                abTest("מבדיל בין אינדקס המערכת לבין מסד הנתונים הפרטי של הגלריה."),
+                keepHeadroom("אחסון מלא וכיבוי מסוללה ריקה הם הגורמים המוכרים לפגיעה במסד הנתונים."),
+            ),
+        )
+    }
+
     private fun indexShrank(i: ReportInput): Hypothesis? {
         val prev = i.previous ?: return null
         val drop = prev.totalFiles - i.totalFiles
@@ -849,7 +875,7 @@ object Analyzer {
         if (gallery.pkg == "com.miui.gallery") { score += 10; evidence += "גלריית Xiaomi שומרת מועדפים, אלבומים ומצב סנכרון במסד נתונים משלה, וכשהוא נפגם היא מציגה חלקית ונטענת מחדש." }
         if (i.volumes.any { it.critical }) { score += 10; signals++; evidence += "האחסון כמעט מלא: כתיבה למסד נתונים שנכשלת באמצע היא סיבה מוכרת לפגיעה בו." }
         if (i.heavyFolders.any { it.count >= 15000 }) { score += 10; signals++; evidence += "יש תיקייה עם יותר מ-15,000 קבצים, וגלריה שטוענת אותה בבת אחת עלולה להיתקע ולהיבנות מחדש." }
-        if (i.bursts.isNotEmpty()) { score += 10; signals++; evidence += "נמצא אירוע שבו האינדקס נבנה מחדש, ומסד הנתונים של הגלריה עשוי היה לעבור איתו אירוע דומה." }
+        if (i.bursts.isNotEmpty() || i.timeline.databaseRecreated) { score += 10; signals++; evidence += "נמצא אירוע שבו האינדקס נבנה מחדש, ומסד הנתונים של הגלריה עשוי היה לעבור איתו אירוע דומה." }
         // without a single supporting sign this is just the baseline cause, not a finding of its own
         if (signals == 0) return null
         evidence += "אם התקלה המשיכה גם אחרי מעבר לטלפון חדש, זה מחזק את ההסבר: הקבצים והגלריה עברו איתכם, והטלפון החדש לא יכול להיות הסיבה."
