@@ -1,17 +1,21 @@
 # האתר המורחב
 
-חמישה עמודים: דף בית (`index.html`) וארבעה עמודי שירות (`newborn.html`, `sleep.html`, `toddlers.html`, `development.html`).
-כל עמוד עצמאי: העיצוב, הגופנים והאייקונים נמצאים בתוכו, ואין בקשות חיצוניות.
+חמישה עמודים (`index.html`, `newborn.html`, `sleep.html`, `toddlers.html`, `development.html`) ועמוד `404.html`.
+כל עמוד עצמאי: העיצוב, הגופנים והאייקונים בתוכו, ואין בקשות חיצוניות.
 
-## החלפת תוכן
-כל הטקסטים, הטלפון, הקישורים, ההמלצות והשאלות נמצאים ב-`src/content.py`.
-אחרי עריכה: `python3 site/src/build.py` (דורש `pip install jinja2`).
-המלצות מסומנות "דוגמה" כל עוד יש בהן `"sample": True`. מוחקים את השדה כשמחליפים בהמלצה אמיתית.
+## איך מעדכנים תוכן
+משתמשים בעורך: `editor/site-editor.html`. הוא מוריד ZIP שמכיל את האתר המלא, מוכן להעלאה.
 
-## קבצים
-- `src/style.css`: העיצוב המשותף. צבע ההדגשה של כל שירות מוגדר ב-`content.py` (`accent`, `pastel`).
-- `src/base.html`, `home.html`, `service.html`, `macros.html`: התבניות.
-- `src/fonts.css`: גופנים (עברית ולטינית) מוטמעים. נוצר על ידי `sleep-landing/src/fetch_fonts.py`.
+## מבנה הקוד
+- `src/generator.js`: מחולל האתר. אותו קוד רץ בתוך העורך ובשורת הפקודה.
+- `src/content.json`: תוכן ברירת המחדל. העורך נבנה איתו.
+- `src/style.css`, `src/fonts.css`, `src/sprite.html`: עיצוב, גופנים ואייקונים.
+- `src/build.js`: בונה את האתר (`node src/build.js [--project גיבוי.json] [--out תיקייה] [--issues]`).
+- `src/build-editor.js`: בונה את קובץ העורך.
+- `src/fetch_fonts.py`: יצר את `fonts.css` (עברית ולטינית מוטמעות). אין צורך להריץ שוב.
 
-## מה עדיין לא נכלל
-תמונות אמיתיות (יש ממלאי מקום), גלריה, טופס יצירת קשר, תמונת שיתוף והצהרת נגישות.
+## בנייה
+```
+cd site
+npm run build
+```

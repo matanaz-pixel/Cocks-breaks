@@ -1,0 +1,10 @@
+{
+  "name": "parenting-site",
+  "private": true,
+  "description": "אתר הדרכת הורים וייעוץ שינה, עם עורך לעדכון עצמאי",
+  "scripts": {
+    "build": "node src/build.js && node src/build-editor.js",
+    "build:site": "node src/build.js",
+    "build:editor": "node src/build-editor.js"
+  }
+}

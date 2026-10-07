@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>עורך האתר</title>
+<style>
+/*FONTS*/
+/*EDITORCSS*/
+</style>
+</head>
+<body>
+<div class="app">
+ <header class="top">
+  <h1><i aria-hidden="true">☾</i>עורך האתר</h1>
+  <span class="status" id="status" role="status" aria-live="polite">טוען…</span>
+  <button class="btn small ghost" id="btnUndo" type="button" disabled>ביטול פעולה אחרונה</button>
+  <button class="btn small ghost" id="btnBackup" type="button">שמירת גיבוי</button>
+  <button class="btn small ghost" id="btnRestore" type="button">פתיחת גיבוי</button>
+  <button class="btn small primary" id="btnPublish" type="button">הכנה לפרסום</button>
+  <input type="file" id="fileRestore" accept=".json,application/json" hidden>
+ </header>
+ <div class="main" id="main" data-mode="edit">
+  <section class="panel" id="panel" aria-label="עריכה">
+   <div class="tabs" id="tabs" role="tablist" aria-label="חלקי האתר"></div>
+   <div id="content"></div>
+  </section>
+  <section class="preview" aria-label="תצוגה מקדימה">
+   <div class="pv-bar">
+    <div class="seg" id="pvPages" role="group" aria-label="עמוד לתצוגה"></div>
+    <div class="sp"><div class="seg" role="group" aria-label="גודל מסך"><button type="button" id="pvDesktop" aria-pressed="true">מחשב</button><button type="button" id="pvMobile" aria-pressed="false">טלפון</button></div></div>
+   </div>
+   <div class="stage"><div class="frame-wrap" id="frameWrap"><iframe id="frame" title="תצוגה מקדימה של האתר" sandbox="allow-scripts allow-popups"></iframe></div></div>
+  </section>
+ </div>
+</div>
+<div class="seg mode-switch" id="modeSwitch" role="group" aria-label="מעבר בין עריכה לתצוגה"><button type="button" data-m="edit" aria-pressed="true">עריכה</button><button type="button" data-m="view" aria-pressed="false">תצוגה</button></div>
+<dialog id="dlg"></dialog>
+<div class="toast" id="toast" hidden></div>
+<script>
+/*SCRIPTS*/
+</script>
+</body>
+</html>
