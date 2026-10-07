@@ -9,6 +9,9 @@ import il.gallerydoctor.core.Status
 import il.gallerydoctor.core.DateChecker
 import il.gallerydoctor.core.IssueSummary
 import il.gallerydoctor.core.NameChecker
+import il.gallerydoctor.core.HiddenDir
+import il.gallerydoctor.core.IndexBursts
+import il.gallerydoctor.core.NomediaDir
 import il.gallerydoctor.core.OwnerChurn
 import il.gallerydoctor.scan.AppProbe
 import il.gallerydoctor.scan.CrashLogReader
@@ -45,8 +48,11 @@ object ReportBuilder {
         }.sortedByDescending { it.count }
         val (nameIssues, dateIssues) = nameAndDateIssues(db, now / 1000)
 
+        val totalFiles = db.count("status!=6")
+        val bursts = IndexBursts.detect(db.hourBuckets(IndexBursts.BUCKET_MIN), totalFiles)
+
         val input = ReportInput(
-            totalFiles = db.count("status!=6"),
+            totalFiles = totalFiles,
             imageCount = db.count("video=0 AND status!=6"),
             videoCount = db.count("video=1 AND status!=6"),
             okCount = counts[Status.OK] ?: 0,
@@ -97,6 +103,12 @@ object ReportBuilder {
             crashLog = CrashLogReader.read(ctx, knownPackages),
             ownExits = OwnExits.collect(ctx, started),
             systemicReasons = systemic,
+            bursts = bursts,
+            favorites = db.metaLong("favorites")?.toInt()?.takeIf { it >= 0 },
+            previous = if (started > 0) ScanHistory.previous(ctx, started) else null,
+            nomediaDirs = db.extraRows("NOMEDIA", 30).map { NomediaDir(it.first, it.second.toInt()) },
+            hiddenDirs = db.extraRows("HIDDEN_DIR", 30).map { HiddenDir(it.first, it.third?.toIntOrNull() ?: 0, it.second) },
+            thumbEntries = db.extraRows("THUMBS", 1).firstOrNull()?.second?.toInt(),
             scanComplete = scanComplete,
             deepScan = db.meta("deep") == "1",
             dirsInaccessible = db.metaLong("dirs_inaccessible")?.toInt() ?: 0,

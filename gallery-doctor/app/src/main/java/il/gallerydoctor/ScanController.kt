@@ -12,6 +12,8 @@ import il.gallerydoctor.core.ScanCoordinator
 import il.gallerydoctor.data.ReportBuilder
 import il.gallerydoctor.data.StateDb
 import il.gallerydoctor.scan.DuplicateFinder
+import il.gallerydoctor.core.ScanSnapshot
+import il.gallerydoctor.data.ScanHistory
 import il.gallerydoctor.scan.FsWalker
 import il.gallerydoctor.scan.IndexStability
 import il.gallerydoctor.scan.MediaEnumerator
@@ -142,6 +144,7 @@ object ScanController {
                         n += rows.size
                         publish { it.copy(done = n) }
                     }, active)
+                    db.putMeta("favorites", MediaEnumerator.countFavorites(app).toString())
                     db.meta("saf")?.let { tree ->
                         SafEnumerator.enumerate(app, Uri.parse(tree), db.mediaStoreKeys(), { rows ->
                             db.insertRows(rows)
@@ -234,6 +237,15 @@ object ScanController {
             db.putMeta("state", "DONE")
             db.putMeta("finished", System.currentTimeMillis().toString())
             val report = withContext(Dispatchers.IO) { ReportBuilder.build(app, db, scanComplete = true) }
+            ScanHistory.save(
+                app,
+                ScanSnapshot(
+                    startedMillis = db.metaLong("started") ?: System.currentTimeMillis(),
+                    totalFiles = report.input.totalFiles, favorites = report.input.favorites,
+                    orphans = report.input.orphanCount, bursts = report.input.bursts.size,
+                    freeBytes = report.input.volumes.firstOrNull { !it.removable }?.freeBytes ?: 0L,
+                ),
+            )
             _state.value = ScanState.Done(report)
         } catch (e: CancellationException) {
             stability?.cancel()

@@ -92,6 +92,23 @@ object MediaEnumerator {
         return total
     }
 
+    /** Favorites in Android's media index (API 30+), or -1 when it cannot be read. Never writes anything. */
+    fun countFavorites(ctx: Context): Int {
+        if (Build.VERSION.SDK_INT < 30) return -1
+        var n = 0
+        var any = false
+        for (volume in volumes(ctx)) for (video in listOf(false, true)) {
+            val args = Bundle().apply {
+                putString(ContentResolver.QUERY_ARG_SQL_SELECTION, "${MediaStore.MediaColumns.IS_FAVORITE} = 1")
+            }
+            try {
+                ctx.contentResolver.query(baseUri(volume, video), arrayOf(MediaStore.MediaColumns._ID), args, null)?.use { n += it.count; any = true }
+            } catch (_: Exception) {
+            }
+        }
+        return if (any) n else -1
+    }
+
     private fun Cursor.str(name: String): String? = getColumnIndex(name).takeIf { it >= 0 }?.let { if (isNull(it)) null else getString(it) }
     private fun Cursor.lng(name: String, def: Long = 0): Long = getColumnIndex(name).takeIf { it >= 0 }?.let { if (isNull(it)) def else getLong(it) } ?: def
     private fun Cursor.int(name: String, def: Int = 0): Int = lng(name, def.toLong()).toInt()

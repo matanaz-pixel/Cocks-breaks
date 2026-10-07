@@ -44,7 +44,8 @@ object Analyzer {
             incompleteFiles(i), orphans(i), brokenFiles(i), heavyFolders(i), stressFiles(i),
             galleryCrash(i), devSettings(i), volumeProblems(i), providerDisabled(i), galleryAppState(i),
             suspectApps(i), fileNames(i), lowResources(i), systemOutdated(i), xiaomiBackground(i),
-        )
+            indexRebuilds(i), indexShrank(i), nomediaHidden(i), hiddenFolders(i),
+        ).let { it + listOfNotNull(galleryPrivateDb(i, it)) }
         val strongest = found.maxOfOrNull { it.score } ?: 0
         val baseline = baseline(i, if (strongest >= 50) 30 else 45)
         val ranked = (found + baseline).sortedByDescending { it.score }
@@ -728,6 +729,142 @@ object Analyzer {
         )
     }
 
+    // ---------------- index continuity: rebuilds, shrinking, folders the gallery ignores ----------------
+
+    private const val K_AB_TEST = "AB_TEST"
+    private const val K_HEADROOM = "KEEP_HEADROOM"
+
+    private fun abTest(why: String) = ActionStep(
+        K_AB_TEST,
+        "בדיקת הכרעה: פתחו את אותן תמונות ב-Google Photos או ב-Fossify Gallery (חינמית). אם הכול מוצג שם במלואו ובצורה יציבה, הקבצים והאינדקס תקינים והבעיה במסד הנתונים הפרטי של אפליקציית הגלריה. אם גם שם חסרים קבצים, הבעיה באינדקס המערכת או באחסון.",
+        why,
+    )
+
+    private fun keepHeadroom(why: String) = ActionStep(
+        K_HEADROOM,
+        "שמרו תמיד לפחות 10% פנויים באחסון, ואל תתנו לטלפון להיכבות מסוללה ריקה (טענו אותו כשנשאר 15-20%).",
+        why,
+    )
+
+    private fun indexRebuilds(i: ReportInput): Hypothesis? {
+        if (i.bursts.isEmpty()) return null
+        val lib = IndexBursts.libraryBurst(i.bursts)
+        val later = i.bursts.filter { it != lib }
+        val score = when (later.size) { 0 -> 30; 1 -> 48; else -> 62 }
+        val evidence = buildList {
+            if (lib != null) add("${lib.sharePercent}% מהקבצים (${He.num(lib.count)}) נכנסו לאינדקס המדיה ${Continuity.burstWhen(lib)}. זה מתאים להעברה מטלפון אחר, לשחזור מגיבוי או לבנייה מלאה של האינדקס.")
+            for (b in later.take(4)) add(
+                "${He.num(b.count)} קבצים (${b.sharePercent}%) נכנסו לאינדקס בבת אחת ${Continuity.burstWhen(b)}" +
+                    (if (b.agedPercent >= 50) ", ו-${b.agedPercent}% מהם נוצרו הרבה לפני כן: קבצים קיימים נסרקו מחדש." else "."),
+            )
+            if (later.isNotEmpty()) add("יום רגיל של שימוש לא מוסיף אלפי קבצים בשעה. אירוע כזה הוא חתימה של בנייה מחדש של האינדקס, ובזמן הבנייה הגלריה מציגה רשימה חלקית וטוענת את עצמה.")
+            add("השוו את התאריכים ליום שבו הטלפון כבה מסוללה ריקה או שהמועדפים נעלמו: אם הם קרובים, זו כנראה הסיבה.")
+            add("האפליקציה רואה רק את אינדקס המדיה של אנדרואיד. מועדפים ואלבומים של גלריית Xiaomi נשמרים במסד נתונים פרטי של הגלריה, שאינו נגיש לה. אירוע בנייה באינדקס המערכת מרמז שגם הוא עבר אירוע דומה, אבל לא מוכיח זאת.")
+        }
+        return Hypothesis(
+            "INDEX_REBUILDS", if (later.isEmpty()) "כל הספרייה נכנסה לאינדקס בבת אחת (העברה או בנייה מחדש)" else "האינדקס נבנה מחדש יותר מפעם אחת",
+            score, evidence,
+            listOf(
+                backup("בנייה מחדש של האינדקס היא הרגע שבו הגלריה עלולה לאבד מועדפים ואלבומים, ולכן קודם מגבים."),
+                abTest("מבדיל בין אינדקס המערכת לבין מסד הנתונים הפרטי של הגלריה."),
+                keepHeadroom("כתיבה שנכשלת באמצע (אחסון מלא או כיבוי פתאומי) היא הסיבה הרגילה לבנייה מחדש של האינדקס."),
+            ),
+        )
+    }
+
+    private fun indexShrank(i: ReportInput): Hypothesis? {
+        val prev = i.previous ?: return null
+        val drop = prev.totalFiles - i.totalFiles
+        val filesDropped = drop >= 100 && prev.totalFiles > 0 && drop * 100 / prev.totalFiles >= 3
+        val pf = prev.favorites
+        val nf = i.favorites
+        val favDropped = pf != null && nf != null && pf >= 5 && nf * 10 <= pf * 7
+        if (!filesDropped && !favDropped) return null
+        val evidence = buildList {
+            if (filesDropped) add("בסריקה הקודמת היו ${He.num(prev.totalFiles)} קבצים באינדקס, ועכשיו ${He.num(i.totalFiles)} (ירידה של ${He.num(drop)}). אם לא מחקתם או העברתם קבצים בינתיים, הם נעלמו מהאינדקס בלי להימחק מהדיסק.")
+            if (favDropped) add("מספר המועדפים באינדקס ירד מ-$pf ל-$nf. מועדפים נעלמים כשהרשומה שלהם נבנית מחדש.")
+            add("זו השוואה בין שתי סריקות של אותו טלפון, ולכן היא ראיה ישירה לאובדן ולא השערה.")
+        }
+        return Hypothesis(
+            "INDEX_SHRANK", "רשומות נעלמו מהאינדקס מאז הסריקה הקודמת", if (favDropped) 74 else 58, evidence,
+            listOf(
+                backup("רשומות שנעלמו מהאינדקס עלולות להיעלם גם מהגלריה."),
+                abTest("בודק אם הקבצים עצמם עדיין קיימים ונראים לאפליקציה אחרת."),
+                keepHeadroom("אחסון מלא וכיבוי פתאומי הם הגורמים הנפוצים לרשומות שנעלמות."),
+            ),
+        )
+    }
+
+    private fun nomediaHidden(i: ReportInput): Hypothesis? {
+        if (i.nomediaDirs.isEmpty()) return null
+        val main = i.nomediaDirs.filter { Continuity.isMainMediaDir(it.path) }
+        val total = i.nomediaDirs.sumOf { it.mediaFiles }
+        val shown = (main.ifEmpty { i.nomediaDirs }).take(3)
+        val evidence = buildList {
+            add("${He.folders(i.nomediaDirs.size)} מכילות קובץ .nomedia: " + shown.joinToString(", ") { "\"${it.path.substringAfter("/0/", it.path)}\" (${He.files(it.mediaFiles)})" } + ".")
+            add("קובץ .nomedia אוסר על כל אפליקציית גלריה להציג את התמונות והסרטונים שבתיקייה. ${He.files(total)} לא יופיעו בגלריה בכלל, גם כשהם תקינים.")
+            if (main.isEmpty()) add("התיקיות האלה שייכות כנראה לאפליקציות (וואטסאפ, טלגרם ועוד) שמסתירות בכוונה, ולכן זה ממצא חלש.")
+        }
+        return Hypothesis(
+            "NOMEDIA_HIDDEN", "תיקיות שהגלריה מתעלמת מהן בגלל קובץ .nomedia", if (main.isNotEmpty()) 66 else 35, evidence,
+            listOf(
+                ActionStep(
+                    "REMOVE_NOMEDIA",
+                    "במנהל קבצים עם \"הצג קבצים מוסתרים\": פתחו את התיקייה (${shown.first().path.substringAfter("/0/", shown.first().path)}) ומחקו את הקובץ .nomedia, אלא אם אתם יודעים שאפליקציה שמה אותו בכוונה. אחר כך הפעילו מחדש את הטלפון.",
+                    "הקובץ הזה מסתיר את כל התיקייה מהגלריה.",
+                ),
+            ),
+        )
+    }
+
+    private fun hiddenFolders(i: ReportInput): Hypothesis? {
+        val big = i.hiddenDirs.filter { it.mediaFiles >= 50 }
+        if (big.isEmpty()) return null
+        val total = big.sumOf { it.mediaFiles }
+        val evidence = listOf(
+            "${He.folders(big.size)} מוסתרות מכילות ${He.files(total)} (${He.bytes(big.sumOf { it.bytes })}): " +
+                big.take(3).joinToString(", ") { "\"${it.path.substringAfter("/0/", it.path)}\"" } + ".",
+            "בגלריות מסוימות, כולל גלריית Xiaomi, אלבום פרטי וסל מחזור נשמרים בתיקיות כאלה. הקבצים תקינים אבל מופיעים רק בתוך האפליקציה, ואם מסד הנתונים שלה מתאפס הם נעלמים מהתצוגה.",
+            "זו ראיה עקיפה: האפליקציה לא יכולה לפתוח את התיקיות האלה או לדעת למה הן משמשות.",
+        )
+        return Hypothesis(
+            "HIDDEN_FOLDERS", "קבצים בתיקיות מוסתרות שמוצגות רק מתוך הגלריה", 36, evidence,
+            listOf(
+                backup("קבצים בתיקיות מוסתרות לא נראים בגלריה אחרת, וקל לפספס אותם בגיבוי."),
+            ),
+        )
+    }
+
+    /**
+     * Inference by elimination, labelled as such. When the files, the media index and the storage give no direct
+     * cause, what is left is the gallery app's own private database, which no other app can read.
+     */
+    private fun galleryPrivateDb(i: ReportInput, found: List<Hypothesis>): Hypothesis? {
+        val gallery = i.apps.firstOrNull { it.role == AppRole.GALLERY && it.enabled } ?: return null
+        if (found.any { it.id == "DECODER_CRASH" || it.id == "STORAGE_FAILING" || it.id == "NOMEDIA_HIDDEN" && it.score >= 60 }) return null
+        var score = 40
+        var signals = 0
+        val evidence = ArrayList<String>()
+        evidence += "הקבצים והאינדקס של אנדרואיד לא מראים סיבה ישירה לתצוגה חלקית. מה שנשאר הוא מסד הנתונים הפרטי של ${gallery.label}, שאפליקציה אחרת לא יכולה לקרוא. זו מסקנה מהשלילה ולא ממצא."
+        if (gallery.pkg == "com.miui.gallery") { score += 10; evidence += "גלריית Xiaomi שומרת מועדפים, אלבומים ומצב סנכרון במסד נתונים משלה, וכשהוא נפגם היא מציגה חלקית ונטענת מחדש." }
+        if (i.volumes.any { it.critical }) { score += 10; signals++; evidence += "האחסון כמעט מלא: כתיבה למסד נתונים שנכשלת באמצע היא סיבה מוכרת לפגיעה בו." }
+        if (i.heavyFolders.any { it.count >= 15000 }) { score += 10; signals++; evidence += "יש תיקייה עם יותר מ-15,000 קבצים, וגלריה שטוענת אותה בבת אחת עלולה להיתקע ולהיבנות מחדש." }
+        if (i.bursts.isNotEmpty()) { score += 10; signals++; evidence += "נמצא אירוע שבו האינדקס נבנה מחדש, ומסד הנתונים של הגלריה עשוי היה לעבור איתו אירוע דומה." }
+        // without a single supporting sign this is just the baseline cause, not a finding of its own
+        if (signals == 0) return null
+        evidence += "אם התקלה המשיכה גם אחרי מעבר לטלפון חדש, זה מחזק את ההסבר: הקבצים והגלריה עברו איתכם, והטלפון החדש לא יכול להיות הסיבה."
+        return Hypothesis(
+            "GALLERY_PRIVATE_DB", "מסד הנתונים הפרטי של אפליקציית הגלריה פגום או נבנה מחדש", minOf(70, score), evidence,
+            listOf(
+                backup("איפוס הגלריה מאפס אלבומים ומועדפים שלא סונכרנו."),
+                abTest("זו הבדיקה היחידה שמבדילה בין מסד הנתונים של הגלריה לבין אינדקס המערכת."),
+                clearGalleryCache("זה הצעד הבטוח הראשון: הוא לא מוחק מועדפים."),
+                clearGalleryData("אם הבדיקה הראתה שהבעיה רק באפליקציית הגלריה, איפוס הנתונים בונה את מסד הנתונים שלה מחדש."),
+                keepHeadroom("מסד נתונים נפגע בעיקר כשהכתיבה אליו נקטעת."),
+            ),
+        )
+    }
+
     // ---------------- actions & limits ----------------
 
     private fun mergeActions(ranked: List<Hypothesis>, light: Light): List<ActionStep> {
@@ -771,6 +908,7 @@ object Analyzer {
         if (!i.scanComplete) add("הסריקה הופסקה לפני שהסתיימה, לכן חלק מהקבצים לא נבדקו והתוצאות חלקיות.")
         if (!i.deepScan) add("בוצעה סריקה מהירה בלי בדיקת פענוח, ולכן לא ניתן היה לזהות קבצים שקורסים את המפענח.")
         if (i.dirsInaccessible > 0) add("${He.folders(i.dirsInaccessible)} לא היו נגישות לאפליקציה, ולכן חיפוש הקבצים שחסרים באינדקס לא כיסה אותן.")
-        add("הבדיקה מחפשת קבצים שחסרים באינדקס רק בתיקיות המדיה הרגילות (DCIM, Pictures, Movies, Download, WhatsApp, Telegram) ובתיקייה שנבחרה, ולא בכל האחסון.")
+        add("הבדיקה מחפשת קבצים שחסרים באינדקס רק בתיקיות המדיה הרגילות (DCIM, Pictures, Movies, Download, WhatsApp, Telegram, MIUI) ובתיקייה שנבחרה, ולא בכל האחסון.")
+        add("מועדפים ואלבומים של גלריית Xiaomi ושל Google Photos נשמרים במסד נתונים פרטי של האפליקציה. האפליקציה לא יכולה לקרוא אותו, לשחזר ממנו או לדעת מה הוא מכיל. מה שהיא רואה הוא אינדקס המדיה של אנדרואיד והקבצים עצמם.")
     }
 }

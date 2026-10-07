@@ -98,6 +98,14 @@ data class ReportInput(
     val churnOwners: List<OwnerChurn> = emptyList(),
     val nameIssues: IssueSummary = IssueSummary(),
     val dateIssues: IssueSummary = IssueSummary(),
+    /** Moments when a large share of all files entered the media index at once. */
+    val bursts: List<IndexBurst> = emptyList(),
+    /** Favorites in Android's media index (API 30+), or null when unavailable. */
+    val favorites: Int? = null,
+    val previous: ScanSnapshot? = null,
+    val nomediaDirs: List<NomediaDir> = emptyList(),
+    val hiddenDirs: List<HiddenDir> = emptyList(),
+    val thumbEntries: Int? = null,
     val crashLog: CrashLogInfo = CrashLogInfo(),
     val ownExits: OwnExitInfo = OwnExitInfo(),
     /** Checks that failed on an implausibly large share of files and were therefore NOT counted as corrupt files. */

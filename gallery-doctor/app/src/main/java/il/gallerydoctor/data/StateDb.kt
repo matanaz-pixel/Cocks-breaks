@@ -452,6 +452,29 @@ class StateDb(context: Context) : SQLiteOpenHelper(context.applicationContext, "
         return out
     }
 
+    /** (path, size, note) of the first [n] extras of a kind. */
+    fun extraRows(kind: String, n: Int): List<Triple<String, Long, String?>> {
+        val out = ArrayList<Triple<String, Long, String?>>()
+        readableDatabase.rawQuery("SELECT path, size, note FROM extra WHERE kind=? ORDER BY size DESC LIMIT $n", arrayOf(kind)).use {
+            while (it.moveToNext()) out += Triple(it.getString(0), it.getLong(1), if (it.isNull(2)) null else it.getString(2))
+        }
+        return out
+    }
+
+    /**
+     * Files per clock hour of DATE_ADDED (the moment the media index learned of the file), only hours with at least
+     * [minCount] files. The threshold is inlined because bound arguments are TEXT (see [folderStats]).
+     */
+    fun hourBuckets(minCount: Int): List<il.gallerydoctor.core.HourBucket> {
+        val out = ArrayList<il.gallerydoctor.core.HourBucket>()
+        readableDatabase.rawQuery(
+            "SELECT added/3600, COUNT(*), SUM(CASE WHEN modified>0 AND added-modified>86400 THEN 1 ELSE 0 END) " +
+                "FROM files WHERE source=0 AND status!=6 AND added>0 GROUP BY added/3600 HAVING COUNT(*)>=$minCount ORDER BY 1",
+            null,
+        ).use { while (it.moveToNext()) out += il.gallerydoctor.core.HourBucket(it.getLong(0), it.getInt(1), it.getInt(2)) }
+        return out
+    }
+
     fun clearExtras(kind: String) {
         writableDatabase.execSQL("DELETE FROM extra WHERE kind=?", arrayOf<Any>(kind))
     }

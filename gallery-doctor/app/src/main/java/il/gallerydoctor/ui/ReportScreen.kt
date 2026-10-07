@@ -37,6 +37,8 @@ import androidx.compose.ui.unit.dp
 import il.gallerydoctor.R
 import il.gallerydoctor.ScanController
 import il.gallerydoctor.core.Confidence
+import il.gallerydoctor.core.Continuity
+import il.gallerydoctor.core.RecoveryGuide
 import il.gallerydoctor.core.EnvLines
 import il.gallerydoctor.core.He
 import il.gallerydoctor.core.Hypothesis
@@ -72,6 +74,10 @@ fun ReportScreen(padding: PaddingValues, data: ReportData) {
     val deviceLines = remember(data) { EnvLines.deviceLines(i) }
     val crashLines = remember(data) { EnvLines.crashLogLines(i) }
     val healthyLines = remember(data) { EnvLines.healthyLines(i) }
+    val continuityLines = remember(data) { Continuity.lines(i) }
+    val guide = remember(data) { RecoveryGuide.steps(i) }
+    val tGuide = stringResource(R.string.sec_recovery)
+    val tContinuity = stringResource(R.string.sec_continuity)
     val tHealthy = stringResource(R.string.sec_healthy)
     val tApps = stringResource(R.string.sec_apps)
     val tOtherApps = stringResource(R.string.sec_other_apps)
@@ -125,6 +131,17 @@ fun ReportScreen(padding: PaddingValues, data: ReportData) {
             }
         }
 
+        // ---- recovery and cleaning guide ----
+        item(key = "h-guide") { SectionTitle(tGuide) }
+        items(guide.size, key = { "guide-$it" }) { idx ->
+            Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("${idx + 1}. ${guide[idx].title}", style = MaterialTheme.typography.titleMedium)
+                    Text(guide[idx].body, style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+        }
+
         // ---- storage + apps ----
         item(key = "h-storage") { SectionTitle(stringResource(R.string.sec_storage)) }
         items(i.volumes.size, key = { "vol-$it" }) { idx ->
@@ -150,6 +167,7 @@ fun ReportScreen(padding: PaddingValues, data: ReportData) {
         bulletSection("other-apps", tOtherApps, suspectLines)
         bulletSection("device", tDevice, deviceLines)
         bulletSection("crashlog", tCrashLog, crashLines)
+        bulletSection("continuity", tContinuity, continuityLines)
 
         // ---- 4. tables ----
         item(key = "h-tables") { SectionTitle(stringResource(R.string.sec_tables)) }

@@ -57,6 +57,13 @@ object ReportDocument {
         }
         out += Block.Gap
 
+        out += Block.Heading("מדריך: שחזור וניקוי בסדר הנכון")
+        RecoveryGuide.steps(i).forEachIndexed { idx, g ->
+            out += Block.Para("${idx + 1}. ${g.title}")
+            out += Block.Bullet(g.body)
+        }
+        out += Block.Gap
+
         out += Block.Heading("אחסון")
         i.volumes.forEach {
             out += Block.Bullet("${it.label}${if (it.removable) " (כרטיס נשלף)" else ""}: ${it.usedPercent}% תפוס, פנוי ${He.bytes(it.freeBytes)} מתוך ${He.bytes(it.totalBytes)}${if (it.critical) " – קריטי" else ""}")
@@ -112,6 +119,10 @@ object ReportDocument {
         out += Block.Bullet("רשומות תקועות בכתיבה מעל 24 שעות: ${He.num(i.pendingStuckCount)}")
         out += Block.Bullet("קבצים זמניים ישנים: ${He.num(i.leftoverTempCount)}")
         if (i.indexChanged != null) out += Block.Bullet("שינויים תוך 60 שניות: ${He.num(i.indexChanged)} השתנו, ${He.num(i.indexVanished ?: 0)} נעלמו, ${He.num(i.indexAppeared ?: 0)} נוספו")
+        out += Block.Gap
+
+        out += Block.Heading("שינויים באינדקס ובין סריקות")
+        Continuity.lines(i).forEach { out += Block.Bullet(it) }
         out += Block.Gap
 
         out += Block.Heading("מגבלות הבדיקה")

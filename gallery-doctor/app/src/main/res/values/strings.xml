@@ -52,6 +52,8 @@
     <string name="sec_other_apps">אפליקציות אחרות שיכולות להשפיע</string>
     <string name="sec_device">המכשיר וההגדרות</string>
     <string name="sec_crashlog">יומן הקריסות של המערכת</string>
+    <string name="sec_recovery">מדריך: שחזור וניקוי בסדר הנכון</string>
+    <string name="sec_continuity">שינויים באינדקס ובין סריקות</string>
     <string name="sec_tables">רשימות לבדיקה ידנית</string>
     <string name="sec_export">שיתוף הדוח</string>
     <string name="sec_limits">מגבלות הבדיקה</string>
