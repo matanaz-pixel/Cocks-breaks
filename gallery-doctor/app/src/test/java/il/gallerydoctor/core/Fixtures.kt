@@ -1,24 +1,63 @@
 package il.gallerydoctor.core
 
-import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import java.util.zip.CRC32
-import javax.imageio.ImageIO
 
 /** Generates valid and deliberately corrupted media files for the parser tests. */
 object Fixtures {
-    fun jpeg(w: Int = 640, h: Int = 480): ByteArray {
-        val img = BufferedImage(w, h, BufferedImage.TYPE_INT_RGB)
+    /**
+     * A structurally valid baseline JPEG built by hand (JFIF, DQT, SOF0, DHT, SOS, entropy data, EOI).
+     * No java.awt / ImageIO: Android unit tests compile against android.jar, which has neither.
+     * The entropy bytes are pseudo-random and never contain 0xFF, so the marker chain stays valid.
+     */
+    fun jpeg(w: Int = 640, h: Int = 480, entropyBytes: Int = 120_000): ByteArray {
+        val out = ByteArrayOutputStream()
+        fun u8(v: Int) = out.write(v)
+        fun u16(v: Int) { out.write(v shr 8); out.write(v and 0xFF) }
+        u16(0xFFD8)
+        u16(0xFFE0); u16(16); out.write("JFIF".toByteArray()); u8(0); u16(0x0101); u8(0); u16(1); u16(1); u8(0); u8(0)
+        u16(0xFFDB); u16(67); u8(0); repeat(64) { u8(16) }
+        u16(0xFFC0); u16(17); u8(8); u16(h); u16(w); u8(3)
+        u8(1); u8(0x22); u8(0); u8(2); u8(0x11); u8(1); u8(3); u8(0x11); u8(1)
+        u16(0xFFC4); u16(31); u8(0x00)
+        val counts = intArrayOf(0, 1, 5, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0)
+        counts.forEach { u8(it) }
+        repeat(12) { u8(it) }
+        u16(0xFFDA); u16(12); u8(3); u8(1); u8(0); u8(2); u8(0x11); u8(3); u8(0x11); u8(0); u8(63); u8(0)
         val rnd = java.util.Random(42)
-        for (y in 0 until h) for (x in 0 until w) img.setRGB(x, y, rnd.nextInt(0xFFFFFF))
-        return ByteArrayOutputStream().also { ImageIO.write(img, "jpg", it) }.toByteArray()
+        repeat(entropyBytes) { u8(1 + rnd.nextInt(254)) } // 1..254, never 0x00 or 0xFF
+        u16(0xFFD9)
+        return out.toByteArray()
     }
 
+    /** A real, valid PNG built with java.util.zip only. */
     fun png(w: Int = 64, h: Int = 64): ByteArray {
-        val img = BufferedImage(w, h, BufferedImage.TYPE_INT_RGB)
-        for (y in 0 until h) for (x in 0 until w) img.setRGB(x, y, (x * 4) shl 16 or (y * 4))
-        return ByteArrayOutputStream().also { ImageIO.write(img, "png", it) }.toByteArray()
+        val raw = ByteArrayOutputStream()
+        for (y in 0 until h) {
+            raw.write(0) // filter: none
+            for (x in 0 until w) { raw.write((x * 4) and 0xFF); raw.write((y * 4) and 0xFF); raw.write(((x + y) * 2) and 0xFF) }
+        }
+        val deflater = java.util.zip.Deflater()
+        deflater.setInput(raw.toByteArray())
+        deflater.finish()
+        val z = ByteArrayOutputStream()
+        val buf = ByteArray(8192)
+        while (!deflater.finished()) z.write(buf, 0, deflater.deflate(buf))
+        deflater.end()
+
+        val out = ByteArrayOutputStream()
+        out.write(byteArrayOf(0x89.toByte(), 'P'.code.toByte(), 'N'.code.toByte(), 'G'.code.toByte(), 0x0D, 0x0A, 0x1A, 0x0A))
+        fun chunk(type: String, data: ByteArray) {
+            out.write(ByteBuffer.allocate(4).putInt(data.size).array())
+            out.write(type.toByteArray())
+            out.write(data)
+            out.write(ByteBuffer.allocate(4).putInt(crc(type, data).toInt()).array())
+        }
+        chunk("IHDR", ByteBuffer.allocate(13).putInt(w).putInt(h).put(8).put(2).put(0).put(0).put(0).array())
+        chunk("IDAT", z.toByteArray())
+        chunk("IEND", ByteArray(0))
+        return out.toByteArray()
     }
 
     /** Flips one byte inside the first IDAT chunk, leaving its stored CRC untouched. */
