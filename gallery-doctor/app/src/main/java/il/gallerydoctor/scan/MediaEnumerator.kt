@@ -12,6 +12,9 @@ import android.provider.MediaStore
 import il.gallerydoctor.core.Magic
 import il.gallerydoctor.data.FileRow
 
+/** One row of an index snapshot: a signature that changes when the row changes, and who owns it. */
+data class SnapRow(val sig: String, val owner: String?)
+
 /** Batched, read-only MediaStore enumeration of Images and Video across every volume (including SD cards). */
 object MediaEnumerator {
     private const val BATCH = 1000
@@ -39,6 +42,7 @@ object MediaEnumerator {
         if (Build.VERSION.SDK_INT >= 29) {
             cols += MediaStore.MediaColumns.RELATIVE_PATH
             cols += MediaStore.MediaColumns.IS_PENDING
+            cols += MediaStore.MediaColumns.OWNER_PACKAGE_NAME
         }
         if (Build.VERSION.SDK_INT >= 30) cols += MediaStore.MediaColumns.IS_TRASHED
         return cols.toTypedArray()
@@ -109,6 +113,7 @@ object MediaEnumerator {
             dateAdded = lng(MediaStore.MediaColumns.DATE_ADDED), dateModified = lng(MediaStore.MediaColumns.DATE_MODIFIED),
             pending = int(MediaStore.MediaColumns.IS_PENDING) == 1,
             trashed = int(MediaStore.MediaColumns.IS_TRASHED) == 1,
+            owner = str(MediaStore.MediaColumns.OWNER_PACKAGE_NAME),
         )
     }
 
@@ -122,9 +127,9 @@ object MediaEnumerator {
      * Index-stability probe: current (volume:id -> size:modified) of every row, read with the same
      * query path as [enumerate]. Used to diff against the first enumeration 60 seconds later.
      */
-    fun snapshot(ctx: Context): HashMap<String, String> {
-        val map = HashMap<String, String>()
-        enumerate(ctx, { rows -> for (r in rows) map[r.volume + ":" + r.mediaId] = r.size.toString() + ":" + r.dateModified })
+    fun snapshot(ctx: Context): HashMap<String, SnapRow> {
+        val map = HashMap<String, SnapRow>()
+        enumerate(ctx, { rows -> for (r in rows) map[r.volume + ":" + r.mediaId] = SnapRow(r.size.toString() + ":" + r.dateModified, r.owner) })
         return map
     }
 

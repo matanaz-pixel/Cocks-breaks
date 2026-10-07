@@ -57,10 +57,26 @@ object ReportDocument {
         out += Block.Bullet("תמונות: ${He.bytes(i.imageBytes)}, סרטונים: ${He.bytes(i.videoBytes)}")
         if (i.topFolders.isNotEmpty()) out += Block.Para("התיקיות הגדולות ביותר:")
         i.topFolders.take(5).forEach { out += Block.Bullet("${it.path}: ${He.bytes(it.bytes)} (${He.files(it.count)})") }
+        out += Block.Gap
+
         if (i.apps.isNotEmpty()) {
-            out += Block.Para("אפליקציות גלריה ואחסון מדיה:")
-            i.apps.forEach { out += Block.Bullet("${it.label} – ${it.pkg}${it.version?.let { v -> " – גרסה $v" } ?: ""}") }
+            out += Block.Heading("אפליקציות גלריה ואחסון מדיה")
+            EnvLines.appLines(i.apps).forEach { out += Block.Bullet(it) }
+            out += Block.Gap
         }
+        if (i.suspectApps.isNotEmpty()) {
+            out += Block.Heading("אפליקציות אחרות שיכולות להשפיע")
+            EnvLines.suspectLines(i).forEach { out += Block.Bullet(it) }
+            out += Block.Gap
+        }
+        val device = EnvLines.deviceLines(i)
+        if (device.isNotEmpty()) {
+            out += Block.Heading("המכשיר וההגדרות")
+            device.forEach { out += Block.Bullet(it) }
+            out += Block.Gap
+        }
+        out += Block.Heading("יומן הקריסות של המערכת")
+        EnvLines.crashLogLines(i).forEach { out += Block.Bullet(it) }
         out += Block.Gap
 
         table(out, "קבצים שקרסו או נתקעו", i.crashers, i.crasherCount)

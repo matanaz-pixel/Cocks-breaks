@@ -46,6 +46,16 @@ object StorageInfo {
         }
     }
 
+    /** State of every volume the system knows, including ones that are not healthy. A removed card is not a problem. */
+    fun volumeStates(ctx: Context): List<il.gallerydoctor.core.VolumeState> {
+        val sm = ctx.getSystemService(StorageManager::class.java)
+        return sm.storageVolumes.filter { it.state != Environment.MEDIA_REMOVED && it.state != "unknown" }.map { v ->
+            il.gallerydoctor.core.VolumeState(
+                if (v.isPrimary) "אחסון פנימי" else (v.getDescription(ctx) ?: "כרטיס SD"), v.state, v.isRemovable,
+            )
+        }
+    }
+
     /** MediaStore volume name -> label, so per-file volume names can be shown to the user. */
     fun labels(ctx: Context): Map<String, String> = volumes(ctx).associate { it.mediaStoreName to it.label }
 }
@@ -70,8 +80,20 @@ object GalleryApps {
             if (pkg in found) return
             try {
                 val info = pm.getPackageInfo(pkg, 0)
-                val label = pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
-                found[pkg] = AppInfo(pkg, label, info.versionName, role)
+                val ai = pm.getApplicationInfo(pkg, 0)
+                val installer = try {
+                    if (Build.VERSION.SDK_INT >= 30) pm.getInstallSourceInfo(pkg).installingPackageName
+                    else @Suppress("DEPRECATION") pm.getInstallerPackageName(pkg)
+                } catch (_: Exception) {
+                    null
+                }
+                found[pkg] = AppInfo(
+                    pkg, pm.getApplicationLabel(ai).toString(), info.versionName, role,
+                    installedAtMillis = info.firstInstallTime, updatedAtMillis = info.lastUpdateTime,
+                    installer = installer, targetSdk = ai.targetSdkVersion, enabled = ai.enabled,
+                    stopped = (ai.flags and android.content.pm.ApplicationInfo.FLAG_STOPPED) != 0,
+                    system = (ai.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0,
+                )
             } catch (_: PackageManager.NameNotFoundException) {
             }
         }

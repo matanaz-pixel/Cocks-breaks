@@ -1,5 +1,7 @@
 package il.gallerydoctor.core
 
+import java.util.Locale
+
 /**
  * Turns measurements into a ranked list of likely causes. Every hypothesis carries its own evidence
  * and actions; the score (0-100) is an evidence-strength estimate, not a probability.
@@ -40,6 +42,8 @@ object Analyzer {
         val found = listOfNotNull(
             decoderCrash(i), storageFailing(i), storageFull(i), unstableIndex(i), ghostRows(i),
             incompleteFiles(i), orphans(i), brokenFiles(i), heavyFolders(i), stressFiles(i),
+            galleryCrash(i), devSettings(i), volumeProblems(i), providerDisabled(i), galleryAppState(i),
+            suspectApps(i), fileNames(i), lowResources(i), systemOutdated(i),
         )
         val strongest = found.maxOfOrNull { it.score } ?: 0
         val baseline = baseline(i, if (strongest >= 50) 30 else 45)
@@ -71,6 +75,11 @@ object Analyzer {
             add("${He.files(i.crasherCount)} גרמו למפענח התמונות או הסרטונים לקרוס או להיתקע בזמן הבדיקה: ${He.names(names, i.crasherCount)}.")
             if (crashes > 0) add("בבדיקה, התהליך שמפענח את הקובץ נסגר בפתאומיות (קריסה). מפענח אנדרואיד שקורס כך הוא בדיוק מה שמפיל גלריה כשהיא מנסה להציג את הקובץ.")
             if (hangs > 0) add("ב-${He.files(hangs)} הפענוח לא הסתיים גם אחרי ניסיון שני. ייתכן שהאחסון איטי מאוד ולא שהקובץ פגום, לכן כדאי לנסות לפתוח אותם ידנית בכפתור \"פתח\".")
+            if (i.ownExits.nativeCrashes > 0) {
+                val sig = i.ownExits.signals.entries.sortedByDescending { it.value }.joinToString(", ") { "${it.key} (${it.value})" }
+                add("אנדרואיד רשם ${He.num(i.ownExits.nativeCrashes)} קריסות נייטיב בתהליכי הבדיקה${if (sig.isNotEmpty()) ": $sig" else ""}. זו תקלה בקוד המפענח של המערכת עצמה, שמופעלת על ידי הקובץ.")
+            }
+            if (i.ownExits.lowMemoryKills > 0) add("${He.num(i.ownExits.lowMemoryKills)} מהאתחולים נגרמו מחוסר זיכרון בטלפון ולא מקובץ פגום, לכן ייתכן שחלק מהקבצים בטבלה נבדקו בזמן לחץ זיכרון.")
             add("הקבצים האלה הם החשודים העיקריים: גלריה שמנסה להציג אותם, אפילו כתמונה ממוזערת, נופלת, ובפעם הבאה מתחילה לטעון מחדש.")
         }
         return Hypothesis(
@@ -175,9 +184,23 @@ object Analyzer {
             if (total >= 5) add("אינדקס יציב לא משתנה כשאף אחד לא מצלם או מוריד קבצים. שינוי תמידי הוא בדיוק הסימפטום של \"הגלריה נטענת מחדש\": משהו מאנדקס מחדש את הקבצים כל הזמן.")
             else add("מספר קטן כזה יכול להיות תקין אם צילמתם או הורדתם משהו בזמן הסריקה.")
         }
+        val owners = i.churnOwners.sortedByDescending { it.count }
+        val ownerTotal = owners.sumOf { it.count }
+        val top = owners.firstOrNull()
+        val topShare = if (top != null && ownerTotal > 0) top.count * 100 / ownerTotal else 0
+        val evidence2 = if (owners.isEmpty() || total < 5) evidence else evidence + "הרשומות ששונו נכתבו על ידי: " +
+            owners.take(4).joinToString(", ") { "${it.label} (${He.num(it.count)})" } + "."
+        val score2 = if (top != null && total >= 5 && topShare >= 60) minOf(92, score + 10) else score
+        val writerStep = if (top != null && total >= 5 && topShare >= 60) listOf(
+            ActionStep(
+                "STOP_TOP_WRITER",
+                "עצרו זמנית את \"${top.label}\": הגדרות ← אפליקציות ← ${top.label} ← עצירה בכוח, ובדקו אם הגלריה מפסיקה להיטען מחדש. אם כן, זו האפליקציה שגורמת לבעיה: בדקו את ההגדרות שלה (גיבוי, סנכרון, ניקוי) או הסירו אותה.",
+                "$topShare% מהשינויים באינדקס בדקה הזאת נכתבו על ידי האפליקציה הזאת.",
+            ),
+        ) else emptyList()
         return Hypothesis(
-            "UNSTABLE_INDEX", "אינדקס המדיה לא יציב ומתעדכן כל הזמן", score, evidence,
-            listOf(
+            "UNSTABLE_INDEX", "אינדקס המדיה לא יציב ומתעדכן כל הזמן", score2, evidence2,
+            writerStep + listOf(
                 clearMediaStorage("אינדקס שמשתנה כל הזמן הוא סימן לאינדקס פגום או ללולאת סריקה, וניקוי הנתונים בונה אותו מחדש."),
                 ActionStep(
                     "STOP_BACKGROUND_WRITERS",
@@ -329,6 +352,8 @@ object Analyzer {
             if (gallery.isNotEmpty()) add("אפליקציות גלריה שזוהו: " + gallery.joinToString(", ") { "${it.label} (${it.pkg}${it.version?.let { v -> ", גרסה $v" } ?: ""})" } + ".")
             if (gallery.size > 1) add("יש יותר מאפליקציית גלריה אחת. כשכמה אפליקציות מאנדקסות ומציגות את אותם קבצים, קורות התנגשויות.")
             if (provider != null) add("אחסון מדיה: ${provider.label}${provider.version?.let { " (גרסה $it)" } ?: ""}.")
+            if (!i.crashLog.permissionGranted) add("כדי לראות את הקריסה האמיתית של הגלריה, חברו את הטלפון למחשב והריצו פעם אחת: adb shell pm grant il.gallerydoctor android.permission.READ_LOGS, ואז הריצו סריקה מיד אחרי שהגלריה קורסת.")
+            else if (i.crashLog.readOk && i.crashLog.related.isEmpty()) add("יומן הקריסות של המערכת נקרא ולא נמצאה בו קריסה של הגלריה. היומן שומר רק את הקריסות האחרונות, ולכן כדאי להריץ סריקה מיד אחרי שהגלריה קורסת.")
             if (score >= 45) add("מכיוון שהבדיקות לא מצאו בעיה חזקה אחרת, זה המקום הטוב ביותר להתחיל בו.")
         }
         return Hypothesis(
@@ -336,10 +361,304 @@ object Analyzer {
             listOf(
                 clearGalleryCache("מטמון תמונות ממוזערות פגום גורם לגלריה להיתקע ולבנות אותן שוב ושוב."),
                 clearMediaStorage("אינדקס המדיה של אנדרואיד נשמר במקום נפרד מהגלריה, ופגם בו גורם לקבצים להופיע ולהיעלם."),
+                updateGallery("קריסות רבות של גלריות מתוקנות בעדכוני גרסה של האפליקציה או של רכיבי המערכת."),
+            ),
+        )
+    }
+
+    // ---------------- environment: crash log, apps, phone ----------------
+
+    private fun label(i: ReportInput, pkg: String) = i.apps.firstOrNull { it.pkg == pkg }?.label ?: pkg
+
+    private fun updateGallery(why: String) = ActionStep(
+        K_UPDATE,
+        "עדכנו את אפליקציית הגלריה ואת \"Google Play services\" מחנות Play, ואז בדקו אם יש עדכון מערכת בהגדרות.",
+        why,
+    )
+
+    private fun clearGalleryData(why: String) = ActionStep(
+        "CLEAR_GALLERY_DATA",
+        "אם הקריסה נמשכת גם אחרי ניקוי המטמון, נקו גם את הנתונים של אפליקציית הגלריה: הגדרות ← אפליקציות ← הגלריה ← אחסון ← \"נקה נתונים\". הגלריה תתאפס (התמונות לא נמחקות, אבל הגדרות ואלבומים שנשמרו רק בתוך האפליקציה נמחקים), ולכן עשו זאת רק אחרי גיבוי.",
+        why,
+    )
+
+    private fun freeRam(why: String) = ActionStep(
+        "FREE_RAM",
+        "סגרו את האפליקציות שרצות ברקע (מסך האפליקציות האחרונות ← סגור הכול) והפעילו מחדש את הטלפון. אחרי ההפעלה, פתחו את הגלריה לפני שאר האפליקציות.",
+        why,
+    )
+
+    private fun galleryCrash(i: ReportInput): Hypothesis? {
+        val entries = i.crashLog.related
+        if (entries.isEmpty()) return null
+        val insights = entries.map { CrashInsights.classify(it) }.distinct()
+        val names = entries.map { label(i, it.pkg) }.distinct()
+        val last = entries.last()
+        val evidence = buildList {
+            add("ביומן הקריסות של אנדרואיד נמצאו ${He.num(entries.size)} קריסות של ${names.joinToString(", ")}. האחרונה: ${last.headline} (${last.time}).")
+            if (last.frames.isNotEmpty()) add("היא קרסה ב: ${last.frames.take(3).joinToString(" ← ")}.")
+            last.rootCause?.let { add("הסיבה העמוקה לפי היומן: $it.") }
+            for (ins in insights) add(
+                when (ins) {
+                    CrashInsight.OUT_OF_MEMORY -> "הגלריה נגמר לה הזיכרון (OutOfMemoryError). זה קורה כשהיא טוענת תמונות או סרטונים גדולים מדי, או כשהטלפון עמוס."
+                    CrashInsight.DATABASE -> "הקריסה קשורה לבסיס נתונים (SQLite). בסיס נתונים פגום של הגלריה או של אחסון המדיה גורם לקריסה בכל פתיחה."
+                    CrashInsight.MISSING_FILE -> "הגלריה ניסתה לפתוח קובץ שלא קיים. זה קורה כשיש באינדקס רשומות רפאים."
+                    CrashInsight.PERMISSION -> "הגלריה נתקלה בבעיית הרשאות לקבצים."
+                    CrashInsight.NATIVE_DECODER -> "הקריסה התרחשה בקוד נייטיב של מפענח המערכת, בדרך כלל בגלל קובץ תמונה או סרטון מסוים."
+                    CrashInsight.OTHER -> "הקריסה לא מתאימה לאחת מהסיבות הנפוצות. הפרטים המלאים בסעיף יומן הקריסות."
+                },
+            )
+            add("זה הנתון הישיר ביותר בדוח: זו הקריסה האמיתית של הגלריה ולא הערכה.")
+        }
+        val actions = ArrayList<ActionStep>()
+        for (ins in insights) when (ins) {
+            CrashInsight.OUT_OF_MEMORY -> {
+                actions += freeRam("היומן מראה שהגלריה קרסה מחוסר זיכרון.")
+                actions += ActionStep("CHECK_HEAVY", "פתחו את הקבצים מהטבלה \"קבצים חריגים\" ובדקו אם הגלריה נתקעת בהם. את הכבדים ביותר כדאי להעביר למחשב.", "קבצים כבדים הם הסיבה הנפוצה לחוסר זיכרון בגלריה.")
+            }
+            CrashInsight.DATABASE -> {
+                actions += clearMediaStorage("היומן מצביע על בסיס נתונים פגום, וניקוי הנתונים יוצר אחד חדש.")
+                actions += clearGalleryData("אם בסיס הנתונים הפגום הוא של הגלריה עצמה, רק ניקוי הנתונים שלה יתקן אותו.")
+            }
+            CrashInsight.MISSING_FILE -> actions += clearMediaStorage("הגלריה קרסה על קובץ שלא קיים, וניקוי האינדקס מסיר את הרשומות שלהם.")
+            CrashInsight.PERMISSION -> actions += ActionStep(
+                "GRANT_MEDIA_PERMISSION",
+                "ודאו שהגלריה מורשית לראות את כל התמונות והסרטונים: הגדרות ← אפליקציות ← הגלריה ← הרשאות ← תמונות וסרטונים ← \"אפשר גישה לכולם\".",
+                "היומן מראה שהקריסה קשורה בהרשאות.",
+            )
+            CrashInsight.NATIVE_DECODER -> actions += ActionStep(
+                "CHECK_CRASHERS",
+                "פתחו את הטבלה \"קבצים שקרסו או נתקעו\" ובדקו כל קובץ בכפתור \"פתח\". קובץ שמקריס את הגלריה: גבו אותו ומחקו אותו מהטלפון.",
+                "הקריסה בגלריה היא קריסת מפענח, וקובץ מסוים הוא הגורם הסביר.",
+            )
+            CrashInsight.OTHER -> actions += updateGallery("קריסה שאינה מזוהה נפתרת לעיתים קרובות בעדכון של הגלריה.")
+        }
+        return Hypothesis("GALLERY_CRASH_LOG", "יומן הקריסות של המערכת מראה קריסה אמיתית של הגלריה", 96, evidence, actions)
+    }
+
+    private fun devSettings(i: ReportInput): Hypothesis? {
+        val d = i.device ?: return null
+        if (!d.alwaysFinishActivities) return null
+        return Hypothesis(
+            "DONT_KEEP_ACTIVITIES", "ההגדרה \"אל תשמור פעילויות\" פעילה בטלפון", 88,
+            listOf(
+                "ההגדרה \"אל תשמור פעילויות\" (Don't keep activities) מופעלת באפשרויות המפתח של הטלפון.",
+                "כשהיא פעילה, כל אפליקציה, כולל הגלריה, נסגרת ברגע שיוצאים ממנה ונטענת מחדש מההתחלה בכל חזרה. זה נראה בדיוק כמו \"הגלריה נטענת מחדש כל הזמן\".",
+            ),
+            listOf(
                 ActionStep(
-                    K_UPDATE,
-                    "עדכנו את אפליקציית הגלריה ואת \"Google Play services\" מחנות Play, ואז בדקו אם יש עדכון מערכת בהגדרות.",
-                    "קריסות רבות של גלריות מתוקנות בעדכוני גרסה של האפליקציה או של רכיבי המערכת.",
+                    "DISABLE_DONT_KEEP",
+                    "כבו את ההגדרה: הגדרות ← מערכת (או \"אודות הטלפון\") ← אפשרויות מפתח ← \"אל תשמור פעילויות\" ← כבוי.",
+                    "ההגדרה פעילה אצלכם עכשיו, והיא גורמת לכל אפליקציה להיטען מחדש בכל פעם שחוזרים אליה.",
+                ),
+            ),
+        )
+    }
+
+    private fun volumeProblems(i: ReportInput): Hypothesis? {
+        val bad = i.volumeStates.filter { EnvLines.isVolumeProblem(it) }
+        if (bad.isEmpty()) return null
+        val score = when {
+            bad.any { it.state in setOf("unmountable", "bad_removal", "nofs") } -> 82
+            bad.any { it.state == "mounted_ro" } -> 62
+            else -> 55
+        }
+        val evidence = buildList {
+            for (v in bad) add("האחסון \"${v.label}\" נמצא במצב: ${EnvLines.volumeStateHe(v)}.")
+            add("כשכרטיס או אחסון לא יציבים, הקבצים שעליהם מופיעים ונעלמים מהגלריה, והיא מנסה לטעון אותם מחדש שוב ושוב.")
+        }
+        val actions = if (bad.any { it.removable }) listOf(
+            ActionStep(
+                "RESEAT_SD",
+                "כבו את הטלפון, הוציאו את כרטיס ה-SD, נקו בעדינות את המגעים והכניסו אותו מחדש. אם הבעיה נמשכת – העבירו את הקבצים למחשב ובדקו או החליפו את הכרטיס.",
+                "מצב הכרטיס אינו תקין, וזה סימן קלאסי לכרטיס שלא יושב טוב או שנפגע.",
+            ),
+        ) else listOf(
+            ActionStep(K_RESTART, "הפעילו מחדש את הטלפון ובדקו שוב. אם המצב נשאר, גבו הכול ופנו לשירות.", "אחסון פנימי שאינו במצב תקין הוא תקלה חמורה."),
+        )
+        return Hypothesis("VOLUME_STATE", "כרטיס זיכרון או אחסון במצב לא תקין", score, evidence, actions)
+    }
+
+    private fun providerDisabled(i: ReportInput): Hypothesis? {
+        val p = i.apps.firstOrNull { it.role == AppRole.MEDIA_PROVIDER && !it.enabled } ?: return null
+        return Hypothesis(
+            "MEDIA_PROVIDER_DISABLED", "\"אחסון מדיה\" מושבת", 93,
+            listOf("הרכיב \"${p.label}\" (${p.pkg}) מושבת. בלעדיו אין אינדקס מדיה, והגלריה לא יכולה לראות תמונות, או שהן מופיעות ונעלמות."),
+            listOf(
+                ActionStep(
+                    "ENABLE_MEDIA_PROVIDER",
+                    "הפעילו אותו: הגדרות ← אפליקציות ← הצג את כל האפליקציות ← ${p.label} ← הפעל.",
+                    "אחסון המדיה מושבת, ובלעדיו אנדרואיד לא מנהל את אינדקס התמונות והסרטונים.",
+                ),
+            ),
+        )
+    }
+
+    private fun galleryAppState(i: ReportInput): Hypothesis? {
+        val galleries = i.apps.filter { it.role == AppRole.GALLERY }
+        if (galleries.isEmpty()) return null
+        val now = if (i.generatedAtMillis > 0) i.generatedAtMillis else System.currentTimeMillis()
+        val evidence = ArrayList<String>()
+        val actions = ArrayList<ActionStep>()
+        var score = 0
+        fun hit(s: Int) { score = if (score == 0) s else minOf(80, maxOf(score, s) + 3) }
+
+        for (g in galleries) {
+            val days = if (g.updatedAtMillis > 0) (now - g.updatedAtMillis) / 86_400_000 else -1
+            if (!g.enabled) {
+                evidence += "אפליקציית הגלריה ${g.label} מושבתת."
+                actions += ActionStep("ENABLE_GALLERY_${g.pkg}", "הפעילו את ${g.label}: הגדרות ← אפליקציות ← ${g.label} ← הפעל.", "אפליקציית גלריה מושבתת לא יכולה להציג את הקבצים.")
+                hit(72)
+            }
+            if (days in 0..21) {
+                evidence += "${g.label} עודכנה לפני ${days} ימים. אם הבעיה התחילה בערך אז, העדכון עצמו חשוד."
+                actions += ActionStep(
+                    "ROLLBACK_GALLERY",
+                    "אם הבעיה התחילה אחרי העדכון, נסו להסיר את העדכונים של הגלריה (הגדרות ← אפליקציות ← ${g.label} ← שלוש הנקודות ← הסר עדכונים, באפליקציות מערכת), או חכו לגרסה חדשה.",
+                    "הגלריה עודכנה לאחרונה, ועדכון יכול להכניס תקלה.",
+                )
+                hit(48)
+            }
+            if (g.targetSdk in 1..29 && i.androidApi >= 30) {
+                evidence += "${g.label} נבנתה לאנדרואיד ישן (גרסת יעד ${g.targetSdk}), בעוד שבטלפון אנדרואיד ${i.androidApi}. אפליקציות כאלה מתקשות עם הגישה החדשה לקבצים."
+                actions += updateGallery("הגלריה בנויה לגרסת אנדרואיד ישנה, ועדכון מביא גרסה שמתאימה לאחסון החדש.")
+                hit(50)
+            }
+            if (!g.system && days > 730) {
+                evidence += "${g.label} לא עודכנה כבר יותר משנתיים (${days / 30} חודשים)."
+                actions += updateGallery("גלריה שלא עודכנה שנים מפספסת תיקוני קריסה.")
+                hit(40)
+            }
+            if (!g.system && (g.installer == null || g.installer.contains("packageinstaller"))) {
+                evidence += "${g.label} הותקנה מחוץ לחנות האפליקציות, ולכן אינה מתעדכנת אוטומטית."
+                hit(33)
+            }
+        }
+        val enabled = galleries.filter { it.enabled }
+        if (enabled.size > 1) {
+            val def = i.device?.defaultImageViewer
+            evidence += "מותקנות ${enabled.size} אפליקציות גלריה (${enabled.joinToString(", ") { it.label }}). " +
+                (if (def != null) "ברירת המחדל לפתיחת תמונות: $def." else "לא נבחרה ברירת מחדל, ואנדרואיד שואל בכל פעם.") +
+                " כשכמה אפליקציות מאנדקסות ומציגות את אותם קבצים, קורות התנגשויות."
+            actions += ActionStep(
+                "CHOOSE_DEFAULT_GALLERY",
+                "בחרו אפליקציית גלריה אחת לשימוש יומיומי: הגדרות ← אפליקציות ← אפליקציות ברירת מחדל, ובחרו אותה לתמונות. אם אחת מהן מיותרת, השביתו אותה.",
+                "יותר מגלריה אחת מותקנת, וזה מגדיל את הסיכוי להתנגשויות.",
+            )
+            hit(38)
+        }
+        if (score == 0) return null
+        return Hypothesis("GALLERY_APP_STATE", "בעיה במצב של אפליקציית הגלריה", score, evidence, actions)
+    }
+
+    private fun suspectApps(i: ReportInput): Hypothesis? {
+        if (i.suspectApps.isEmpty()) return null
+        val by = i.suspectApps.groupBy { it.category }
+        val hasCleaner = SuspectCategory.CLEANER in by
+        val unstable = (i.indexChanged ?: 0) + (i.indexVanished ?: 0) + (i.indexAppeared ?: 0) >= 5
+        var score = if (hasCleaner) 38 else 30
+        if (unstable || i.ghostCount >= 5) score += if (hasCleaner) 12 else 8
+        fun names(c: SuspectCategory) = by[c].orEmpty().take(4).joinToString(", ") { it.label }
+        val evidence = buildList {
+            by[SuspectCategory.CLEANER]?.let { add("אפליקציות ניקוי או שיפור ביצועים: ${names(SuspectCategory.CLEANER)}. אפליקציות כאלה מוחקות תמונות ממוזערות וקבצי מטמון, ולפעמים קבצי מדיה, בלי שהגלריה יודעת, וכך נוצרות רשומות רפאים.") }
+            by[SuspectCategory.BACKUP_SYNC]?.let { add("אפליקציות גיבוי וסנכרון: ${names(SuspectCategory.BACKUP_SYNC)}. הן כותבות ומוחקות קבצים ברקע ומשנות את אינדקס המדיה.") }
+            by[SuspectCategory.FILE_MANAGER]?.let { add("מנהלי קבצים: ${names(SuspectCategory.FILE_MANAGER)}. הם מאפשרים להזיז ולמחוק קבצי מדיה בלי לעדכן את האינדקס.") }
+            by[SuspectCategory.ALL_FILES_ACCESS]?.let { add("אפליקציות עם גישה לכל הקבצים: ${names(SuspectCategory.ALL_FILES_ACCESS)}. כל אחת מהן יכולה לשנות או למחוק קבצי מדיה בלי אישור נוסף.") }
+            if (unstable || i.ghostCount >= 5) add("יש גם סימנים לאינדקס לא יציב או לרשומות רפאים, וזה מתאים לפעילות של אפליקציות כאלה.")
+        }
+        val top = i.suspectApps.sortedBy { it.category.ordinal }.take(3).joinToString(", ") { it.label }
+        return Hypothesis(
+            "SUSPECT_APPS", "אפליקציות אחרות שיכולות להפריע לגלריה", score, evidence,
+            listOf(
+                ActionStep(
+                    "TEST_WITHOUT_APPS",
+                    "בדיקה פשוטה: עצרו זמנית את $top (הגדרות ← אפליקציות ← האפליקציה ← עצירה בכוח, ובמידת האפשר השביתו אותה), ובדקו אם הגלריה מפסיקה לקרוס או להיטען מחדש. אם כן, מצאתם את הגורם.",
+                    "אפליקציות כאלה יכולות לשנות קבצי מדיה ואת האינדקס בלי שהגלריה יודעת.",
+                ),
+            ),
+        )
+    }
+
+    private fun fileNames(i: ReportInput): Hypothesis? {
+        val n = i.nameIssues
+        val d = i.dateIssues
+        if (n.count == 0 && d.count == 0) return null
+        val severe = n.byKind.containsKey(NameIssue.TOO_LONG.name) || n.byKind.containsKey(NameIssue.BROKEN_ENCODING.name)
+        val score = if (severe) 52 else if (n.count + d.count >= 20) 42 else 32
+        val evidence = buildList {
+            if (n.count > 0) {
+                val kinds = n.byKind.entries.sortedByDescending { it.value }.joinToString("; ") { (k, v) ->
+                    "${runCatching { NameIssue.valueOf(k).he }.getOrDefault(k)} (${He.num(v)})"
+                }
+                add("${He.files(n.count)} עם שם חריג: $kinds${n.samples.takeIf { it.isNotEmpty() }?.let { " (למשל ${He.names(it, n.count)})" } ?: ""}.")
+            }
+            if (d.count > 0) {
+                val kinds = d.byKind.entries.sortedByDescending { it.value }.joinToString("; ") { "${it.key} (${He.num(it.value)})" }
+                add("${He.files(d.count)} עם תאריך חריג: $kinds.")
+            }
+            add("גלריות ממיינות לפי שם ולפי תאריך. שם ארוך מדי, תווים פגומים או תאריך בעתיד יכולים לשבש את המיון, ולפעמים להפיל את הגלריה.")
+        }
+        return Hypothesis(
+            "FILE_NAMES", "שמות קבצים או תאריכים חריגים", score, evidence,
+            listOf(
+                ActionStep(
+                    "RENAME_FILES",
+                    "שנו את שמות הקבצים החריגים לשם קצר ופשוט. אם אי אפשר בטלפון, העבירו אותם למחשב, שנו שם והחזירו.",
+                    "${He.files(n.count + d.count)} עם שם או תאריך שגלריות מתקשות איתם.",
+                ),
+            ),
+        )
+    }
+
+    private fun lowResources(i: ReportInput): Hypothesis? {
+        val d = i.device ?: return null
+        val lowRam = d.ramTotalMb in 1..3300 || d.lowRamDevice
+        val lmk = i.ownExits.lowMemoryKills
+        if (!lowRam && !d.lowMemoryNow && !d.powerSave && lmk == 0) return null
+        val severeAnomalies = listOf(Anomaly.IMAGE_OVER_50MP, Anomaly.IMAGE_SIDE_OVER_16384, Anomaly.VIDEO_8K, Anomaly.VIDEO_OVER_2GB)
+            .sumOf { i.anomalyCounts[it] ?: 0 }
+        var score = if (lowRam) 30 else 28
+        if (lowRam && severeAnomalies > 0) score += 25
+        if (d.lowMemoryNow || lmk > 0) score += 30
+        val evidence = buildList {
+            if (lowRam) add("לטלפון יש ${"%.1f".format(Locale.US, d.ramTotalMb / 1024.0)}GB זיכרון RAM בלבד. זה מעט לגלריה שטוענת תמונות וסרטונים גדולים.")
+            if (d.lowMemoryNow) add("הטלפון היה במצוקת זיכרון בזמן הסריקה, פנויים רק ${He.num(d.ramAvailMb)}MB.")
+            if (lmk > 0) add("אנדרואיד הרג ${He.num(lmk)} פעמים את תהליכי הבדיקה כדי לפנות זיכרון.")
+            if (lowRam && severeAnomalies > 0) add("יש ${He.files(severeAnomalies)} כבדים במיוחד, שהם בדיוק מה שמסיים זיכרון בטלפון כזה.")
+            if (d.powerSave) add("חיסכון בסוללה פעיל. הוא עוצר סנכרון ורקע, ויכול לסגור את הגלריה באמצע טעינה.")
+        }
+        val actions = buildList {
+            if (lowRam || d.lowMemoryNow || lmk > 0) add(freeRam("הטלפון מוגבל בזיכרון, ואפליקציות ברקע לוקחות ממנו."))
+            if (d.powerSave) add(
+                ActionStep(
+                    "DISABLE_POWER_SAVE",
+                    "כבו לבדיקה את חיסכון הסוללה: הגדרות ← סוללה ← מצב חיסכון ← כבוי, ובדקו שהגלריה לא מוגבלת ב\"אופטימיזציית סוללה\" או ב\"הגבלות רקע\".",
+                    "חיסכון בסוללה יכול לעצור או לסגור אפליקציות באמצע עבודה.",
+                ),
+            )
+        }
+        return Hypothesis("LOW_RESOURCES", "זיכרון או חיסכון בסוללה מגבילים את הגלריה", score, evidence, actions)
+    }
+
+    private fun systemOutdated(i: ReportInput): Hypothesis? {
+        val d = i.device ?: return null
+        val now = if (i.generatedAtMillis > 0) i.generatedAtMillis else System.currentTimeMillis()
+        val months = d.securityPatch?.let { EnvLines.patchAgeMonths(it, now) }
+        val oldPatch = months != null && months >= 18
+        val oldAndroid = d.androidApi in 1..28
+        if (!oldPatch && !oldAndroid) return null
+        val evidence = buildList {
+            if (oldPatch) add("עדכון האבטחה האחרון בטלפון הוא מ-${d.securityPatch} (לפני $months חודשים).")
+            if (oldAndroid) add("גרסת אנדרואיד ${d.androidRelease} ישנה.")
+            add("אחסון המדיה (Media Storage) מתעדכן יחד עם עדכוני המערכת, ותיקוני קריסה שלו לא מגיעים לטלפון שלא מתעדכן.")
+        }
+        return Hypothesis(
+            "SYSTEM_OUTDATED", "מערכת ההפעלה לא מעודכנת", if ((months ?: 0) >= 24 || oldAndroid) 45 else 38, evidence,
+            listOf(
+                ActionStep(
+                    "UPDATE_SYSTEM",
+                    "בדקו עדכונים: הגדרות ← עדכון תוכנה ← בדוק עדכונים. ובנוסף: הגדרות ← אבטחה ← עדכוני מערכת Google Play.",
+                    "המערכת לא מתעדכנת, ותיקונים של אחסון המדיה מגיעים רק דרך עדכונים.",
                 ),
             ),
         )
@@ -374,7 +693,12 @@ object Analyzer {
     private const val K_RESTART_FINAL = "RESTART_FINAL"
 
     private fun limits(i: ReportInput): List<String> = buildList {
-        add("האפליקציה לא יכולה לקרוא את יומני הקריסה של אפליקציית הגלריה, כי אנדרואיד חוסם גישה למידע של אפליקציות אחרות. הדירוג בדוח מבוסס על ראיות שנמצאו בקבצים, באינדקס ובאחסון, ולא על מה שהגלריה עצמה דיווחה.")
+        if (i.crashLog.permissionGranted && i.crashLog.readOk) {
+            add("האפליקציה קראה את יומן הקריסות של המערכת, שמכיל רק את הקריסות האחרונות. קריסה ישנה כבר לא תופיע בו, לכן הריצו סריקה מיד אחרי שהגלריה קורסת. מלבד היומן, הדירוג מבוסס על ראיות שנמצאו בקבצים, באינדקס, באחסון ובמכשיר.")
+        } else {
+            add("האפליקציה לא יכולה לקרוא את יומני הקריסה של אפליקציית הגלריה בלי הרשאה מיוחדת שאפשר לתת מהמחשב (ראו הוראות בסעיף יומן הקריסות). הדירוג בדוח מבוסס על ראיות שנמצאו בקבצים, באינדקס, באחסון ובמכשיר, ולא על מה שהגלריה עצמה דיווחה.")
+        }
+        add("הדוח מזהה אפליקציות שיכולות להשפיע על הגלריה, אבל אינו יכול לדעת מה הן עושות בפועל, מלבד מי שכתב רשומות לאינדקס בזמן הבדיקה. גודל המטמון והנתונים של אפליקציות אחרות לא נבדק, כי זה דורש הרשאה מיוחדת נוספת.")
         add("רמת הביטחון מציינת עד כמה הראיות חזקות. היא לא ודאות מוחלטת: ייתכן שהסיבה האמיתית אינה ברשימה.")
         add("האפליקציה פועלת בקריאה בלבד. היא לא מוחקת, לא מזיזה ולא משנה אף קובץ. כל פעולה בדוח היא המלצה שאתם מבצעים בעצמכם.")
         if (!i.scanComplete) add("הסריקה הופסקה לפני שהסתיימה, לכן חלק מהקבצים לא נבדקו והתוצאות חלקיות.")

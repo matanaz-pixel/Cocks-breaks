@@ -39,6 +39,8 @@ data class FileRow(
     val pending: Boolean = false,
     val trashed: Boolean = false,
     val status: Status = Status.TODO,
+    /** Package that owns the row in the media index (Android 10+, when visible). */
+    val owner: String? = null,
 ) {
     companion object {
         const val SOURCE_MEDIASTORE = 0
@@ -51,7 +53,7 @@ data class FileRow(
  * (no Room) to keep the APK small. WAL + synchronous=NORMAL: every write is a completed write()
  * before the call returns, so it survives the death of any process of this app.
  */
-class StateDb(context: Context) : SQLiteOpenHelper(context.applicationContext, "gallerydoctor.db", null, 1), StateStore {
+class StateDb(context: Context) : SQLiteOpenHelper(context.applicationContext, "gallerydoctor.db", null, 2), StateStore {
 
     companion object {
         @Volatile private var instance: StateDb? = null
@@ -79,7 +81,7 @@ class StateDb(context: Context) : SQLiteOpenHelper(context.applicationContext, "
             fps REAL NOT NULL DEFAULT 0, bitrate INTEGER NOT NULL DEFAULT 0,
             status INTEGER NOT NULL DEFAULT 0, reasons TEXT NOT NULL DEFAULT '', attempts INTEGER NOT NULL DEFAULT 0,
             anomalies INTEGER NOT NULL DEFAULT 0, mbps REAL NOT NULL DEFAULT 0, probed INTEGER NOT NULL DEFAULT 0,
-            ioerr INTEGER NOT NULL DEFAULT 0, hashp TEXT, hashf TEXT)""",
+            ioerr INTEGER NOT NULL DEFAULT 0, hashp TEXT, hashf TEXT, owner TEXT)""",
         )
         db.execSQL("CREATE INDEX idx_files_status ON files(status)")
         db.execSQL("CREATE INDEX idx_files_size ON files(size)")
@@ -90,7 +92,11 @@ class StateDb(context: Context) : SQLiteOpenHelper(context.applicationContext, "
         db.execSQL("CREATE TABLE meta(k TEXT PRIMARY KEY, v TEXT)")
     }
 
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+    /** The database only caches a scan, so an upgrade simply starts clean. */
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        for (t in listOf("files", "testing", "extra", "dups", "meta")) db.execSQL("DROP TABLE IF EXISTS $t")
+        onCreate(db)
+    }
 
     // ---------------------------------------------------------------- meta
 
@@ -124,8 +130,8 @@ class StateDb(context: Context) : SQLiteOpenHelper(context.applicationContext, "
         db.beginTransaction()
         try {
             val stmt = db.compileStatement(
-                "INSERT INTO files(source,vol,mid,uri,name,path,rel,size,mime,video,w,h,dur,added,modified,pending,trashed,status) " +
-                    "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO files(source,vol,mid,uri,name,path,rel,size,mime,video,w,h,dur,added,modified,pending,trashed,status,owner) " +
+                    "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             )
             for (r in rows) {
                 stmt.clearBindings()
@@ -148,6 +154,7 @@ class StateDb(context: Context) : SQLiteOpenHelper(context.applicationContext, "
                 stmt.bindLong(17, if (r.trashed) 1 else 0)
                 // Pending / trashed rows belong to other apps' in-flight work; testing them gives false ghosts.
                 stmt.bindLong(18, (if (r.pending || r.trashed) Status.SKIPPED else Status.TODO).code.toLong())
+                r.owner?.let { stmt.bindString(19, it) }
                 stmt.executeInsert()
             }
             db.setTransactionSuccessful()
@@ -176,6 +183,7 @@ class StateDb(context: Context) : SQLiteOpenHelper(context.applicationContext, "
         pending = getInt(getColumnIndexOrThrow("pending")) == 1,
         trashed = getInt(getColumnIndexOrThrow("trashed")) == 1,
         status = Status.fromCode(getInt(getColumnIndexOrThrow("status"))),
+        owner = getString(getColumnIndexOrThrow("owner")),
     )
 
     fun getRow(pk: Long): FileRow? =
@@ -208,13 +216,21 @@ class StateDb(context: Context) : SQLiteOpenHelper(context.applicationContext, "
     fun pathIndexed(path: String): Boolean =
         readableDatabase.rawQuery("SELECT 1 FROM files WHERE source=0 AND path=? LIMIT 1", arrayOf(path)).use { it.moveToFirst() }
 
-    /** Snapshot for index-stability: key "vol:mid" -> "size:modified". */
-    fun indexSnapshot(): HashMap<String, String> {
-        val map = HashMap<String, String>()
-        readableDatabase.rawQuery("SELECT vol, mid, size, modified FROM files WHERE source=0", null).use {
-            while (it.moveToNext()) map[it.getString(0) + ":" + it.getLong(1)] = it.getLong(2).toString() + ":" + it.getLong(3)
+    /** Snapshot for index-stability: key "vol:mid" -> (size:modified, owner). */
+    fun indexSnapshot(): HashMap<String, il.gallerydoctor.scan.SnapRow> {
+        val map = HashMap<String, il.gallerydoctor.scan.SnapRow>()
+        readableDatabase.rawQuery("SELECT vol, mid, size, modified, owner FROM files WHERE source=0", null).use {
+            while (it.moveToNext()) map[it.getString(0) + ":" + it.getLong(1)] =
+                il.gallerydoctor.scan.SnapRow(it.getLong(2).toString() + ":" + it.getLong(3), it.getString(4))
         }
         return map
+    }
+
+    /** Name and dates of every MediaStore file, for the file-name and date sanity checks. */
+    fun forEachNameAndDate(action: (name: String, folder: String, added: Long, modified: Long) -> Unit) {
+        readableDatabase.rawQuery("SELECT name, COALESCE(rel,''), added, modified FROM files WHERE source=0", null).use {
+            while (it.moveToNext()) action(it.getString(0), it.getString(1), it.getLong(2), it.getLong(3))
+        }
     }
 
     // ---------------------------------------------------------------- StateStore

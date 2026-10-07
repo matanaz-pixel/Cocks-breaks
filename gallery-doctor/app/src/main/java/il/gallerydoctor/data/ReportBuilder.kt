@@ -6,7 +6,15 @@ import il.gallerydoctor.core.Analyzer
 import il.gallerydoctor.core.ReportData
 import il.gallerydoctor.core.ReportInput
 import il.gallerydoctor.core.Status
+import il.gallerydoctor.core.DateChecker
+import il.gallerydoctor.core.IssueSummary
+import il.gallerydoctor.core.NameChecker
+import il.gallerydoctor.core.OwnerChurn
+import il.gallerydoctor.scan.AppProbe
+import il.gallerydoctor.scan.CrashLogReader
+import il.gallerydoctor.scan.DeviceProbe
 import il.gallerydoctor.scan.GalleryApps
+import il.gallerydoctor.scan.OwnExits
 import il.gallerydoctor.scan.StorageInfo
 
 /** Aggregates the state DB plus live device info into a [ReportInput], then runs the analyzer. */
@@ -23,6 +31,18 @@ object ReportBuilder {
         val (pendingN, pendingNames) = db.pendingStuck(24 * 3600L, 5)
         val (dupGroups, reclaimable) = db.dupGroups(50)
         val started = db.metaLong("started") ?: 0L
+        val now = System.currentTimeMillis()
+
+        // apps around the gallery, the phone, and the real crash log
+        val defaultViewer = AppProbe.defaultImageViewer(ctx)
+        val apps = GalleryApps.detect(ctx).map { it.copy(defaultViewer = it.pkg == defaultViewer?.first) }
+        val knownPackages = apps.map { it.pkg }.toSet()
+        val suspects = AppProbe.suspects(ctx, knownPackages + "com.google.android.gms")
+        val churn = (db.meta("idx_owners") ?: "").split(';').mapNotNull {
+            val (pkg, n) = it.split('=').takeIf { p -> p.size == 2 } ?: return@mapNotNull null
+            n.toIntOrNull()?.let { c -> OwnerChurn(pkg, AppProbe.label(ctx, pkg), c) }
+        }.sortedByDescending { it.count }
+        val (nameIssues, dateIssues) = nameAndDateIssues(db, now / 1000)
 
         val input = ReportInput(
             totalFiles = db.count("status!=6"),
@@ -66,7 +86,15 @@ object ReportBuilder {
             dupGroups = dupGroups,
             dupGroupCount = db.dupGroupCount(),
             reclaimableBytes = reclaimable,
-            apps = GalleryApps.detect(ctx),
+            apps = apps,
+            device = DeviceProbe.collect(ctx, defaultViewer?.second),
+            volumeStates = StorageInfo.volumeStates(ctx),
+            suspectApps = suspects,
+            churnOwners = churn,
+            nameIssues = nameIssues,
+            dateIssues = dateIssues,
+            crashLog = CrashLogReader.read(ctx, knownPackages),
+            ownExits = OwnExits.collect(ctx, started),
             scanComplete = scanComplete,
             deepScan = db.meta("deep") == "1",
             dirsInaccessible = db.metaLong("dirs_inaccessible")?.toInt() ?: 0,
@@ -76,5 +104,29 @@ object ReportBuilder {
             generatedAtMillis = System.currentTimeMillis(),
         )
         return ReportData(input, Analyzer.analyze(input))
+    }
+
+    /** Odd file names (too long, invisible or broken characters) and odd dates (none, future, before 1990). */
+    private fun nameAndDateIssues(db: StateDb, nowSec: Long): Pair<IssueSummary, IssueSummary> {
+        var nameCount = 0
+        val nameKinds = HashMap<String, Int>()
+        val nameSamples = ArrayList<String>()
+        var dateCount = 0
+        val dateKinds = HashMap<String, Int>()
+        val dateSamples = ArrayList<String>()
+        db.forEachNameAndDate { name, _, added, modified ->
+            val issues = NameChecker.issues(name)
+            if (issues.isNotEmpty()) {
+                nameCount++
+                issues.forEach { nameKinds[it.name] = (nameKinds[it.name] ?: 0) + 1 }
+                if (nameSamples.size < 5) nameSamples += name.take(60)
+            }
+            DateChecker.issue(added, modified, nowSec)?.let { why ->
+                dateCount++
+                dateKinds[why] = (dateKinds[why] ?: 0) + 1
+                if (dateSamples.size < 5) dateSamples += name.take(60)
+            }
+        }
+        return IssueSummary(nameCount, nameSamples, nameKinds) to IssueSummary(dateCount, dateSamples, dateKinds)
     }
 }

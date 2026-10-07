@@ -33,7 +33,7 @@ class ChannelSource(private val pfd: android.os.ParcelFileDescriptor) : ByteSour
     }
 }
 
-data class IndexDrift(val changed: Int, val vanished: Int, val appeared: Int)
+data class IndexDrift(val changed: Int, val vanished: Int, val appeared: Int, val byOwner: Map<String, Int> = emptyMap())
 
 object IndexStability {
     const val INTERVAL_MS = 60_000L
@@ -44,12 +44,16 @@ object IndexStability {
         val after = MediaEnumerator.snapshot(ctx)
         var changed = 0
         var vanished = 0
+        var appeared = 0
+        val owners = HashMap<String, Int>()
+        fun blame(owner: String?) { if (owner != null) owners[owner] = (owners[owner] ?: 0) + 1 }
         for ((k, v) in before) {
             val now = after[k]
-            if (now == null) vanished++ else if (now != v) changed++
+            if (now == null) { vanished++; blame(v.owner) }
+            else if (now.sig != v.sig) { changed++; blame(now.owner ?: v.owner) }
         }
-        val appeared = after.keys.count { it !in before }
-        return IndexDrift(changed, vanished, appeared)
+        for ((k, v) in after) if (k !in before) { appeared++; blame(v.owner) }
+        return IndexDrift(changed, vanished, appeared, owners)
     }
 }
 

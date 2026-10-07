@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import il.gallerydoctor.R
 import il.gallerydoctor.ScanController
 import il.gallerydoctor.core.Confidence
+import il.gallerydoctor.core.EnvLines
 import il.gallerydoctor.core.He
 import il.gallerydoctor.core.Hypothesis
 import il.gallerydoctor.core.Light
@@ -66,6 +67,14 @@ fun ReportScreen(padding: PaddingValues, data: ReportData) {
     val tBroken = stringResource(R.string.table_broken)
     val tSuspect = stringResource(R.string.table_suspect)
     val tOversized = stringResource(R.string.table_oversized)
+    val appLines = remember(data) { EnvLines.appLines(i.apps) }
+    val suspectLines = remember(data) { EnvLines.suspectLines(i) }
+    val deviceLines = remember(data) { EnvLines.deviceLines(i) }
+    val crashLines = remember(data) { EnvLines.crashLogLines(i) }
+    val tApps = stringResource(R.string.sec_apps)
+    val tOtherApps = stringResource(R.string.sec_other_apps)
+    val tDevice = stringResource(R.string.sec_device)
+    val tCrashLog = stringResource(R.string.sec_crashlog)
 
     LazyColumn(
         Modifier.fillMaxSize().padding(padding),
@@ -133,13 +142,10 @@ fun ReportScreen(padding: PaddingValues, data: ReportData) {
         item(key = "kinds") {
             Text("תמונות: ${He.bytes(i.imageBytes)}, סרטונים: ${He.bytes(i.videoBytes)}", style = MaterialTheme.typography.bodyMedium)
         }
-        if (i.apps.isNotEmpty()) {
-            item(key = "h-apps") { SectionTitle(stringResource(R.string.sec_apps)) }
-            items(i.apps.size, key = { "app-${i.apps[it].pkg}" }) { idx ->
-                val app = i.apps[idx]
-                Text("${app.label} (${app.pkg})${app.version?.let { v -> " - גרסה $v" } ?: ""}", style = MaterialTheme.typography.bodyMedium)
-            }
-        }
+        bulletSection("apps", tApps, appLines)
+        bulletSection("other-apps", tOtherApps, suspectLines)
+        bulletSection("device", tDevice, deviceLines)
+        bulletSection("crashlog", tCrashLog, crashLines)
 
         // ---- 4. tables ----
         item(key = "h-tables") { SectionTitle(stringResource(R.string.sec_tables)) }
@@ -232,6 +238,13 @@ private fun TableHeader(id: String, title: String, count: Int, expanded: List<St
         Text("$title (${He.num(count)})", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
         Text(if (id in expanded) "▲" else "▼", style = MaterialTheme.typography.titleMedium)
     }
+}
+
+/** A titled list of plain-text lines (apps, phone facts, crash log). Skipped when there is nothing to show. */
+private fun LazyListScope.bulletSection(id: String, title: String, lines: List<String>) {
+    if (lines.isEmpty()) return
+    item(key = "h-$id") { SectionTitle(title) }
+    items(lines.size, key = { "$id-$it" }) { idx -> Text("• ${lines[idx]}", style = MaterialTheme.typography.bodyMedium) }
 }
 
 private fun LazyListScope.fileTable(

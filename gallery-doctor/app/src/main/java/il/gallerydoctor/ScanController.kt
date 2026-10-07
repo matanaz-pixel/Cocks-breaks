@@ -167,6 +167,7 @@ object ScanController {
                 db.putMeta("idx_changed", drift.changed.toString())
                 db.putMeta("idx_vanished", drift.vanished.toString())
                 db.putMeta("idx_appeared", drift.appeared.toString())
+                db.putMeta("idx_owners", drift.byOwner.entries.joinToString(";") { "${it.key}=${it.value}" })
                 db.putMeta("idx_done", "1")
             } else null
 

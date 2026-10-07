@@ -33,7 +33,20 @@ data class VolumeStat(val label: String, val totalBytes: Long, val freeBytes: Lo
 }
 
 enum class AppRole { GALLERY, MEDIA_PROVIDER }
-data class AppInfo(val pkg: String, val label: String, val version: String?, val role: AppRole)
+data class AppInfo(
+    val pkg: String,
+    val label: String,
+    val version: String?,
+    val role: AppRole,
+    val installedAtMillis: Long = 0,
+    val updatedAtMillis: Long = 0,
+    val installer: String? = null,
+    val targetSdk: Int = 0,
+    val enabled: Boolean = true,
+    val stopped: Boolean = false,
+    val system: Boolean = false,
+    val defaultViewer: Boolean = false,
+)
 
 /** Everything measured by a scan, already aggregated. The analyzer turns this into a ranked diagnosis. */
 data class ReportInput(
@@ -79,6 +92,14 @@ data class ReportInput(
     val dupGroupCount: Int = 0,
     val reclaimableBytes: Long = 0,
     val apps: List<AppInfo> = emptyList(),
+    val device: DeviceInfo? = null,
+    val volumeStates: List<VolumeState> = emptyList(),
+    val suspectApps: List<SuspectApp> = emptyList(),
+    val churnOwners: List<OwnerChurn> = emptyList(),
+    val nameIssues: IssueSummary = IssueSummary(),
+    val dateIssues: IssueSummary = IssueSummary(),
+    val crashLog: CrashLogInfo = CrashLogInfo(),
+    val ownExits: OwnExitInfo = OwnExitInfo(),
     val scanComplete: Boolean = true,
     val deepScan: Boolean = true,
     val dirsInaccessible: Int = 0,

@@ -46,7 +46,10 @@
     <string name="sec_causes">הסיבות הסבירות ביותר</string>
     <string name="sec_actions">מה לעשות, צעד אחר צעד</string>
     <string name="sec_storage">אחסון</string>
-    <string name="sec_apps">אפליקציות גלריה</string>
+    <string name="sec_apps">אפליקציות גלריה ואחסון מדיה</string>
+    <string name="sec_other_apps">אפליקציות אחרות שיכולות להשפיע</string>
+    <string name="sec_device">המכשיר וההגדרות</string>
+    <string name="sec_crashlog">יומן הקריסות של המערכת</string>
     <string name="sec_tables">רשימות לבדיקה ידנית</string>
     <string name="sec_export">שיתוף הדוח</string>
     <string name="sec_limits">מגבלות הבדיקה</string>
