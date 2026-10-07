@@ -25,6 +25,7 @@
     <string name="opt_quick">סריקה מהירה</string>
     <string name="opt_quick_desc">בלי בדיקת פענוח. מהירה יותר, אבל לא מזהה קבצים שמקריסים את הגלריה.</string>
     <string name="perm_needed">כדי לבדוק את התמונות והסרטונים צריך לאשר גישה לכל התמונות והסרטונים. גישה חלקית לא מספיקה.</string>
+    <string name="xiaomi_hint">טלפון Xiaomi: כדי שסריקה ארוכה לא תיעצר, פתחו את הגדרות האפליקציה ← \"חיסכון בסוללה\" ← \"ללא הגבלות\", ואם יש, הפעילו \"הפעלה אוטומטית\". מומלץ גם לנעול את האפליקציה במסך האפליקציות האחרונות.</string>
     <string name="btn_open_settings">פתיחת ההגדרות</string>
     <string name="scan_failed_title">הסריקה לא הצליחה</string>
 

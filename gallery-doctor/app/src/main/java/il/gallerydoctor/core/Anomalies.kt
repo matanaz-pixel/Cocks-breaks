@@ -1,7 +1,7 @@
 package il.gallerydoctor.core
 
 enum class Anomaly(val he: String) {
-    IMAGE_OVER_50MP("תמונה מעל 50 מגה-פיקסל"),
+    IMAGE_OVER_50MP("תמונה ברזולוציה גבוהה במיוחד (מעל 52 מגה-פיקסל, כמו מצב 108MP)"),
     IMAGE_SIDE_OVER_16384("צלע של תמונה מעל 16,384 פיקסלים"),
     IMAGE_OVER_30MB("תמונה כבדה מעל 30MB"),
     PANORAMA_EXTREME("פנורמה בפרופורציות קיצוניות (עומס על המפענח)"),
@@ -37,7 +37,12 @@ object AnomalyDetector {
     fun isMotionPhotoName(name: String): Boolean =
         name.startsWith("MVIMG_") || Regex("""(?i)(\.|_)?MP\.jpe?g$""").containsMatchIn(name)
 
-    const val MAX_PIXELS = 50_000_000L
+    /**
+     * "More than 50 MP", with a margin: a standard 50MP sensor outputs 8192x6144 = 50.3 MP, which is a normal photo
+     * on today's phones (on a real report 164 of 203 "heavy" images were exactly that). Real stress starts above it,
+     * e.g. 108 MP modes.
+     */
+    const val MAX_PIXELS = 52_000_000L
     const val MAX_SIDE = 16_384
     const val MAX_IMAGE_BYTES = 30L * 1024 * 1024
     const val MAX_VIDEO_BYTES = 2L * 1024 * 1024 * 1024

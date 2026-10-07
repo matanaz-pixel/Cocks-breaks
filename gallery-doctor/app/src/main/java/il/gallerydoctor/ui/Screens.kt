@@ -124,6 +124,17 @@ fun StartScreen(padding: PaddingValues, idle: ScanState.Idle, error: String?) {
             }
         }
 
+        if (Build.MANUFACTURER.equals("xiaomi", ignoreCase = true)) {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(stringResource(R.string.xiaomi_hint), style = MaterialTheme.typography.bodyMedium)
+                    OutlinedButton(onClick = {
+                        ctx.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", ctx.packageName, null)))
+                    }) { Text(stringResource(R.string.btn_open_settings)) }
+                }
+            }
+        }
+
         Button(
             onClick = { begin(resume = false) },
             modifier = Modifier.fillMaxWidth().height(104.dp),

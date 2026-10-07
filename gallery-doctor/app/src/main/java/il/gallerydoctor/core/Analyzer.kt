@@ -43,7 +43,7 @@ object Analyzer {
             decoderCrash(i), storageFailing(i), storageFull(i), unstableIndex(i), ghostRows(i),
             incompleteFiles(i), orphans(i), brokenFiles(i), heavyFolders(i), stressFiles(i),
             galleryCrash(i), devSettings(i), volumeProblems(i), providerDisabled(i), galleryAppState(i),
-            suspectApps(i), fileNames(i), lowResources(i), systemOutdated(i),
+            suspectApps(i), fileNames(i), lowResources(i), systemOutdated(i), xiaomiBackground(i),
         )
         val strongest = found.maxOfOrNull { it.score } ?: 0
         val baseline = baseline(i, if (strongest >= 50) 30 else 45)
@@ -667,6 +667,41 @@ object Analyzer {
             )
         }
         return Hypothesis("LOW_RESOURCES", "זיכרון או חיסכון בסוללה מגבילים את הגלריה", score, evidence, actions)
+    }
+
+    /**
+     * HyperOS / MIUI closes background apps aggressively and has its own cleaner. The app cannot read the per-app
+     * battery setting of the gallery, so this is advice for the usual culprit, not a finding.
+     */
+    private fun xiaomiBackground(i: ReportInput): Hypothesis? {
+        val d = i.device ?: return null
+        if (!d.isXiaomiFamily) return null
+        val storageCritical = i.volumes.any { it.critical }
+        val kills = i.ownExits.lowMemoryKills
+        val evidence = buildList {
+            add("הטלפון הוא ${d.manufacturer} ${d.model}. מערכת HyperOS/MIUI חוסמת ומסגרת אפליקציות ברקע בצורה אגרסיבית כדי לחסוך סוללה, וגלריה שנסגרת ברקע נטענת מחדש מההתחלה כשחוזרים אליה.")
+            add("האפליקציה לא יכולה לקרוא את הגדרת הסוללה של הגלריה, לכן זו המלצה לבדיקה ולא ממצא.")
+            add("לטלפון יש כלי ניקוי מובנה (Security / Cleaner) שמוחק מטמון ותמונות ממוזערות. הגלריה בונה אותם מחדש, וזה נראה כטעינה חוזרת.")
+            if (kills > 0) add("אנדרואיד הרג ${He.num(kills)} פעמים את תהליכי הבדיקה כדי לפנות זיכרון, וזה מתאים להגבלות רקע ולחוסר זיכרון.")
+            if (storageCritical) add("האחסון כמעט מלא, והרחבת הזיכרון (Memory extension) של Xiaomi משתמשת באחסון כזיכרון נוסף. כשאין מקום, הטלפון מתקשה לפנות זיכרון.")
+        }
+        val actions = buildList {
+            add(
+                ActionStep(
+                    "XIAOMI_BATTERY",
+                    "הגדרות ← אפליקציות ← ניהול אפליקציות ← אפליקציית הגלריה שלכם ← \"חיסכון בסוללה\" ← \"ללא הגבלות\", והפעילו גם \"הפעלה אוטומטית\". עשו אותו הדבר לאפליקציית \"רופא הגלריה\" לפני סריקה ארוכה.",
+                    "במכשירי Xiaomi הגבלת סוללה על הגלריה גורמת לה להיסגר ולהיטען מחדש.",
+                ),
+            )
+            if (storageCritical) add(
+                ActionStep(
+                    "XIAOMI_RAM_EXTENSION",
+                    "חפשו בהגדרות \"הרחבת זיכרון\" (Memory extension) וכבו אותה לבדיקה, עד שתפנו מקום באחסון.",
+                    "הרחבת הזיכרון תופסת מקום באחסון, והאחסון מלא.",
+                ),
+            )
+        }
+        return Hypothesis("XIAOMI_BACKGROUND", "הגבלות רקע של HyperOS/MIUI סוגרות את הגלריה", if (kills > 0) 55 else 40, evidence, actions)
     }
 
     private fun systemOutdated(i: ReportInput): Hypothesis? {

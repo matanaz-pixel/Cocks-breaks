@@ -37,7 +37,11 @@ data class DeviceInfo(
     val playServicesVersion: String? = null,
     /** Label of the app that opens photos by default, or null when Android asks every time. */
     val defaultImageViewer: String? = null,
-)
+) {
+    /** Xiaomi, Redmi, POCO (HyperOS / MIUI): aggressive background limits and a built-in cleaner. */
+    val isXiaomiFamily: Boolean
+        get() = manufacturer.lowercase().let { it == "xiaomi" || it == "redmi" || it == "poco" || it == "blackshark" }
+}
 
 data class VolumeState(val label: String, val state: String, val removable: Boolean)
 
@@ -140,7 +144,7 @@ object AppClassifier {
         "com.dropbox.android", "com.microsoft.skydrive", "com.google.android.apps.docs", "mega.privacy.android.app",
         "com.amazon.clouddrive.photos", "com.nextcloud.client", "com.owncloud.android", "com.ttxapps.dropsync",
         "dk.tacit.android.foldersync.lite", "dk.tacit.android.foldersync.full", "com.resilio.sync",
-        "com.synology.dscloud", "com.syncthing.android",
+        "com.synology.dscloud", "com.syncthing.android", "com.miui.cloudservice", "com.miui.cloudbackup",
     )
     private val fileManagers = setOf(
         "com.google.android.apps.nbu.files", "com.alphainventor.filemanager", "nextapp.fx", "com.lonelycatgames.Xplore",
