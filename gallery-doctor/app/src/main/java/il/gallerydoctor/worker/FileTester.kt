@@ -43,7 +43,7 @@ data class TestRequest(
 class FileTester(private val ctx: Context) {
     companion object {
         const val TARGET_PX = 512
-        const val PROBE_MAX_BYTES = 64L * 1024 * 1024
+        const val PROBE_MAX_BYTES = 32L * 1024 * 1024
         const val PROBE_MIN_BYTES = 1L * 1024 * 1024
     }
 
@@ -162,7 +162,10 @@ class FileTester(private val ctx: Context) {
 
     private fun imageBounds(uri: Uri): Pair<Int, Int>? {
         val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        ctx.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, opts) } ?: return null
+        val stream = ctx.contentResolver.openInputStream(uri) ?: return null
+        // In bounds-only mode decodeStream ALWAYS returns null. The answer is in outWidth/outHeight (-1 on failure),
+        // so the return value must not be used to decide success (that mistake flagged every image as corrupt).
+        stream.use { BitmapFactory.decodeStream(it, null, opts) }
         return opts.outWidth to opts.outHeight
     }
 

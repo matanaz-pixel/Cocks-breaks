@@ -43,6 +43,13 @@ object ReportDocument {
         }
         out += Block.Gap
 
+        val healthy = EnvLines.healthyLines(i)
+        if (healthy.isNotEmpty()) {
+            out += Block.Heading("מה נבדק ונמצא תקין")
+            healthy.forEach { out += Block.Bullet(it) }
+            out += Block.Gap
+        }
+
         out += Block.Heading("מה לעשות, צעד אחר צעד")
         a.actions.forEachIndexed { idx, s ->
             out += Block.Para("${idx + 1}. ${s.text}")

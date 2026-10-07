@@ -44,6 +44,7 @@
     <string name="report_title">דוח הבדיקה</string>
     <string name="light_label">מצב הגלריה: %1$s</string>
     <string name="sec_causes">הסיבות הסבירות ביותר</string>
+    <string name="sec_healthy">מה נבדק ונמצא תקין</string>
     <string name="sec_actions">מה לעשות, צעד אחר צעד</string>
     <string name="sec_storage">אחסון</string>
     <string name="sec_apps">אפליקציות גלריה ואחסון מדיה</string>

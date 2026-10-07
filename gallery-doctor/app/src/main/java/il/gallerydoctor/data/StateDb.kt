@@ -259,7 +259,9 @@ class StateDb(context: Context) : SQLiteOpenHelper(context.applicationContext, "
         val w = if (result.width > 0) result.width else row.width
         val h = if (result.height > 0) result.height else row.height
         val dur = if (result.durationMs >= 0) result.durationMs else row.durationMs
-        val anomalies = AnomalyDetector.detect(MediaFacts(row.isVideo, row.size, w, h, dur, result.fps, result.bitrate))
+        val anomalies = AnomalyDetector.detect(
+            MediaFacts(row.isVideo, row.size, w, h, dur, result.fps, result.bitrate, AnomalyDetector.isMotionPhotoName(row.name)),
+        )
         val cv = ContentValues().apply {
             put("status", status.code)
             put("reasons", Reason.toCsv(result.reasons))
@@ -338,9 +340,11 @@ class StateDb(context: Context) : SQLiteOpenHelper(context.applicationContext, "
 
     fun folderStats(minCountExclusive: Int): List<FolderStat> {
         val out = ArrayList<FolderStat>()
+        // The threshold is inlined on purpose: bound arguments are TEXT, and in SQLite an INTEGER aggregate such as
+        // COUNT(*) is never greater than a TEXT value, so "HAVING COUNT(*)>?" silently matched nothing.
         readableDatabase.rawQuery(
-            "SELECT COALESCE(rel,''), COUNT(*), SUM(size) FROM files WHERE source=0 GROUP BY COALESCE(rel,'') HAVING COUNT(*)>? ORDER BY COUNT(*) DESC",
-            arrayOf(minCountExclusive.toString()),
+            "SELECT COALESCE(rel,''), COUNT(*), SUM(size) FROM files WHERE source=0 GROUP BY COALESCE(rel,'') HAVING COUNT(*)>$minCountExclusive ORDER BY COUNT(*) DESC",
+            null,
         ).use { while (it.moveToNext()) out += FolderStat(it.getString(0).trimEnd('/').ifEmpty { "/" }, it.getInt(1), it.getLong(2)) }
         return out
     }
@@ -387,6 +391,48 @@ class StateDb(context: Context) : SQLiteOpenHelper(context.applicationContext, "
             while (it.moveToNext()) failing += it.getString(0)
         }
         return IoStats(io, probed, intermittent, speeds.count { it < slowBelowMbps }, median, failing)
+    }
+
+    // ---------------------------------------------------------------- systemic failures
+
+    /**
+     * Removes reasons that failed on an implausibly large share of files (a broken check, not broken files) from
+     * the per-file verdicts and remembers them. Safe to call repeatedly. Returns every neutralised reason so far.
+     */
+    fun neutralizeSystemicReasons(): Map<Reason, Int> {
+        val already = il.gallerydoctor.core.SystemicFailure.fromMeta(meta("systemic"))
+        val images = count("video=0 AND status NOT IN (5,6)")
+        val videos = count("video=1 AND status NOT IN (5,6)")
+        val found = il.gallerydoctor.core.SystemicFailure.detect(reasonHistogram(), images, videos)
+        if (found.isEmpty()) return already
+
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            val updates = ArrayList<Triple<Long, String, Int>>()
+            db.rawQuery("SELECT pk, reasons FROM files WHERE status IN (2,3)", null).use {
+                while (it.moveToNext()) {
+                    val reasons = Reason.parseList(it.getString(1))
+                    if (reasons.none { r -> r in found }) continue
+                    val kept = reasons.filter { r -> r !in found }
+                    updates += Triple(it.getLong(0), Reason.toCsv(kept), Classifier.statusOf(kept).code)
+                }
+            }
+            val stmt = db.compileStatement("UPDATE files SET reasons=?, status=? WHERE pk=?")
+            for ((pk, reasons, status) in updates) {
+                stmt.clearBindings()
+                stmt.bindString(1, reasons)
+                stmt.bindLong(2, status.toLong())
+                stmt.bindLong(3, pk)
+                stmt.executeUpdateDelete()
+            }
+            val merged = already + found.mapValues { (r, n) -> (already[r] ?: 0) + n }
+            putMeta("systemic", il.gallerydoctor.core.SystemicFailure.toMeta(merged))
+            db.setTransactionSuccessful()
+            return merged
+        } finally {
+            db.endTransaction()
+        }
     }
 
     // ---------------------------------------------------------------- extras (orphans, leftovers)

@@ -15,6 +15,7 @@ object FsWalker {
     private val ROOT_DIRS = listOf("DCIM", "Pictures", "Movies", "Download", "WhatsApp", "Telegram", "Snapchat", "Android/media")
     private val TEMP = Regex("^\\.(pending|trashed)-(\\d+)-(.+)$")
     private const val MAX_STORED = 20_000
+    private const val GRACE_SECONDS = 2 * 86_400L
 
     data class Result(val orphans: Int, val leftovers: Int, val inaccessibleDirs: Int)
 
@@ -45,7 +46,8 @@ object FsWalker {
                     val temp = TEMP.matchEntire(name)
                     if (temp != null) {
                         val expiry = temp.groupValues[2].toLongOrNull()
-                        if (expiry == null || expiry < nowSeconds) {
+                        // Android deletes these itself some time after the expiry; only flag clearly overdue ones.
+                        if (expiry == null || expiry + GRACE_SECONDS < nowSeconds) {
                             leftovers++
                             if (stored++ < MAX_STORED) db.addExtra("LEFTOVER", f.path, f.length(), temp.groupValues[1])
                         }

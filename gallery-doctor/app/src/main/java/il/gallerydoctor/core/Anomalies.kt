@@ -28,9 +28,15 @@ data class MediaFacts(
     val durationMs: Long, // -1 when unknown
     val fps: Float,
     val bitrate: Long,
+    /** A JPEG with a short video embedded (Google/Xiaomi/Samsung motion photo). Its size is mostly the video. */
+    val motionPhoto: Boolean = false,
 )
 
 object AnomalyDetector {
+    /** MVIMG_xxx.jpg (Google/Xiaomi), xxx.MP.jpg (Pixel), xxxMP.jpg (Samsung): a photo with an embedded clip. */
+    fun isMotionPhotoName(name: String): Boolean =
+        name.startsWith("MVIMG_") || Regex("""(?i)(\.|_)?MP\.jpe?g$""").containsMatchIn(name)
+
     const val MAX_PIXELS = 50_000_000L
     const val MAX_SIDE = 16_384
     const val MAX_IMAGE_BYTES = 30L * 1024 * 1024
@@ -46,7 +52,7 @@ object AnomalyDetector {
         if (!f.isVideo) {
             if (f.width > 0 && f.height > 0 && f.width.toLong() * f.height > MAX_PIXELS) out += Anomaly.IMAGE_OVER_50MP
             if (longSide > MAX_SIDE) out += Anomaly.IMAGE_SIDE_OVER_16384
-            if (f.sizeBytes > MAX_IMAGE_BYTES) out += Anomaly.IMAGE_OVER_30MB
+            if (f.sizeBytes > MAX_IMAGE_BYTES && !f.motionPhoto) out += Anomaly.IMAGE_OVER_30MB
             if (shortSide > 0) {
                 val ratio = longSide.toDouble() / shortSide
                 if ((ratio >= 4.0 && longSide >= 4000) || ratio >= 8.0) out += Anomaly.PANORAMA_EXTREME

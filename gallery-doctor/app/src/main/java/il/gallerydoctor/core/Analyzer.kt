@@ -147,12 +147,23 @@ object Analyzer {
             for (v in critical) add("באחסון \"${v.label}\" נותרו ${He.bytes(v.freeBytes)} פנויים מתוך ${He.bytes(v.totalBytes)} (${v.usedPercent}% תפוס).")
             add("כשהאחסון כמעט מלא, מסד הנתונים של המדיה והתמונות הממוזערות לא יכולים להישמר. הגלריה מנסה שוב ושוב לבנות אותם, ונראה שהיא \"נטענת מחדש\".")
             if (i.imageBytes + i.videoBytes > 0) add("תמונות תופסות ${He.bytes(i.imageBytes)} וסרטונים ${He.bytes(i.videoBytes)}.")
+            if (i.videoBytes > i.imageBytes * 2 && i.videoBytes > 0) add("רוב המקום (${i.videoBytes * 100 / (i.imageBytes + i.videoBytes)}%) תפוס על ידי סרטונים, ולכן שם הכי קל לפנות.")
+            val viaAlbums = i.dupGroups.count { g -> g.files.any { it.folder.startsWith("Pictures/Gallery/owner") } }
+            if (i.dupGroups.isNotEmpty() && viaAlbums * 2 >= i.dupGroups.size) add("רוב הכפילויות הן עותקים של תמונות המצלמה בתוך Pictures/Gallery/owner, תיקייה שנראית כאלבומים של גלריית Xiaomi. אלה עותקים נפרדים, והם תופסים מקום פעמיים.")
         }
+        val target = maxOf(2L * 1024 * 1024 * 1024, critical.maxOf { it.totalBytes } / 20)
         val actions = buildList {
+            if (i.apps.any { it.pkg == "com.google.android.apps.photos" && it.enabled }) add(
+                ActionStep(
+                    "PHOTOS_FREE_UP",
+                    "הדרך הבטוחה ביותר לפנות מקום: ב-Google Photos לחצו על תמונת הפרופיל ← \"פינוי מקום\" (Free up space), אחרי שוידאתם שהגיבוי הסתיים. זה מוחק מהטלפון רק עותקים שכבר גובו לענן.",
+                    "יש בטלפון Google Photos, והיא מפנה בבטחה תמונות וסרטונים שכבר גובו, בלי למחוק אותם לגמרי.",
+                ),
+            )
             add(
                 ActionStep(
                     "FREE_SPACE",
-                    "פנו לפחות 2GB: העבירו סרטונים גדולים למחשב או לענן ומחקו אותם מהטלפון." +
+                    "פנו לפחות ${He.bytes(target)} (כ-5% מהאחסון): העבירו סרטונים גדולים למחשב או לענן ומחקו אותם מהטלפון." +
                         (i.topFolders.firstOrNull()?.let { " התיקייה הגדולה ביותר היא \"${it.path}\" (${He.bytes(it.bytes)})." } ?: ""),
                     "האחסון תפוס ב-$worst%, וזה מונע מהגלריה לשמור את האינדקס והתמונות הממוזערות.",
                 ),
@@ -273,7 +284,20 @@ object Analyzer {
     }
 
     private fun brokenFiles(i: ReportInput): Hypothesis? {
-        if (i.brokenCount == 0 && i.suspectCount == 0) return null
+        // A wrong extension alone is harmless: Android decodes by content, not by name.
+        val harmless = i.reasonHistogram[Reason.MAGIC_MISMATCH] ?: 0
+        val realSuspect = maxOf(0, i.suspectCount - harmless)
+        if (i.brokenCount == 0 && realSuspect == 0) {
+            if (harmless == 0) return null
+            return Hypothesis(
+                "EXTENSION_MISMATCH", "קבצים עם סיומת שלא תואמת לתוכן", 22,
+                listOf(
+                    "${He.files(harmless)} נקראים בסיומת אחת אבל הם בפועל פורמט אחר, למשל WebP או PNG בשם jpg${i.suspect.firstOrNull { Reason.MAGIC_MISMATCH in it.reasons }?.let { " (למשל ${it.name})" } ?: ""}.",
+                    "אנדרואיד מזהה תמונה לפי התוכן ולא לפי השם, ולכן זה כמעט תמיד לא מזיק. בדרך כלל זה קורה בתמונות שהורדו מ-Instagram או מאתרים.",
+                ),
+                emptyList(),
+            )
+        }
         val score = when {
             i.brokenCount >= 10 -> 72
             i.brokenCount >= 1 -> 62
@@ -283,7 +307,7 @@ object Analyzer {
             .joinToString("; ") { "${it.key.he} (${He.num(it.value)})" }
         val evidence = buildList {
             if (i.brokenCount > 0) add("${He.files(i.brokenCount)} פגומים${i.broken.takeIf { it.isNotEmpty() }?.let { " (למשל ${He.names(it.map { r -> r.name }, i.brokenCount)})" } ?: ""}.")
-            if (i.suspectCount > 0) add("${He.files(i.suspectCount)} חשודים – חתוכים או פגומים חלקית${i.suspect.takeIf { it.isNotEmpty() }?.let { " (למשל ${He.names(it.map { r -> r.name }, i.suspectCount)})" } ?: ""}.")
+            if (realSuspect > 0) add("${He.files(realSuspect)} חשודים – חתוכים או פגומים חלקית${i.suspect.filter { it.reasons.any { r -> r != Reason.MAGIC_MISMATCH } }.takeIf { it.isNotEmpty() }?.let { " (למשל ${He.names(it.map { r -> r.name }, realSuspect)})" } ?: ""}.")
             if (topReasons.isNotEmpty()) add("הסיבות הנפוצות: $topReasons.")
             add("גלריה בונה תמונה ממוזערת לכל קובץ. קובץ פגום יכול לעצור את הטעינה או להפיל אותה.")
         }
@@ -294,7 +318,7 @@ object Analyzer {
                 ActionStep(
                     "DELETE_BROKEN",
                     "עברו על הטבלאות \"קבצים פגומים\" ו\"קבצים חשודים\", פתחו כל קובץ בכפתור \"פתח\". קובץ שלא נפתח – גבו ומחקו. קובץ חתוך אפשר לנסות לשחזר מהענן או מהמקור.",
-                    "${He.files(i.brokenCount + i.suspectCount)} נמצאו כפגומים, וקבצים כאלה הם בין הגורמים הנפוצים לקריסת גלריה.",
+                    "${He.files(i.brokenCount + realSuspect)} נמצאו כפגומים, וקבצים כאלה הם בין הגורמים הנפוצים לקריסת גלריה.",
                 ),
             ),
         )
@@ -308,10 +332,15 @@ object Analyzer {
                 i.heavyFolders.take(3).joinToString(", ") { "\"${it.path}\" (${He.num(it.count)})" } + ".",
             "גלריה שטוענת תיקייה עם אלפי קבצים בבת אחת צורכת הרבה זיכרון, ויכולה להיתקע או לקרוס.",
         )
+        val camera = i.heavyFolders.any { it.path.startsWith("DCIM") }
         return Hypothesis(
             "HEAVY_FOLDERS", "תיקיות עם כמות קיצונית של קבצים", if (biggest >= 20000) 62 else 50, evidence,
             listOf(
-                ActionStep(
+                if (camera) ActionStep(
+                    "TRIM_CAMERA",
+                    "תיקיית המצלמה לא ניתנת לפיצול, אבל אפשר להקטין אותה: גבו את התמונות והסרטונים הישנים (למשל ב-Google Photos) והסירו אותם מהטלפון. ב-Google Photos זה \"פינוי מקום\".",
+                    "תיקיית המצלמה מכילה ${He.num(biggest)} קבצים, וגלריה שטוענת כל כך הרבה קבצים בבת אחת נתקעת או קורסת.",
+                ) else ActionStep(
                     "SPLIT_FOLDERS",
                     "העבירו חלק מהקבצים מהתיקיות הגדולות לתיקיות חדשות (למשל לפי שנה), או למחשב.",
                     "התיקייה הגדולה ביותר מכילה ${He.num(biggest)} קבצים, וקשה לגלריה לטעון אותה בבת אחת.",
@@ -701,6 +730,9 @@ object Analyzer {
         add("הדוח מזהה אפליקציות שיכולות להשפיע על הגלריה, אבל אינו יכול לדעת מה הן עושות בפועל, מלבד מי שכתב רשומות לאינדקס בזמן הבדיקה. גודל המטמון והנתונים של אפליקציות אחרות לא נבדק, כי זה דורש הרשאה מיוחדת נוספת.")
         add("רמת הביטחון מציינת עד כמה הראיות חזקות. היא לא ודאות מוחלטת: ייתכן שהסיבה האמיתית אינה ברשימה.")
         add("האפליקציה פועלת בקריאה בלבד. היא לא מוחקת, לא מזיזה ולא משנה אף קובץ. כל פעולה בדוח היא המלצה שאתם מבצעים בעצמכם.")
+        for ((reason, n) in i.systemicReasons) {
+            add("הבדיקה \"${reason.he}\" נכשלה ב-${He.num(n)} קבצים, כמעט בכולם. כשל כזה בכמעט כל הקבצים מצביע על בעיה בבדיקה עצמה או במפענח של הטלפון, ולא על קבצים פגומים, ולכן הוא לא נספר כקבצים פגומים בדוח.")
+        }
         if (!i.scanComplete) add("הסריקה הופסקה לפני שהסתיימה, לכן חלק מהקבצים לא נבדקו והתוצאות חלקיות.")
         if (!i.deepScan) add("בוצעה סריקה מהירה בלי בדיקת פענוח, ולכן לא ניתן היה לזהות קבצים שקורסים את המפענח.")
         if (i.dirsInaccessible > 0) add("${He.folders(i.dirsInaccessible)} לא היו נגישות לאפליקציה, ולכן חיפוש הקבצים שחסרים באינדקס לא כיסה אותן.")

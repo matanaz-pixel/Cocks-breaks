@@ -336,6 +336,19 @@ object EnvLines {
         }
     }
 
+    /** What the scan looked at and found in order, so a clean result is stated instead of silently omitted. */
+    fun healthyLines(i: ReportInput): List<String> = buildList {
+        if (i.totalFiles <= 0) return@buildList
+        if (i.deepScan && i.crasherCount == 0 && i.scanComplete) add("אף קובץ לא הקריס או תקע את מפענח התמונות והסרטונים (נבדקו ${He.files(i.totalFiles)}).")
+        if (i.ghostCount == 0) add("אין רשומות רפאים: כל קובץ שאינדקס המדיה מכיר קיים בפועל.")
+        if (i.orphanCount == 0 && i.safOnlyCount == 0) add("אין קבצי מדיה שחסרים באינדקס (בתיקיות המדיה הרגילות).")
+        val drift = (i.indexChanged ?: -1) + (i.indexVanished ?: 0) + (i.indexAppeared ?: 0)
+        if (i.indexChanged != null && drift == 0) add("אינדקס המדיה יציב: לא השתנה כלל בדקה שנבדקה.")
+        if (i.pendingStuckCount == 0) add("אין רשומות תקועות באמצע כתיבה.")
+        if (i.probedFiles > 0 && i.ioErrors == 0 && i.intermittentCount == 0) add("לא נמצאו שגיאות קריאה באחסון (${He.files(i.probedFiles)} נקראו פעמיים ונבדקו).")
+        if (i.volumes.isNotEmpty() && i.volumes.none { it.critical }) add("יש מספיק מקום פנוי באחסון.")
+    }
+
     fun suspectLines(i: ReportInput): List<String> =
         i.suspectApps.map { "${it.label} (${it.pkg}) – ${it.category.he}" }
 

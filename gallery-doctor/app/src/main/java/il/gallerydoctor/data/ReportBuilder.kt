@@ -24,6 +24,7 @@ object ReportBuilder {
     private const val TABLE_ROWS = 200
 
     fun build(ctx: Context, db: StateDb, scanComplete: Boolean): ReportData {
+        val systemic = db.neutralizeSystemicReasons() // before any counting: a broken check must not count as broken files
         val counts = db.countByStatus()
         val labels = StorageInfo.labels(ctx)
         val io = db.ioStats(SLOW_MBPS)
@@ -95,6 +96,7 @@ object ReportBuilder {
             dateIssues = dateIssues,
             crashLog = CrashLogReader.read(ctx, knownPackages),
             ownExits = OwnExits.collect(ctx, started),
+            systemicReasons = systemic,
             scanComplete = scanComplete,
             deepScan = db.meta("deep") == "1",
             dirsInaccessible = db.metaLong("dirs_inaccessible")?.toInt() ?: 0,

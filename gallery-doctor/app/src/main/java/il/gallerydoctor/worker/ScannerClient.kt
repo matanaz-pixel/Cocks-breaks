@@ -39,6 +39,8 @@ class ScannerClient(
     private val pool: ProcessPool,
     private val db: StateDb,
     private val decodeEnabled: Boolean,
+    /** Every Nth file is read twice to measure speed and unstable reads. Sized so a big library is sampled, not re-read. */
+    private val probeEvery: Long = 10,
 ) : WorkerChannel {
 
     private class Pending(val seq: Int, val result: CompletableDeferred<WorkerOutcome>)
@@ -165,7 +167,7 @@ class ScannerClient(
             pk = pk, uri = row.uri, name = row.name, mime = row.mime, isVideo = row.isVideo, size = row.size,
             decode = decodeEnabled,
             decodeBroken = pk % 5L == 0L, // L3 on a 1-in-5 sample of files L2 already condemned
-            ioProbe = pk % 10L == 0L,
+            ioProbe = pk % probeEvery == 0L,
         )
         val p = Pending(seqGen.getAndIncrement(), CompletableDeferred())
         pending = p

@@ -192,7 +192,9 @@ object ScanController {
             publish { it.copy(phase = Phase.CHECKING, done = alreadyDone, total = total, etaSeconds = null) }
 
             val pool = newScannerPool()
-            val clients = (0 until workerCount(app)).map { ScannerClient(app, pool, db, deep) }
+            // about 400 files are read twice (speed / unstable reads), however big the library is
+            val probeEvery = maxOf(10L, total / 400)
+            val clients = (0 until workerCount(app)).map { ScannerClient(app, pool, db, deep, probeEvery) }
             val thermal = ThermalGate(app) { msg -> publish { s -> s.copy(message = msg) } }
             try {
                 withContext(Dispatchers.IO) { ScanCoordinator(

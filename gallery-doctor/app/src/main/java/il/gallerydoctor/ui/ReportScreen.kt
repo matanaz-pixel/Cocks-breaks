@@ -71,6 +71,8 @@ fun ReportScreen(padding: PaddingValues, data: ReportData) {
     val suspectLines = remember(data) { EnvLines.suspectLines(i) }
     val deviceLines = remember(data) { EnvLines.deviceLines(i) }
     val crashLines = remember(data) { EnvLines.crashLogLines(i) }
+    val healthyLines = remember(data) { EnvLines.healthyLines(i) }
+    val tHealthy = stringResource(R.string.sec_healthy)
     val tApps = stringResource(R.string.sec_apps)
     val tOtherApps = stringResource(R.string.sec_other_apps)
     val tDevice = stringResource(R.string.sec_device)
@@ -108,6 +110,8 @@ fun ReportScreen(padding: PaddingValues, data: ReportData) {
         // ---- 2. most likely causes ----
         item(key = "h-causes") { SectionTitle(stringResource(R.string.sec_causes)) }
         items(a.hypotheses.size, key = { "hyp-${a.hypotheses[it].id}" }) { idx -> HypothesisCard(idx + 1, a.hypotheses[idx]) }
+
+        bulletSection("healthy", tHealthy, healthyLines)
 
         // ---- 3. actions ----
         item(key = "h-actions") { SectionTitle(stringResource(R.string.sec_actions)) }

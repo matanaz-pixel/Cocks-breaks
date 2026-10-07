@@ -100,6 +100,8 @@ data class ReportInput(
     val dateIssues: IssueSummary = IssueSummary(),
     val crashLog: CrashLogInfo = CrashLogInfo(),
     val ownExits: OwnExitInfo = OwnExitInfo(),
+    /** Checks that failed on an implausibly large share of files and were therefore NOT counted as corrupt files. */
+    val systemicReasons: Map<Reason, Int> = emptyMap(),
     val scanComplete: Boolean = true,
     val deepScan: Boolean = true,
     val dirsInaccessible: Int = 0,
