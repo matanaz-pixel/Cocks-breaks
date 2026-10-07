@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">רופא הגלריה</string>
+
+    <!-- Notification -->
+    <string name="notif_channel">התקדמות הסריקה</string>
+    <string name="notif_text_starting">הסריקה מתחילה…</string>
+
+    <!-- Phases -->
+    <string name="phase_enumerating">קוראים את רשימת הקבצים</string>
+    <string name="phase_files">בודקים את התיקיות בטלפון</string>
+    <string name="phase_checking">בודקים כל תמונה וסרטון</string>
+    <string name="phase_duplicates">מחפשים קבצים כפולים</string>
+    <string name="phase_finishing">מסכמים את התוצאות</string>
+
+    <!-- Start screen -->
+    <string name="start_title">בדיקת הגלריה</string>
+    <string name="start_body">האפליקציה בודקת את התמונות והסרטונים בטלפון ומסבירה למה הגלריה קורסת או נטענת מחדש.\n\nהיא רק קוראת: לא מוחקת ולא משנה שום קובץ, ולא שולחת דבר לאינטרנט.</string>
+    <string name="btn_start">התחל סריקה</string>
+    <string name="btn_resume">המשך את הסריקה שהופסקה</string>
+    <string name="btn_last_report">הצג את הדוח האחרון</string>
+    <string name="btn_pick_folder">בחירת תיקייה לסריקה (למשל כרטיס SD)</string>
+    <string name="folder_selected">תיקייה שנבחרה: %1$s</string>
+    <string name="btn_clear_folder">ביטול</string>
+    <string name="opt_quick">סריקה מהירה</string>
+    <string name="opt_quick_desc">בלי בדיקת פענוח. מהירה יותר, אבל לא מזהה קבצים שמקריסים את הגלריה.</string>
+    <string name="perm_needed">כדי לבדוק את התמונות והסרטונים צריך לאשר גישה לכל התמונות והסרטונים. גישה חלקית לא מספיקה.</string>
+    <string name="btn_open_settings">פתיחת ההגדרות</string>
+    <string name="scan_failed_title">הסריקה לא הצליחה</string>
+
+    <!-- Progress screen -->
+    <string name="progress_title">הסריקה מתבצעת</string>
+    <string name="progress_hint">אפשר להניח את הטלפון בצד. הסריקה ממשיכה גם כשהמסך כבוי, ואפשר לעצור ולהמשיך אחר כך.</string>
+    <string name="progress_count">%1$s מתוך %2$s</string>
+    <string name="progress_count_only">נמצאו עד עכשיו %1$s</string>
+    <string name="eta_less_than_minute">עוד פחות מדקה</string>
+    <string name="eta_minutes">עוד כ-%1$d דקות</string>
+    <string name="eta_hours">עוד כ-%1$d שעות ו-%2$d דקות</string>
+    <string name="progress_crashers">נמצאו %1$d קבצים שגרמו לקריסה או לתקיעה. הבדיקה ממשיכה בלעדיהם.</string>
+    <string name="progress_restarts">תהליך הבדיקה אותחל מחדש %1$d פעמים</string>
+    <string name="btn_cancel">עצירת הסריקה</string>
+
+    <!-- Report screen -->
+    <string name="report_title">דוח הבדיקה</string>
+    <string name="light_label">מצב הגלריה: %1$s</string>
+    <string name="sec_causes">הסיבות הסבירות ביותר</string>
+    <string name="sec_actions">מה לעשות, צעד אחר צעד</string>
+    <string name="sec_storage">אחסון</string>
+    <string name="sec_apps">אפליקציות גלריה</string>
+    <string name="sec_tables">רשימות לבדיקה ידנית</string>
+    <string name="sec_export">שיתוף הדוח</string>
+    <string name="sec_limits">מגבלות הבדיקה</string>
+    <string name="confidence">רמת ביטחון: %1$s</string>
+    <string name="why_prefix">למה זה רלוונטי: %1$s</string>
+    <string name="table_crashers">קבצים שקרסו או נתקעו</string>
+    <string name="table_broken">קבצים פגומים</string>
+    <string name="table_suspect">קבצים חשודים</string>
+    <string name="table_oversized">קבצים חריגים בגודל או ברזולוציה</string>
+    <string name="table_dups">קבוצות כפילויות</string>
+    <string name="table_heavy">תיקיות כבדות</string>
+    <string name="table_empty">אין</string>
+    <string name="table_more">מוצגים %1$d הראשונים. הרשימה המלאה נמצאת בקובץ ה-CSV.</string>
+    <string name="btn_open">פתח</string>
+    <string name="btn_share_text">שיתוף כטקסט</string>
+    <string name="btn_share_pdf">שיתוף כ-PDF</string>
+    <string name="btn_share_csv">שיתוף קובץ CSV של הקבצים הבעייתיים</string>
+    <string name="btn_new_scan">סריקה חדשה</string>
+    <string name="volume_line">%1$s: %2$d%% תפוס, פנוי %3$s מתוך %4$s</string>
+    <string name="volume_critical">מצב קריטי</string>
+    <string name="dup_line">%1$d עותקים, כל אחד %2$s</string>
+    <string name="folder_line">%1$s קבצים, %2$s</string>
+</resources>

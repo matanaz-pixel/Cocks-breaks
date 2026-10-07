@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Read-only access to the media library. There is deliberately NO INTERNET permission
+         and NO MANAGE_EXTERNAL_STORAGE: the app is fully offline and never writes user media. -->
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+
+    <!-- Keeps a long scan alive while the screen is off. Both are normal (auto-granted) permissions. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <queries>
+        <!-- Gallery apps -->
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.APP_GALLERY" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="image/*" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="video/*" />
+        </intent>
+        <!-- Well-known gallery apps and the media provider ("Media Storage") -->
+        <package android:name="com.google.android.apps.photos" />
+        <package android:name="com.google.android.gallery3d" />
+        <package android:name="com.android.gallery3d" />
+        <package android:name="com.sec.android.gallery3d" />
+        <package android:name="com.miui.gallery" />
+        <package android:name="com.coloros.gallery3d" />
+        <package android:name="com.oplus.gallery" />
+        <package android:name="com.oneplus.gallery" />
+        <package android:name="com.huawei.photos" />
+        <package android:name="com.motorola.gallery" />
+        <package android:name="com.vivo.gallery" />
+        <package android:name="com.simplemobiletools.gallery.pro" />
+        <package android:name="com.fossify.gallery" />
+        <package android:name="com.google.android.providers.media.module" />
+        <package android:name="com.android.providers.media.module" />
+        <package android:name="com.android.providers.media" />
+    </queries>
+
+    <application
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:requestLegacyExternalStorage="true"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.GalleryDoctor"
+        tools:targetApi="36">
+
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="true"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode|layoutDirection|locale">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Orchestrator, runs in the main process; only keeps the scan alive in the background. -->
+        <service
+            android:name=".ScanService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <!-- Isolated decoder workers. Each runs in its own OS process, so a native crash inside a
+             media decoder kills only that worker, never the UI. One file at a time per worker. -->
+        <service
+            android:name=".worker.ScannerService"
+            android:exported="false"
+            android:process=":scanner" />
+        <service
+            android:name=".worker.ScannerService2"
+            android:exported="false"
+            android:process=":scanner2" />
+        <service
+            android:name=".worker.ScannerService3"
+            android:exported="false"
+            android:process=":scanner3" />
+
+        <!-- Shares the generated report (PDF/CSV, written to the app cache only). -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+    </application>
+</manifest>
