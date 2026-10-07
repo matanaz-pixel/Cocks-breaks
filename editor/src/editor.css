@@ -112,3 +112,5 @@ dialog .acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;justify-conten
 @media (max-width:560px){.img-slot{grid-template-columns:1fr}.status{display:none}}
 #content>.field{margin-bottom:14px}
 #content>.group+.group{margin-top:0}
+.thumb.over{outline:3px dashed var(--clay);outline-offset:-3px;background:#f4d9c8}
+.img-err{background:#fbe3dd;color:#7a2216;border-radius:12px;padding:10px 14px;margin:8px 0;font-size:.93rem;border:1px solid #e9b4a9}

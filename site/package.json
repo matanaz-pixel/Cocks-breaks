@@ -5,6 +5,11 @@
   "scripts": {
     "build": "node src/build.js && node src/build-editor.js",
     "build:site": "node src/build.js",
-    "build:editor": "node src/build-editor.js"
+    "build:editor": "node src/build-editor.js",
+    "test:fixtures": "python3 tests/make-fixtures.py",
+    "test:site": "node tests/site-qa.js",
+    "test:editor": "node tests/editor-flow.js && node tests/editor-edge-cases.js && node tests/image-matrix.js",
+    "test:stress": "node tests/stress-generator.js && node tests/stress-pages.js",
+    "test": "npm run -s build && npm run -s test:fixtures && npm run -s test:site && npm run -s test:editor && npm run -s test:stress"
   }
 }

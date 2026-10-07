@@ -267,20 +267,48 @@
   }
 
   /* ---------- תמונות ---------- */
-  function loadBitmap(file) {
-    if (window.createImageBitmap) return createImageBitmap(file).catch(function () { return viaImg(file); });
-    return viaImg(file);
-    function viaImg(f) { return new Promise(function (res, rej) { var u = URL.createObjectURL(f), im = new Image(); im.onload = function () { URL.revokeObjectURL(u); res(im); }; im.onerror = function () { rej(new Error('bad')); }; im.src = u; }); }
+  var HEIC_RE = /\.(heic|heif)$/i;
+  function sniffHeic(file) {
+    if (HEIC_RE.test(file.name) || /image\/hei[cf]/i.test(file.type)) return Promise.resolve(true);
+    return file.slice(0, 16).arrayBuffer().then(function (buf) {
+      var t = String.fromCharCode.apply(null, new Uint8Array(buf).slice(4, 12));
+      return /ftyp(heic|heix|hevc|hevx|mif1|msf1)/.test(t);
+    }).catch(function () { return false; });
   }
+  function decodeImage(file) {
+    function viaImg(src, revoke) { return new Promise(function (res, rej) { var im = new Image(); im.onload = function () { if (revoke) URL.revokeObjectURL(src); res(im); }; im.onerror = function () { if (revoke) URL.revokeObjectURL(src); rej(new Error('decode')); }; im.src = src; }); }
+    function viaReader() { return new Promise(function (res, rej) { var r = new FileReader(); r.onload = function () { viaImg(r.result, false).then(res, rej); }; r.onerror = function () { rej(new Error('read')); }; r.readAsDataURL(file); }); }
+    var steps = [];
+    if (window.createImageBitmap) steps.push(function () { return createImageBitmap(file); });
+    steps.push(function () { return viaImg(URL.createObjectURL(file), true); });
+    steps.push(viaReader);
+    return steps.reduce(function (p, step) { return p.catch(function () { return step(); }); }, Promise.reject(new Error('start')));
+  }
+  function imgError(code, file) { var e = new Error(code); e.code = code; e.file = file; return e; }
   function processImage(file, maxDim) {
-    return loadBitmap(file).then(function (b) {
-      var w = b.width || b.naturalWidth, hh = b.height || b.naturalHeight, s = Math.min(1, maxDim / Math.max(w, hh));
+    if (!file.size) return Promise.reject(imgError('empty', file));
+    if (file.size > 30 * 1024 * 1024) return Promise.reject(imgError('toobig', file));
+    return decodeImage(file).then(function (b) {
+      var w = b.width || b.naturalWidth, hh = b.height || b.naturalHeight;
+      if (!w || !hh) throw imgError('decode', file);
+      var s = Math.min(1, maxDim / Math.max(w, hh));
       var cw = Math.max(1, Math.round(w * s)), ch = Math.max(1, Math.round(hh * s));
       var c = document.createElement('canvas'); c.width = cw; c.height = ch;
       var x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, cw, ch); x.drawImage(b, 0, 0, cw, ch);
-      return { data: c.toDataURL('image/jpeg', 0.86), w: cw, h: ch };
+      var data = c.toDataURL('image/jpeg', 0.86);
+      if (!data || data.length < 100) throw imgError('canvas', file);
+      return { data: data, w: cw, h: ch };
+    }, function () {
+      return sniffHeic(file).then(function (heic) { throw imgError(heic ? 'heic' : 'decode', file); });
     });
   }
+  var IMG_MSG = {
+    heic: 'זו תמונה בפורמט HEIC (הפורמט של אייפון), והדפדפן הזה לא יודע לקרוא אותה. הפתרון הקל: לשלוח את התמונה לעצמך בוואטסאפ ולהוריד אותה משם, כי וואטסאפ בדרך כלל ממיר ל-JPG. אפשר גם לפתוח אותה במחשב ולשמור כ-JPG, או באייפון: הגדרות, מצלמה, פורמטים, ולבחור "תאימות מרבית".',
+    decode: 'הדפדפן לא הצליח לקרוא את הקובץ הזה. הסוגים שנתמכים הם JPG, PNG, WebP ו-GIF. אם זה צילום מסך או תמונה שנשמרה בתוכנה אחרת, אפשר לשמור אותה מחדש כ-JPG.',
+    empty: 'הקובץ ריק (0 בייטים), כנראה שההעתקה שלו לא הסתיימה. נסי לבחור אותו שוב.',
+    toobig: 'הקובץ גדול מדי (מעל 30MB). הקטיני אותו או בחרי תמונה אחרת.',
+    canvas: 'הדפדפן לא הצליח להקטין את התמונה, כנראה כי היא גדולה מאוד. נסי תמונה קטנה יותר.'
+  };
   function makeOg(dataUrl) {
     return new Promise(function (res) {
       var im = new Image();
@@ -295,25 +323,42 @@
     });
   }
   function kb(dataUrl) { return Math.round((dataUrl.length * 0.75) / 1024); }
+  var slotMsg = {}, slotBusy = {};
+  function setSlotImage(slot, file) {
+    if (!file) return;
+    slotMsg[slot.key] = null; slotBusy[slot.key] = true; renderContent();
+    processImage(file, slot.key === 'hero' ? 1400 : 1200).then(function (r) {
+      var cur = P.images[slot.key]; pushUndo();
+      P.images[slot.key] = { data: r.data, w: r.w, h: r.h, alt: (cur && cur.alt) || '', focus: (cur && cur.focus) || 'center' };
+      slotBusy[slot.key] = false; changed(); renderContent(); toast('התמונה נוספה');
+    }).catch(function (e) {
+      slotBusy[slot.key] = false; slotMsg[slot.key] = IMG_MSG[e.code] || IMG_MSG.decode; renderContent();
+      toast('לא הצלחתי להוסיף את התמונה. ההסבר מופיע מתחתיה.');
+    });
+  }
   function imagesTab() {
-    var out = [h('h2', { text: 'תמונות' }), h('p', { class: 'lead', text: 'בחרי תמונה מהמחשב. היא תוקטן אוטומטית כדי שהאתר ייטען מהר, ותיחתך לצורת הקשת באתר.' })];
+    var out = [h('h2', { text: 'תמונות' }), h('p', { class: 'lead', text: 'בחרי תמונה מהמחשב, או גררי אותה לתוך המסגרת. היא תוקטן אוטומטית כדי שהאתר ייטען מהר, ותיחתך לצורת הקשת באתר.' }),
+      h('details', { class: 'group', style: 'margin-bottom:14px' }, h('summary', { text: 'לא מצליחה להוסיף תמונה?' }), h('div', { class: 'body' },
+        h('ol', { style: 'margin:0 18px;display:grid;gap:6px' },
+          h('li', { text: 'ודאי שפתחת את קובץ העורך ישירות מהמחשב, בדפדפן Chrome או Edge, ולא מתוך אפליקציה אחרת או תצוגה מקדימה.' }),
+          h('li', { text: 'תמונות מאייפון בפורמט HEIC לא נפתחות בכל דפדפן. שלחי אותן לעצמך בוואטסאפ והורידי, או שמרי כ-JPG.' }),
+          h('li', { text: 'אם לחיצה על "בחירת תמונה" לא פותחת חלון, אפשר לגרור את הקובץ ישירות לתוך המסגרת הריבועית.' }),
+          h('li', { text: 'אם משהו עדיין לא עובד, צלמי את המסך עם ההודעה האדומה שמופיעה מתחת לתמונה.' }))))];
     Gen.IMAGE_SLOTS.forEach(function (slot) {
-      var cur = P.images[slot.key];
-      var fileIn = h('input', { type: 'file', accept: 'image/*', id: 'file-' + slot.key });
+      var cur = P.images[slot.key], busy = slotBusy[slot.key], msg = slotMsg[slot.key];
+      var fileIn = h('input', { type: 'file', accept: 'image/*,.heic,.heif,.jpg,.jpeg,.png,.webp,.gif', id: 'file-' + slot.key });
       fileIn.addEventListener('change', function () {
-        var f = fileIn.files && fileIn.files[0]; if (!f) return;
-        if (!/^image\//.test(f.type)) { toast('הקובץ שנבחר אינו תמונה'); return; }
-        if (f.size > 30 * 1024 * 1024) { toast('התמונה גדולה מדי (מעל 30MB)'); return; }
-        processImage(f, slot.key === 'hero' ? 1400 : 1200).then(function (r) {
-          pushUndo(); P.images[slot.key] = { data: r.data, w: r.w, h: r.h, alt: (cur && cur.alt) || '', focus: (cur && cur.focus) || 'center' };
-          changed(); renderContent(); toast('התמונה נוספה');
-        }).catch(function () { toast('לא הצלחתי לקרוא את התמונה. נסי קובץ JPG או PNG.'); });
-        fileIn.value = '';
+        var f = fileIn.files && fileIn.files[0];
+        if (!f) return;
+        setSlotImage(slot, f);
       });
-      var thumb = h('div', { class: 'thumb' }, cur && cur.data ? h('img', { src: cur.data, alt: '' }) : 'אין תמונה');
+      var thumb = h('div', { class: 'thumb', 'data-drop': slot.key, tabindex: '-1' }, busy ? 'מעבדת את התמונה…' : (cur && cur.data ? h('img', { src: cur.data, alt: '' }) : 'גרירה לכאן'));
+      ['dragenter', 'dragover'].forEach(function (ev) { thumb.addEventListener(ev, function (e) { e.preventDefault(); thumb.classList.add('over'); }); });
+      thumb.addEventListener('dragleave', function () { thumb.classList.remove('over'); });
+      thumb.addEventListener('drop', function (e) { e.preventDefault(); thumb.classList.remove('over'); var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) setSlotImage(slot, f); });
       var acts = h('div', { class: 'acts' },
-        h('button', { type: 'button', class: 'btn small', onclick: function () { fileIn.click(); } }, cur && cur.data ? 'החלפת תמונה' : 'בחירת תמונה'),
-        cur && cur.data ? h('button', { type: 'button', class: 'btn small ghost danger', onclick: function () { pushUndo(); delete P.images[slot.key]; changed(); renderContent(); } }, 'הסרה') : null, fileIn);
+        h('button', { type: 'button', class: 'btn small', disabled: busy ? true : null, onclick: function () { fileIn.click(); } }, cur && cur.data ? 'החלפת תמונה' : 'בחירת תמונה'),
+        cur && cur.data ? h('button', { type: 'button', class: 'btn small ghost danger', onclick: function () { pushUndo(); delete P.images[slot.key]; slotMsg[slot.key] = null; changed(); renderContent(); } }, 'הסרה') : null, fileIn);
       var extra = [];
       if (cur && cur.data) {
         extra.push(renderOne({ label: 'תיאור קצר של התמונה', hint: 'למי שלא רואה את התמונה, ולגוגל. למשל: "נועה מחזיקה תינוק".' }, function () { return cur.alt; }, function (v) { cur.alt = v; }));
@@ -321,7 +366,9 @@
         sel.value = cur.focus || 'center'; sel.addEventListener('change', function () { cur.focus = sel.value; changed(); });
         extra.push(h('div', { class: 'field' }, h('label', { for: fid, text: 'איזה חלק יישאר כשהתמונה נחתכת' }), sel));
       }
-      out.push(h('div', { class: 'img-slot' }, thumb, h('div', {}, h('h3', { text: slot.label }), slot.hint ? h('div', { class: 'hint', style: 'font-size:.88rem;color:var(--muted)', text: slot.hint }) : null, cur && cur.data ? h('div', { class: 'hint', style: 'font-size:.85rem;color:var(--muted)', text: 'גודל התמונה: \u2066' + cur.w + '×' + cur.h + '\u2069 פיקסלים, ' + kb(cur.data) + ' קילובייט' }) : null, acts, h('div', { style: 'display:grid;gap:10px;margin-top:12px' }, extra))));
+      out.push(h('div', { class: 'img-slot' }, thumb, h('div', {}, h('h3', { text: slot.label }), slot.hint ? h('div', { class: 'hint', style: 'font-size:.88rem;color:var(--muted)', text: slot.hint }) : null,
+        cur && cur.data ? h('div', { class: 'hint', style: 'font-size:.85rem;color:var(--muted)', text: 'גודל התמונה: ⁦' + cur.w + '×' + cur.h + '⁩ פיקסלים, ' + kb(cur.data) + ' קילובייט' }) : null,
+        msg ? h('div', { class: 'img-err', role: 'alert', text: msg }) : null, acts, h('div', { style: 'display:grid;gap:10px;margin-top:12px' }, extra))));
     });
     return out;
   }
