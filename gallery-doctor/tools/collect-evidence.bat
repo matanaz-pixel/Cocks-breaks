@@ -13,13 +13,16 @@ set PKGS=com.miui.gallery com.google.android.apps.photos com.google.android.apps
 where adb >nul 2>nul
 if errorlevel 1 (
   echo adb not found. Install Android platform-tools: https://developer.android.com/tools/releases/platform-tools
-  echo and run this file from the platform-tools folder, or add it to PATH.
+  echo and put this file inside the platform-tools folder, or add that folder to PATH.
+  pause
   exit /b 1
 )
 adb start-server >nul 2>nul
 for /f "delims=" %%S in ('adb get-state 2^>nul') do set STATE=%%S
 if not "%STATE%"=="device" (
   echo No authorised phone found. Connect the phone with a cable, turn on USB debugging and tap Allow on the phone.
+  echo Then run this file again. You can check with:  adb devices   (the phone must say "device", not "unauthorized")
+  pause
   exit /b 1
 )
 for /f "delims=" %%T in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd-HHmmss"') do set STAMP=%%T
@@ -52,6 +55,7 @@ adb shell "du -s /sdcard/* 2>/dev/null | sort -rn | head -30" > "%OUT%\folder-si
 adb shell "find /sdcard -maxdepth 4 -name .nomedia 2>/dev/null | head -100" > "%OUT%\nomedia-files.txt" 2>&1
 
 echo.
-echo Done. Files are in: %OUT%
+echo Done. Files are in: %CD%\%OUT%
 echo They can contain app names and file/folder names. Review before sharing.
+pause
 endlocal
