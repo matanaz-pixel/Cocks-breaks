@@ -45,11 +45,11 @@ def parse_ratio(s: str) -> float:
 
 
 # ------------------------------------------------------------------ fonts / text
-def find_font(explicit: str | None = None) -> str | None:
+def find_font(explicit: str | None = None, use_brand: bool = True) -> str | None:
     if explicit and Path(explicit).exists():
         return explicit
     fonts_dir = BRAND_DIR / "fonts"
-    if fonts_dir.exists():
+    if use_brand and fonts_dir.exists():
         found = sorted(list(fonts_dir.glob("*.ttf")) + list(fonts_dir.glob("*.otf")))
         if found:
             return str(found[0])
@@ -59,10 +59,17 @@ def find_font(explicit: str | None = None) -> str | None:
     return None
 
 
-def load_font(size: int, explicit: str | None = None):
-    path = find_font(explicit)
+def load_font(size: int, explicit: str | None = None, use_brand: bool = True):
+    path = find_font(explicit, use_brand)
     if path:
-        return ImageFont.truetype(path, size)
+        font = ImageFont.truetype(path, size)
+        weight = load_config().get("font_weight")
+        if weight and use_brand:  # variable fonts: pick the stroke weight that matches the feed
+            try:
+                font.set_variation_by_axes([weight])
+            except Exception:
+                pass
+        return font
     return ImageFont.load_default(size)
 
 
@@ -172,13 +179,21 @@ def match_tone(img: Image.Image, target: dict, strength: float) -> tuple[Image.I
 
 
 # ------------------------------------------------------------------ image preparation
+def parse_focus(focus: str) -> tuple[float, float]:
+    """'center' | 'top' | 'bottom-left' … or numeric 'x,y' in 0..1 (0,0 = top-left of the photo)."""
+    if "," in focus:
+        x, y = (max(0.0, min(1.0, float(v))) for v in focus.split(","))
+        return x, y
+    fx = {"left": 0.0, "right": 1.0}.get(focus.split("-")[-1], 0.5)
+    fy = {"top": 0.0, "bottom": 1.0}.get(focus.split("-")[0], 0.5)
+    return fx, fy
+
+
 def fit_image(img: Image.Image, ratio: float, size_w: int, fit: str, focus: str, pad_color: str) -> Image.Image:
     target_w = size_w
     target_h = round(size_w / ratio)
     if fit == "cover":
-        fx = {"left": 0.0, "right": 1.0}.get(focus.split("-")[-1], 0.5)
-        fy = {"top": 0.0, "bottom": 1.0}.get(focus.split("-")[0], 0.5)
-        return ImageOps.fit(img, (target_w, target_h), Image.LANCZOS, centering=(fx, fy))
+        return ImageOps.fit(img, (target_w, target_h), Image.LANCZOS, centering=parse_focus(focus))
     fg = ImageOps.contain(img, (target_w, target_h), Image.LANCZOS)
     if fit == "blur":
         bg = ImageOps.fit(img, (target_w, target_h), Image.LANCZOS).filter(ImageFilter.GaussianBlur(40))
@@ -213,14 +228,52 @@ def overlay_text(img: Image.Image, text: str, position: str = "bottom", color: s
     return Image.alpha_composite(img, layer).convert("RGB")
 
 
+def compose_split(photo: Image.Image, ratio: float, width: int, text: str, panel_pct: float = 42,
+                  panel_side: str = "left", panel_color: str = "#F7F0EC", ink: str = "#111111",
+                  bar_color: str | None = "#C8A07A", bar_pct: float = 2.2, band_color: str | None = None,
+                  band_pct: float = 0.8, focus: str = "center", font_path: str | None = None) -> Image.Image:
+    """Cream text panel + full-height photo + thin colour bar — the feed's signature layout."""
+    H = round(width / ratio)
+    bar_h = round(H * bar_pct / 100) if bar_color else 0
+    band_h = round(H * band_pct / 100) if band_color else 0
+    pw = round(width * panel_pct / 100)
+    area_h = H - bar_h - band_h
+    canvas = Image.new("RGB", (width, H), ImageColor.getrgb(panel_color))
+    ph = ImageOps.fit(photo, (width - pw, area_h), Image.LANCZOS, centering=parse_focus(focus))
+    px = width - ph.width if panel_side == "left" else 0
+    canvas.paste(ph, (px, band_h))
+    d = ImageDraw.Draw(canvas)
+    if bar_color:
+        d.rectangle([0, H - bar_h, width, H], fill=ImageColor.getrgb(bar_color))
+    if band_color:
+        d.rectangle([0, 0, width, band_h], fill=ImageColor.getrgb(band_color))
+    # text: explicit line breaks are deliberate design — keep them; otherwise wrap. Auto-fit to the panel.
+    max_w, max_h = pw * 0.84, area_h * 0.72
+    paras = text.split("\n")
+    size = int(pw * 0.34)
+    while size > 24:
+        font = load_font(size, font_path)
+        lines = [l for para in paras for l in wrap(para, font, int(max_w))]
+        gap = int(size * 0.38)
+        h = len(lines) * (size + gap) - gap
+        probe = ImageDraw.Draw(Image.new("RGB", (1, 1)))
+        wmax = max(probe.textlength(shape(l)[0], font=font, **shape(l)[1]) for l in lines)
+        if wmax <= max_w and h <= max_h:
+            break
+        size -= 4
+    x0 = 0 if panel_side == "left" else width - pw
+    draw_lines(d, lines, font, x0, x0 + pw, band_h + (area_h - h) // 2, ink, gap, align="center")
+    return canvas
+
+
 def prepare_image(src: Path, out: Path, ratio: str | None = None, fit: str = "cover", focus: str = "center",
                   tone: bool = True, strength: float | None = None, width: int = 1080, pad_color: str = "#000000",
-                  text: str | None = None, **text_opts) -> dict:
+                  text: str | None = None, layout: str = "plain", split: dict | None = None, **text_opts) -> dict:
     cfg = load_config()
     ratio_s = ratio or cfg["default_ratio"]
     r = parse_ratio(ratio_s)
-    if not 0.8 <= r <= 1.91:
-        die(f"Ratio {ratio_s} is outside Instagram's feed range (4:5 .. 1.91:1). Use 4:5, 1:1 or 1.91:1.")
+    if not 0.5 <= r <= 1.91:
+        die(f"Ratio {ratio_s} is unsupported. Use 4:5, 1:1, 1.91:1 (feed) or 9:16 (story/reel cover).")
     img = ImageOps.exif_transpose(Image.open(src))
     if img.mode in ("RGBA", "LA", "P"):
         flat = Image.new("RGB", img.size, (255, 255, 255))
@@ -228,13 +281,25 @@ def prepare_image(src: Path, out: Path, ratio: str | None = None, fit: str = "co
         flat.paste(rgba, mask=rgba.split()[-1])
         img = flat
     img = img.convert("RGB")
-    img = fit_image(img, r, width, fit, focus, pad_color)
-    report: dict = {"source": str(src), "ratio": ratio_s, "size": list(img.size)}
     data = read_json(BRAND_DIR / "style-data.json", {}) if tone else {}
     target = (data or {}).get("tone")
-    if tone and target:
-        img, applied = match_tone(img, target, cfg["tone_strength"] if strength is None else strength)
-        report["tone_adjustments"] = applied
+    report: dict = {"source": str(src), "ratio": ratio_s, "layout": layout}
+    if layout == "split":
+        if not text:
+            die("--layout split needs --text (the panel title)")
+        if tone and target:  # tone-match the photo itself, never the cream panel
+            img, applied = match_tone(img, target, cfg["tone_strength"] if strength is None else strength)
+            report["tone_adjustments"] = applied
+        opts = {**cfg.get("split", {}), **(split or {})}
+        img = compose_split(img, r, width, text, focus=focus, font_path=text_opts.get("font_path"), **opts)
+        text = None
+        report["size"] = list(img.size)
+    else:
+        img = fit_image(img, r, width, fit, focus, pad_color)
+        report["size"] = list(img.size)
+        if tone and target:
+            img, applied = match_tone(img, target, cfg["tone_strength"] if strength is None else strength)
+            report["tone_adjustments"] = applied
     if text:
         img = overlay_text(img, text, **text_opts)
         report["text_overlay"] = True

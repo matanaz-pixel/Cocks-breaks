@@ -4,5 +4,14 @@
   "default_ratio": "4:5",
   "tone_strength": 0.35,
   "max_caption_chars": 2200,
-  "max_hashtags": 30
+  "max_hashtags": 30,
+  "split": {
+    "panel_pct": 42,
+    "panel_side": "left",
+    "panel_color": "#F7F0EC",
+    "ink": "#161616",
+    "bar_color": "#C8A07A",
+    "bar_pct": 2.2
+  },
+  "font_weight": 300
 }

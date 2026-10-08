@@ -140,7 +140,7 @@ def render_preview(draft: dict, username: str) -> list[Path]:
     img = ImageOps.exif_transpose(Image.open(src)).convert("RGB")
     h = min(int(W * img.height / img.width), 900)
     img = ImageOps.fit(img, (W, h)) if abs(img.height / img.width - h / W) > 0.01 else img.resize((W, h))
-    font, bold = load_font(26), load_font(26)
+    font, bold = load_font(26, use_brand=False), load_font(26, use_brand=False)  # legible UI font, not the brand script
     caption = (draft.get("caption") or "").strip()
     lines = wrap(f"{username}  {caption}" if not HEB.search(caption) else caption, font, W - 40)
     cap_h = len(lines) * 36 + 30
@@ -155,14 +155,14 @@ def render_preview(draft: dict, username: str) -> list[Path]:
     badge = {"CAROUSEL": f"1/{len(draft['media'])}", "REELS": "REEL ▶", "STORIES": "STORY"}.get(draft["kind"])
     if badge:
         dr.rounded_rectangle([W - 120, 84, W - 14, 122], radius=18, fill="#000000")
-        dr.text((W - 108, 90), badge, fill="#ffffff", font=load_font(22))
+        dr.text((W - 108, 90), badge, fill="#ffffff", font=load_font(22, use_brand=False))
     y = 70 + h
-    dr.text((16, y + 12), "♡    ◯    ➤", fill="#111111", font=load_font(30))
+    dr.text((16, y + 12), "♡    ◯    ➤", fill="#111111", font=load_font(30, use_brand=False))
     y += 60
     draw_lines(dr, lines, font, 20, W - 20, y + 10, "#111111", 10)
     if fc_lines:
         y += cap_h
-        dr.text((20, y), "FIRST COMMENT", fill="#8e8e8e", font=load_font(18))
+        dr.text((20, y), "FIRST COMMENT", fill="#8e8e8e", font=load_font(18, use_brand=False))
         draw_lines(dr, fc_lines, font, 20, W - 20, y + 26, "#262626", 10)
     out = [d / "preview.png"]
     card.save(out[0])

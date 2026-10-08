@@ -23,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import drafts  # noqa: E402
 import media  # noqa: E402
 import style  # noqa: E402
-from common import (BRAND_DIR, DRAFTS_DIR, Graph, GraphError, die, load_env, require_ig, write_env)  # noqa: E402
+from common import (BRAND_DIR, DRAFTS_DIR, Graph, GraphError, die, load_config, load_env, require_ig, write_env)  # noqa: E402
 
 
 def out(obj) -> None:
@@ -102,6 +102,12 @@ def cmd_frames(a) -> None:
     out(res)
 
 
+def _split_opts(a) -> dict:
+    m = {"panel_pct": a.panel_pct, "panel_side": a.panel_side, "panel_color": a.panel_color,
+         "ink": a.ink, "bar_color": a.bar_color}
+    return {k: v for k, v in m.items() if v is not None}
+
+
 def _prepare_files(files, outdir: Path, a) -> tuple[list[Path], list[dict]]:
     outs, reports = [], []
     for i, f in enumerate(files):
@@ -110,7 +116,7 @@ def _prepare_files(files, outdir: Path, a) -> tuple[list[Path], list[dict]]:
             dest = outdir / f"{f.stem}.jpg"
             rep = media.prepare_image(
                 f, dest, ratio=a.ratio, fit=a.fit, focus=a.focus, tone=not a.no_tone, strength=a.tone_strength,
-                pad_color=a.pad_color, text=a.text if (a.text and (a.text_on is None or a.text_on == i)) else None,
+                pad_color=a.pad_color, layout=a.layout, split=_split_opts(a), text=a.text if (a.text and (a.text_on is None or a.text_on == i)) else None,
                 position=a.text_pos, color=a.text_color, font_path=a.font, size_pct=a.text_size, box=a.text_box,
                 stroke=a.text_stroke)
         else:
@@ -143,7 +149,7 @@ def cmd_draft(a) -> None:
     d = drafts.create_draft(files, caption, kind, first_comment, a.alt, a.cover_seconds, not a.reel_only,
                             a.location_id)
     errors, warns = drafts.validate(d)
-    username = load_env().get("IG_USERNAME", "your_account")
+    username = load_env().get("IG_USERNAME") or load_config().get("account", "your_account")
     previews = drafts.render_preview(d, username)
     out({"draft_id": d["id"], "kind": kind, "items": len(d["media"]), "preview": [str(p) for p in previews],
          "errors": errors, "warnings": warns, "status": d["status"], "prepared": reports})
@@ -218,6 +224,10 @@ def build_parser() -> argparse.ArgumentParser:
         sp.add_argument("--text-box", help="background box colour for text, e.g. '#00000099'")
         sp.add_argument("--text-size", type=float, default=5.5, help="font size as %% of image width")
         sp.add_argument("--text-stroke", type=int, default=0)
+        sp.add_argument("--layout", choices=["plain", "split"], default="plain",
+                        help="split = text panel + photo + colour bar (the account's signature layout; defaults in brand/config.json)")
+        sp.add_argument("--panel-pct", type=float); sp.add_argument("--panel-side", choices=["left", "right"])
+        sp.add_argument("--panel-color"); sp.add_argument("--ink"); sp.add_argument("--bar-color")
         sp.add_argument("--font", help="path to .ttf/.otf (defaults to brand/fonts/*)")
 
     s = sub.add_parser("prepare"); s.add_argument("files", nargs="+"); s.add_argument("--out", required=True)

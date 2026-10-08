@@ -78,6 +78,7 @@ python3 scripts/ig.py draft IMG1 IMG2 … --caption-file /tmp/cap.txt [--first-c
 
 - This crops to the feed's ratio, applies a **gentle** tone match toward the feed's measured brightness/saturation/warmth (`--no-tone` to disable; never push it hard — protect the subject's real colours, especially food and skin), transcodes video to Reels spec, validates against Instagram limits, and renders `drafts/<id>/preview.png`.
 - For per-slide text on a carousel, run `prepare` per file with different `--text` (output to a folder), then `draft … --no-prepare`.
+- If the style guide defines a signature layout (e.g. text panel + photo + colour bar), use `--layout split --text $'line1\nline2'` (defaults in `brand/config.json → split`; `--focus x,y` in 0..1 positions the photo crop; `--ratio 9:16` for Story/Reel cover, `4:5` for feed). Line breaks in `--text` are deliberate design — keep them. Check that faces/hands stay inside the photo window.
 - Image text is only added when the style guide says this feed uses it. Hebrew is handled right-to-left; keep overlay text ≤ 8 words.
 - Write the caption to a UTF-8 file (don't pass Hebrew through shell quoting).
 
