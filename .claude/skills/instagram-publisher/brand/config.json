@@ -1,0 +1,8 @@
+{
+  "account": "yael__lahav",
+  "timezone": "Asia/Jerusalem",
+  "default_ratio": "4:5",
+  "tone_strength": 0.35,
+  "max_caption_chars": 2200,
+  "max_hashtags": 30
+}
