@@ -177,12 +177,14 @@ def main():
     # 6) panel side alternates between published posts --------------------------------
     def side_of(draft_id):
         return json.loads((tmp / "home/drafts" / draft_id / "draft.json").read_text())["panel_side"]
+    cfg_path = tmp / "home/brand/config.json"   # the test home has default config (no 'alternate'): opt in like the real brand config
+    cfg = json.loads(cfg_path.read_text()); cfg["split"] = {"panel_side": "alternate"}
+    cfg_path.write_text(json.dumps(cfg))
     split = ["--layout", "split", "--text", "בדיקה", "--no-tone"]
     r = run(["draft", str(src), "--caption", "א", *split], env)
     d1 = json.loads(r.stdout[r.stdout.index("{"):])["draft_id"]
     assert side_of(d1) == "left", side_of(d1)
     run(["approve", d1], env); run(["publish", d1], env)
-    import time; time.sleep(1.1)  # draft ids are second-resolution
     r = run(["draft", str(src), "--caption", "ב", *split], env)
     d2 = json.loads(r.stdout[r.stdout.index("{"):])["draft_id"]
     assert side_of(d2) == "right", side_of(d2)

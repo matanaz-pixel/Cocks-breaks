@@ -56,7 +56,11 @@ def create_draft(files: list[Path], caption: str, kind: str, first_comment: str 
                  alt: list[str] | None = None, cover_seconds: float | None = None, share_to_feed: bool = True,
                  location_id: str | None = None, user_tags: list[dict] | None = None) -> dict:
     now = datetime.now()
-    draft_id = now.strftime("%Y%m%d-%H%M%S")
+    base = now.strftime("%Y%m%d-%H%M%S")
+    draft_id, n = base, 1
+    while (DRAFTS_DIR / draft_id).exists():  # two drafts in the same second must not collide
+        n += 1
+        draft_id = f"{base}-{n}"
     d = DRAFTS_DIR / draft_id
     d.mkdir(parents=True, exist_ok=False)
     media = []
