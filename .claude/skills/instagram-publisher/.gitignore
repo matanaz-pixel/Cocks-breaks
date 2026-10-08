@@ -1,0 +1,6 @@
+# Secrets and working data — never commit
+.env
+cache/
+drafts/
+__pycache__/
+*.pyc
