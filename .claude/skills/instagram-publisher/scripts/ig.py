@@ -104,7 +104,7 @@ def cmd_frames(a) -> None:
 
 def _split_opts(a) -> dict:
     m = {"panel_pct": a.panel_pct, "panel_side": a.panel_side, "panel_color": a.panel_color,
-         "ink": a.ink, "bar_color": a.bar_color}
+         "ink": a.ink, "bar_color": a.bar_color, "band_color": a.band_color}
     return {k: v for k, v in m.items() if v is not None}
 
 
@@ -114,16 +114,22 @@ def _prepare_files(files, outdir: Path, a) -> tuple[list[Path], list[dict]]:
         f = Path(f)
         if media.kind_of(f) == "image":
             dest = outdir / f"{f.stem}.jpg"
+            ratio = a.ratio or (f"{4 * a.tiles}:5" if a.tiles > 1 else None)
             rep = media.prepare_image(
-                f, dest, ratio=a.ratio, fit=a.fit, focus=a.focus, tone=not a.no_tone, strength=a.tone_strength,
-                pad_color=a.pad_color, layout=a.layout, split=_split_opts(a), text=a.text if (a.text and (a.text_on is None or a.text_on == i)) else None,
+                f, dest, ratio=ratio, fit=a.fit, focus=a.focus, tone=not a.no_tone, strength=a.tone_strength,
+                pad_color=a.pad_color, layout=a.layout, split=_split_opts(a), zoom=a.zoom, tiles=a.tiles, grade=False if a.no_grade else None, text=a.text if (a.text and (a.text_on is None or a.text_on == i)) else None,
                 position=a.text_pos, color=a.text_color, font_path=a.font, size_pct=a.text_size, box=a.text_box,
                 stroke=a.text_stroke)
         else:
             dest = outdir / f"{f.stem}.mp4"
             rep = media.prepare_video(f, dest, ratio=a.video_ratio, fit="cover" if a.fit == "cover" else "contain")
+        if a.tiles > 1 and media.kind_of(f) == "image":
+            tiles = media.slice_tiles(dest, a.tiles)
+            rep["tiles"] = [str(t) for t in tiles]
+            outs.extend(tiles)
+        else:
+            outs.append(dest)
         reports.append(rep)
-        outs.append(dest)
     return outs, reports
 
 
@@ -226,8 +232,11 @@ def build_parser() -> argparse.ArgumentParser:
         sp.add_argument("--text-stroke", type=int, default=0)
         sp.add_argument("--layout", choices=["plain", "split"], default="plain",
                         help="split = text panel + photo + colour bar (the account's signature layout; defaults in brand/config.json)")
+        sp.add_argument("--zoom", type=float, default=1.0, help="split layout: zoom N× into the --focus point (x,y)")
+        sp.add_argument("--no-grade", action="store_true", help="skip the feed colour grade")
+        sp.add_argument("--tiles", type=int, default=1, help="render one wide image and cut it into N continuous tiles")
         sp.add_argument("--panel-pct", type=float); sp.add_argument("--panel-side", choices=["left", "right"])
-        sp.add_argument("--panel-color"); sp.add_argument("--ink"); sp.add_argument("--bar-color")
+        sp.add_argument("--panel-color"); sp.add_argument("--ink"); sp.add_argument("--bar-color"); sp.add_argument("--band-color")
         sp.add_argument("--font", help="path to .ttf/.otf (defaults to brand/fonts/*)")
 
     s = sub.add_parser("prepare"); s.add_argument("files", nargs="+"); s.add_argument("--out", required=True)

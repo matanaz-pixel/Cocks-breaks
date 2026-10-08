@@ -17,7 +17,7 @@ Vertical **9:16** (Reel cover / Story / pinned series), reproduced by `ig.py …
 - Hand-written, **thin, monoline, rounded pen** — not a bold marker. Near-black ink `#161616`. English accents ("here we go again") in a flowing calligraphic script, sometimes pastel blue/pink for gender-reveal ("boy / girl").
 - **Large**, centred in the panel, **2–5 short lines**, ≤ 6 words total, one idea per line, generous line spacing, vertically centred.
 - Hebrew RTL; titles are topic hooks, not sentences.
-- Closest available match shipped: **Playpen Sans Hebrew, weight 300** (`brand/fonts/`). ⚠ It is an approximation — its alef/mem/tsadi are more child-like than the real font. **Ask the user for the exact Canva font name** and drop the file in `brand/fonts/`.
+- Closest available match shipped: **Gveret Levin** (`brand/fonts/`) with the stroke thinned in code (`split.ink_thin: 4` in `brand/config.json`) to approach the fine pen. ⚠ Still an approximation: Gveret is slanted and a little more playful. (Playpen Sans Hebrew was tried and rejected: its mem reads as alef — "ממה" became "אמה".) **Ask the user for the exact Canva font name** and drop the file in `brand/fonts/`.
 
 ## 4. Photography
 - Candid, **real moments, not posed**: laughing, kissing, nursing, messy faces, a newborn crying right after birth. Close and intimate; faces fill the frame.
@@ -55,6 +55,7 @@ unknown (profile showed 513 posts, 3,137 followers).
 - [ ] Real moment, faces visible, warm light — would it feel posed? Then pick another frame.
 - [ ] Title ≤ 6 words, 2–5 lines, no emoji in the artwork.
 - [ ] `--layout split`, panel left 42%, bar colour picked from the photo's dominant warm tone.
+- [ ] Photo is colour-graded to the feed (soft, warm, lifted blacks; automatic via `brand/config.json → grade`, `--no-grade` to skip)
 - [ ] Faces and hands stay inside the photo window (`--focus x,y` to shift the crop).
 - [ ] Caption: hook line → one insight → 3 concrete tips → question to the audience.
 - [ ] No claims about the child's age, health or the family that the user did not provide.

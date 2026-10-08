@@ -11,7 +11,8 @@
     "panel_color": "#F7F0EC",
     "ink": "#161616",
     "bar_color": "#C8A07A",
-    "bar_pct": 2.2
+    "bar_pct": 2.2,
+    "ink_thin": 4
   },
-  "font_weight": 300
+  "grade": {}
 }

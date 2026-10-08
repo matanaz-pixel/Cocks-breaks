@@ -7,7 +7,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from PIL import Image, ImageColor, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps, features
+from PIL import Image, ImageChops, ImageColor, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps, features
 
 from common import BRAND_DIR, die, load_config, read_json
 
@@ -228,10 +228,58 @@ def overlay_text(img: Image.Image, text: str, position: str = "bottom", color: s
     return Image.alpha_composite(img, layer).convert("RGB")
 
 
+DEFAULT_GRADE = {"gamma": 0.93, "black_lift": 10, "white_cap": 250, "warm_r": 1.025, "warm_g": 0.99,
+                 "warm_b": 0.955, "saturation": 0.96, "contrast": 0.97, "glow": 0.14}
+
+
+def brand_grade(img: Image.Image, grade: dict | None = None, strength: float = 1.0) -> Image.Image:
+    """Soft, warm 'cream & blush' grade: open the mid-tones (faces), lift blacks slightly, warm the whites,
+    calm saturation, add a faint glow. Subtle by design — the subject's real colours stay."""
+    g = {**DEFAULT_GRADE, **(grade or {})}
+    src = img.convert("RGB")
+    lut = [round(255 * ((i / 255) ** g["gamma"])) for i in range(256)]
+    lut = [round(g["black_lift"] + v * (g["white_cap"] - g["black_lift"]) / 255) for v in lut]
+    out = src.point(lut * 3)
+    r, gr, b = out.split()
+    r = r.point(lambda v: min(255, round(v * g["warm_r"])))
+    gr = gr.point(lambda v: min(255, round(v * g["warm_g"])))
+    b = b.point(lambda v: min(255, round(v * g["warm_b"])))
+    out = Image.merge("RGB", (r, gr, b))
+    out = ImageEnhance.Color(out).enhance(g["saturation"])
+    out = ImageEnhance.Contrast(out).enhance(g["contrast"])
+    if g["glow"] > 0:
+        blur = out.filter(ImageFilter.GaussianBlur(radius=max(out.size) * 0.012))
+        out = Image.blend(out, ImageChops.screen(out, blur), g["glow"])
+    return src if strength <= 0 else Image.blend(src, out, min(1.0, strength))
+
+
+def crop_poi(photo: Image.Image, win_w: int, win_h: int, zoom: float, focus: str) -> Image.Image:
+    """Zoom `zoom`x into the point of interest `focus` (x,y in 0..1 of the photo), filling a win_w x win_h window."""
+    fx, fy = parse_focus(focus)
+    scale = max(win_w / photo.width, win_h / photo.height)
+    cw, ch = win_w / scale / zoom, win_h / scale / zoom
+    x0 = min(max(fx * photo.width - cw / 2, 0), photo.width - cw)
+    y0 = min(max(fy * photo.height - ch / 2, 0), photo.height - ch)
+    return photo.crop((round(x0), round(y0), round(x0 + cw), round(y0 + ch))).resize((win_w, win_h), Image.LANCZOS)
+
+
+def slice_tiles(path: Path, n: int) -> list[Path]:
+    """Cut a wide image into n equal tiles (continuous grid series). Returns the tile paths."""
+    img = Image.open(path)
+    tw = img.width // n
+    out = []
+    for i in range(n):
+        t = path.with_name(f"{path.stem}-t{i + 1}.jpg")
+        img.crop((i * tw, 0, (i + 1) * tw, img.height)).save(t, "JPEG", quality=92, subsampling=0)
+        out.append(t)
+    return out
+
+
 def compose_split(photo: Image.Image, ratio: float, width: int, text: str, panel_pct: float = 42,
                   panel_side: str = "left", panel_color: str = "#F7F0EC", ink: str = "#111111",
                   bar_color: str | None = "#C8A07A", bar_pct: float = 2.2, band_color: str | None = None,
-                  band_pct: float = 0.8, focus: str = "center", font_path: str | None = None) -> Image.Image:
+                  band_pct: float = 0.8, focus: str = "center", font_path: str | None = None,
+                  zoom: float = 1.0, align: str = "center", ink_thin: int = 0) -> Image.Image:
     """Cream text panel + full-height photo + thin colour bar — the feed's signature layout."""
     H = round(width / ratio)
     bar_h = round(H * bar_pct / 100) if bar_color else 0
@@ -239,7 +287,10 @@ def compose_split(photo: Image.Image, ratio: float, width: int, text: str, panel
     pw = round(width * panel_pct / 100)
     area_h = H - bar_h - band_h
     canvas = Image.new("RGB", (width, H), ImageColor.getrgb(panel_color))
-    ph = ImageOps.fit(photo, (width - pw, area_h), Image.LANCZOS, centering=parse_focus(focus))
+    if zoom > 1:
+        ph = crop_poi(photo, width - pw, area_h, zoom, focus)
+    else:
+        ph = ImageOps.fit(photo, (width - pw, area_h), Image.LANCZOS, centering=parse_focus(focus))
     px = width - ph.width if panel_side == "left" else 0
     canvas.paste(ph, (px, band_h))
     d = ImageDraw.Draw(canvas)
@@ -251,28 +302,38 @@ def compose_split(photo: Image.Image, ratio: float, width: int, text: str, panel
     max_w, max_h = pw * 0.84, area_h * 0.72
     paras = text.split("\n")
     size = int(pw * 0.34)
+    probe = ImageDraw.Draw(Image.new("RGB", (1, 1)))
     while size > 24:
         font = load_font(size, font_path)
         lines = [l for para in paras for l in wrap(para, font, int(max_w))]
         gap = int(size * 0.38)
         h = len(lines) * (size + gap) - gap
-        probe = ImageDraw.Draw(Image.new("RGB", (1, 1)))
         wmax = max(probe.textlength(shape(l)[0], font=font, **shape(l)[1]) for l in lines)
         if wmax <= max_w and h <= max_h:
             break
         size -= 4
+    # draw at 2x on a mask so the stroke can be thinned (marker fonts -> fine pen) and downsampled smoothly
+    S = 2
+    mask = Image.new("L", (pw * S, area_h * S), 0)
+    font2 = load_font(size * S, font_path)
+    draw_lines(ImageDraw.Draw(mask), lines, font2, 0, pw * S, (area_h * S - h * S) // 2, 255, gap * S, align=align)
+    thin = round(ink_thin * size / 110)  # ink_thin = erosion in px (at 2x) for a 110px font; scales with the font
+    if thin > 0:
+        mask = mask.filter(ImageFilter.MinFilter(2 * thin + 1))
+    mask = mask.resize((pw, area_h), Image.LANCZOS)
     x0 = 0 if panel_side == "left" else width - pw
-    draw_lines(d, lines, font, x0, x0 + pw, band_h + (area_h - h) // 2, ink, gap, align="center")
+    canvas.paste(Image.new("RGB", mask.size, ImageColor.getrgb(ink)), (x0, band_h), mask)
     return canvas
 
 
 def prepare_image(src: Path, out: Path, ratio: str | None = None, fit: str = "cover", focus: str = "center",
                   tone: bool = True, strength: float | None = None, width: int = 1080, pad_color: str = "#000000",
-                  text: str | None = None, layout: str = "plain", split: dict | None = None, **text_opts) -> dict:
+                  text: str | None = None, layout: str = "plain", split: dict | None = None, zoom: float = 1.0,
+                  grade: bool | None = None, tiles: int = 1, **text_opts) -> dict:
     cfg = load_config()
     ratio_s = ratio or cfg["default_ratio"]
     r = parse_ratio(ratio_s)
-    if not 0.5 <= r <= 1.91:
+    if not 0.5 <= r <= 1.91 * tiles:
         die(f"Ratio {ratio_s} is unsupported. Use 4:5, 1:1, 1.91:1 (feed) or 9:16 (story/reel cover).")
     img = ImageOps.exif_transpose(Image.open(src))
     if img.mode in ("RGBA", "LA", "P"):
@@ -281,9 +342,12 @@ def prepare_image(src: Path, out: Path, ratio: str | None = None, fit: str = "co
         flat.paste(rgba, mask=rgba.split()[-1])
         img = flat
     img = img.convert("RGB")
+    do_grade = ("grade" in cfg) if grade is None else grade
+    if do_grade:  # colour-grade the photo itself (never the cream panel) to sit in the feed's palette
+        img = brand_grade(img, cfg.get("grade") or None)
     data = read_json(BRAND_DIR / "style-data.json", {}) if tone else {}
     target = (data or {}).get("tone")
-    report: dict = {"source": str(src), "ratio": ratio_s, "layout": layout}
+    report: dict = {"source": str(src), "ratio": ratio_s, "layout": layout, "graded": do_grade}
     if layout == "split":
         if not text:
             die("--layout split needs --text (the panel title)")
@@ -291,7 +355,7 @@ def prepare_image(src: Path, out: Path, ratio: str | None = None, fit: str = "co
             img, applied = match_tone(img, target, cfg["tone_strength"] if strength is None else strength)
             report["tone_adjustments"] = applied
         opts = {**cfg.get("split", {}), **(split or {})}
-        img = compose_split(img, r, width, text, focus=focus, font_path=text_opts.get("font_path"), **opts)
+        img = compose_split(img, r, width, text, focus=focus, font_path=text_opts.get("font_path"), zoom=zoom, **opts)
         text = None
         report["size"] = list(img.size)
     else:
