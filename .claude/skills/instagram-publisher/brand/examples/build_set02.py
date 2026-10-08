@@ -27,10 +27,12 @@ def run(args):
     subprocess.run(IG + args, check=True, capture_output=True)
 
 OUT.mkdir(exist_ok=True)
+# grid order is 1..8 then the photo-only post; panel side alternates per post -> checkerboard in a 3-column grid
+SIDE = {n: ("left" if i % 2 == 0 else "right") for i, n in enumerate([1, 2, 3, 4, 5, 6, 7, 8])}
 for n, ratio, text, focus, zoom, bar in POSTS:
     d = OUT / f"_{n}"
     run(["prepare", photo, "--out", str(d), "--layout", "split", "--ratio", ratio, "--focus", focus,
-         "--zoom", str(zoom), "--bar-color", bar, "--text", text])
+         "--zoom", str(zoom), "--bar-color", bar, "--panel-side", SIDE[n], "--text", text])
     (d / Path(photo).with_suffix(".jpg").name).replace(OUT / f"post-{n:02d}-{ratio.replace(':', 'x')}.jpg")
     d.rmdir()
 

@@ -173,6 +173,20 @@ def main():
     r = run(["draft", str(src), "--caption", "#a " * 31], env, ok=False)
     assert r.returncode == 3 and "hashtags" in r.stdout
     print("validation ✓")
+
+    # 6) panel side alternates between published posts --------------------------------
+    def side_of(draft_id):
+        return json.loads((tmp / "home/drafts" / draft_id / "draft.json").read_text())["panel_side"]
+    split = ["--layout", "split", "--text", "בדיקה", "--no-tone"]
+    r = run(["draft", str(src), "--caption", "א", *split], env)
+    d1 = json.loads(r.stdout[r.stdout.index("{"):])["draft_id"]
+    assert side_of(d1) == "left", side_of(d1)
+    run(["approve", d1], env); run(["publish", d1], env)
+    import time; time.sleep(1.1)  # draft ids are second-resolution
+    r = run(["draft", str(src), "--caption", "ב", *split], env)
+    d2 = json.loads(r.stdout[r.stdout.index("{"):])["draft_id"]
+    assert side_of(d2) == "right", side_of(d2)
+    print("alternating panel ✓")
     print("\nALL TESTS PASSED")
 
 

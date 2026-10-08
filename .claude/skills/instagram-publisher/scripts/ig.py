@@ -23,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import drafts  # noqa: E402
 import media  # noqa: E402
 import style  # noqa: E402
-from common import (BRAND_DIR, DRAFTS_DIR, Graph, GraphError, die, load_config, load_env, require_ig, write_env)  # noqa: E402
+from common import (BRAND_DIR, DRAFTS_DIR, Graph, GraphError, die, load_config, load_env, read_state, require_ig, write_env)  # noqa: E402
 
 
 def out(obj) -> None:
@@ -102,6 +102,17 @@ def cmd_frames(a) -> None:
     out(res)
 
 
+def resolve_panel_side(a) -> str | None:
+    """--panel-side wins; else brand/config.json split.panel_side. 'alternate' flips the side of the last published post."""
+    if a.layout != "split":
+        return None
+    side = a.panel_side or load_config().get("split", {}).get("panel_side", "left")
+    if side in ("alternate", "auto"):
+        side = "right" if read_state().get("last_panel_side") == "left" else "left"
+    a.panel_side = side
+    return side
+
+
 def _split_opts(a) -> dict:
     m = {"panel_pct": a.panel_pct, "panel_side": a.panel_side, "panel_color": a.panel_color,
          "ink": a.ink, "bar_color": a.bar_color, "band_color": a.band_color}
@@ -134,6 +145,7 @@ def _prepare_files(files, outdir: Path, a) -> tuple[list[Path], list[dict]]:
 
 
 def cmd_prepare(a) -> None:
+    resolve_panel_side(a)
     _, reports = _prepare_files(a.files, Path(a.out), a)
     out(reports)
 
@@ -146,6 +158,7 @@ def cmd_draft(a) -> None:
             die(f"File not found: {f}")
     caption = Path(a.caption_file).read_text(encoding="utf-8").strip() if a.caption_file else (a.caption or "")
     first_comment = Path(a.first_comment_file).read_text(encoding="utf-8").strip() if a.first_comment_file else None
+    side = resolve_panel_side(a)
     kind = a.kind if a.kind != "auto" else drafts.infer_kind(files, a.story)
     reports: list[dict] = []
     if not a.no_prepare:
@@ -154,6 +167,9 @@ def cmd_draft(a) -> None:
         files, reports = _prepare_files(files, tmp, a)
     d = drafts.create_draft(files, caption, kind, first_comment, a.alt, a.cover_seconds, not a.reel_only,
                             a.location_id)
+    if side:
+        d["panel_side"] = side
+        drafts.save_draft(d)
     errors, warns = drafts.validate(d)
     username = load_env().get("IG_USERNAME") or load_config().get("account", "your_account")
     previews = drafts.render_preview(d, username)
@@ -235,7 +251,7 @@ def build_parser() -> argparse.ArgumentParser:
         sp.add_argument("--zoom", type=float, default=1.0, help="split layout: zoom N× into the --focus point (x,y)")
         sp.add_argument("--no-grade", action="store_true", help="skip the feed colour grade")
         sp.add_argument("--tiles", type=int, default=1, help="render one wide image and cut it into N continuous tiles")
-        sp.add_argument("--panel-pct", type=float); sp.add_argument("--panel-side", choices=["left", "right"])
+        sp.add_argument("--panel-pct", type=float); sp.add_argument("--panel-side", choices=["left", "right", "alternate"], help="left | right | alternate (flip vs the last published post)")
         sp.add_argument("--panel-color"); sp.add_argument("--ink"); sp.add_argument("--bar-color"); sp.add_argument("--band-color")
         sp.add_argument("--font", help="path to .ttf/.otf (defaults to brand/fonts/*)")
 

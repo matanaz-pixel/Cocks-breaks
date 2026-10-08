@@ -18,6 +18,7 @@ BRAND_DIR = DATA_DIR / "brand"
 DRAFTS_DIR = DATA_DIR / "drafts"
 CACHE_DIR = DATA_DIR / "cache"
 ENV_FILE = DATA_DIR / ".env"
+STATE_FILE = BRAND_DIR / "state.json"   # small cross-session memory, e.g. which side the last panel was on
 
 DEFAULT_CONFIG = {
     "timezone": "Asia/Jerusalem",
@@ -204,3 +205,13 @@ def require_ig(env: dict | None = None) -> Graph:
 
 def slugify(s: str) -> str:
     return re.sub(r"[^a-zA-Z0-9_-]+", "-", s).strip("-").lower()
+
+
+def read_state() -> dict:
+    return read_json(STATE_FILE, {}) or {}
+
+
+def update_state(**kv) -> None:
+    st = read_state()
+    st.update(kv)
+    write_json(STATE_FILE, st)

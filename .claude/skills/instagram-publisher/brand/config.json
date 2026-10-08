@@ -7,7 +7,7 @@
   "max_hashtags": 30,
   "split": {
     "panel_pct": 42,
-    "panel_side": "left",
+    "panel_side": "alternate",
     "panel_color": "#F7F0EC",
     "ink": "#161616",
     "bar_color": "#C8A07A",

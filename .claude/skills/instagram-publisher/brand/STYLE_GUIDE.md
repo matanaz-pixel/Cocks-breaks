@@ -8,8 +8,8 @@ Bio signals (verbatim facts): "יעל ליבה להב – יועצת שינה ב
 
 ## 2. Signature layout — "panel + photo"  *(always on text posts; ~70% of the grid)*
 Vertical **9:16** (Reel cover / Story / pinned series), reproduced by `ig.py … --layout split`:
-- **Text panel ≈ 42% of the width, on the LEFT**, full height, flat cream/blush-white `#F7F0EC`.
-- **Photo fills the other ≈ 58%** edge to edge, full height (no border, no rounded corners).
+- **Text panel ≈ 42% of the width**, full height, flat cream/blush-white `#F7F0EC`. **Side alternates from post to post** (left → right → left…; user decision, `split.panel_side: "alternate"`), which makes a checkerboard in the 3-column grid. NB: the 15 existing panel posts measured so far are all LEFT, so the alternation starts with the next post. The 3-tile series keeps the panel on the left like the pinned posts.
+- **Photo fills the other ≈ 58%** (the side opposite the panel) edge to edge, full height (no border, no rounded corners).
 - **Thin colour bar along the bottom (~2% of height)**, colour sampled from the photo or the topic: warm tan `#C8A07A`, rose-mocha `#B8897A`, deep mocha `#8A6A5C`, occasionally aqua `#8FD3DB`/sage. A faint blush band on top appears on some.
 - **Pinned 3-part series** (feed tips): same panel + photo split across a continuous 3-tile triptych, darker mocha top/bottom bands (`#6B5750` / `#9C6B5A`), text left-aligned with a hand-drawn underline on "טיפ מס' 1".
 

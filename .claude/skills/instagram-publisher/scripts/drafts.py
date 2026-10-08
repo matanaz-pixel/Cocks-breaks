@@ -15,7 +15,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageOps
 
 import hosting
-from common import DRAFTS_DIR, Graph, GraphError, die, load_config, load_env, read_json, write_json, BRAND_DIR
+from common import DRAFTS_DIR, Graph, GraphError, die, load_config, load_env, read_json, update_state, write_json, BRAND_DIR
 from media import (HEB, draw_lines, extract_cover, kind_of, load_font, probe_video, shape, wrap)
 
 HASHTAG = re.compile(r"#[\w֐-׿]+")
@@ -327,6 +327,8 @@ def publish(draft_id: str, dry_run: bool = False, log=print) -> dict:
         except GraphError as e:
             log(f"WARN: post is live but the first comment failed ({e}). Needs instagram_manage_comments permission.")
     BRAND_DIR.mkdir(exist_ok=True)
+    if draft.get("panel_side"):
+        update_state(last_panel_side=draft["panel_side"])
     with (BRAND_DIR / "published.jsonl").open("a", encoding="utf-8") as fh:
         fh.write(json.dumps({"draft": draft["id"], "media_id": media_id, "permalink": permalink,
                              "kind": kind, "at": draft["published_at"]}, ensure_ascii=False) + "\n")
