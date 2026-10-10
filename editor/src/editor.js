@@ -201,6 +201,7 @@
     return [
       h('h2', { text: 'דף הבית' }),
       h('p', { class: 'lead', text: 'פתחי כל חלק כדי לערוך אותו. התצוגה משמאל מתעדכנת תוך שניות.' }),
+      photoGroup(T, ['hero', 'about'], 'תמונות בדף הבית'),
       group(T, 'ראש הדף', true, [
         F({ path: 'home.hero_eyebrow', label: 'שורה קטנה מעל הכותרת' }),
         F({ path: 'home.hero_title', t: 'title', label: 'הכותרת הגדולה', hint: 'לחיצה על Enter יוצרת שורה חדשה.' }),
@@ -242,6 +243,7 @@
     var g = [
       h('h2', { text: S.short }),
       h('p', { class: 'lead', text: 'העמוד הזה והכרטיס שלו בדף הבית.' }),
+      photoGroup(T, [S.slug], 'התמונה של העמוד'),
       group(T, 'ראש העמוד', true, [F({ path: p + 'eyebrow', label: 'שורה קטנה מעל הכותרת' }), F({ path: p + 'hero_title', t: 'title', label: 'הכותרת הגדולה', hint: 'לחיצה על Enter יוצרת שורה חדשה.' }), F({ path: p + 'hero_sub', t: 'area', label: 'משפט הסבר' }), strList({ path: p + 'highlights', label: 'שלוש הנקודות מתחת להסבר', itemLabel: 'נקודה', addLabel: 'הוספת נקודה' })]),
       group(T, 'הכרטיס בדף הבית ושם השירות', false, [F({ path: p + 'short', label: 'שם השירות', hint: 'מופיע בתפריטים, בתחתית האתר ובכותרות.' }), F({ path: p + 'card_pain', label: 'שורה על הקושי של ההורים' }), F({ path: p + 'card_promise', t: 'area', label: 'ההבטחה של השירות' })]),
       group(T, 'זה בשבילכם אם', false, [F({ path: p + 'fits_title', label: 'כותרת' }), strList({ path: p + 'fits', label: 'המצבים', itemLabel: 'מצב', addLabel: 'הוספת מצב' })])
@@ -336,41 +338,43 @@
       toast('לא הצלחתי להוסיף את התמונה. ההסבר מופיע מתחתיה.');
     });
   }
+  function imageSlot(slot) {
+    var cur = P.images[slot.key], busy = slotBusy[slot.key], msg = slotMsg[slot.key];
+    var fileIn = h('input', { type: 'file', accept: 'image/*,.heic,.heif,.jpg,.jpeg,.png,.webp,.gif', id: 'file-' + slot.key, disabled: busy ? true : null });
+    fileIn.addEventListener('change', function () { var f = fileIn.files && fileIn.files[0]; if (f) setSlotImage(slot, f); });
+    var thumb = h('div', { class: 'thumb', 'data-drop': slot.key, tabindex: '-1' }, busy ? 'מעבדת את התמונה…' : (cur && cur.data ? h('img', { src: cur.data, alt: '' }) : 'גרירה לכאן'));
+    ['dragenter', 'dragover'].forEach(function (ev) { thumb.addEventListener(ev, function (e) { e.preventDefault(); thumb.classList.add('over'); }); });
+    thumb.addEventListener('dragleave', function () { thumb.classList.remove('over'); });
+    thumb.addEventListener('drop', function (e) { e.preventDefault(); thumb.classList.remove('over'); var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) setSlotImage(slot, f); });
+    /* תווית עם שדה קובץ אמיתי מעליה: לחיצה עליה פותחת את בחירת הקבצים ישירות, בלי JavaScript באמצע */
+    var pick = h('label', { class: 'btn small filebtn' + (busy ? ' disabled' : '') }, cur && cur.data ? 'החלפת תמונה' : 'בחירת תמונה מהמחשב', fileIn);
+    var acts = h('div', { class: 'acts' }, pick,
+      cur && cur.data ? h('button', { type: 'button', class: 'btn small ghost danger', onclick: function () { pushUndo(); delete P.images[slot.key]; slotMsg[slot.key] = null; changed(); renderContent(); } }, 'הסרה') : null);
+    var extra = [];
+    if (cur && cur.data) {
+      extra.push(renderOne({ label: 'תיאור קצר של התמונה', hint: 'למי שלא רואה את התמונה, ולגוגל. למשל: "נועה מחזיקה תינוק".' }, function () { return cur.alt; }, function (v) { cur.alt = v; }));
+      var fid = uid(), sel = h('select', { id: fid }, h('option', { value: 'top', text: 'החלק העליון (מומלץ לפנים)' }), h('option', { value: 'center', text: 'האמצע' }), h('option', { value: 'bottom', text: 'החלק התחתון' }));
+      sel.value = cur.focus || 'center'; sel.addEventListener('change', function () { cur.focus = sel.value; changed(); });
+      extra.push(h('div', { class: 'field' }, h('label', { for: fid, text: 'איזה חלק יישאר כשהתמונה נחתכת' }), sel));
+    }
+    return h('div', { class: 'img-slot', 'data-slot': slot.key }, thumb, h('div', {}, h('h3', { text: slot.label }), slot.hint ? h('div', { class: 'hint', style: 'font-size:.88rem;color:var(--muted)', text: slot.hint }) : null,
+      cur && cur.data ? h('div', { class: 'hint', style: 'font-size:.85rem;color:var(--muted)', text: 'גודל התמונה: ⁦' + cur.w + '×' + cur.h + '⁩ פיקסלים, ' + kb(cur.data) + ' קילובייט' }) : null,
+      msg ? h('div', { class: 'img-err', role: 'alert', text: msg }) : null, acts, h('div', { style: 'display:grid;gap:10px;margin-top:12px' }, extra)));
+  }
+  function slotByKey(key) { return Gen.IMAGE_SLOTS.filter(function (x) { return x.key === key; })[0]; }
   function imagesTab() {
-    var out = [h('h2', { text: 'תמונות' }), h('p', { class: 'lead', text: 'בחרי תמונה מהמחשב, או גררי אותה לתוך המסגרת. היא תוקטן אוטומטית כדי שהאתר ייטען מהר, ותיחתך לצורת הקשת באתר.' }),
+    var out = [h('h2', { text: 'תמונות' }), h('p', { class: 'lead', text: 'בחרי תמונה מהמחשב, או גררי אותה לתוך המסגרת. היא תוקטן אוטומטית כדי שהאתר ייטען מהר, ותיחתך לצורת הקשת באתר. אפשר גם ללחוץ על מסגרת התמונה בתצוגה משמאל.' }),
       h('details', { class: 'group', style: 'margin-bottom:14px' }, h('summary', { text: 'לא מצליחה להוסיף תמונה?' }), h('div', { class: 'body' },
         h('ol', { style: 'margin:0 18px;display:grid;gap:6px' },
           h('li', { text: 'ודאי שפתחת את קובץ העורך ישירות מהמחשב, בדפדפן Chrome או Edge, ולא מתוך אפליקציה אחרת או תצוגה מקדימה.' }),
           h('li', { text: 'תמונות מאייפון בפורמט HEIC לא נפתחות בכל דפדפן. שלחי אותן לעצמך בוואטסאפ והורידי, או שמרי כ-JPG.' }),
-          h('li', { text: 'אם לחיצה על "בחירת תמונה" לא פותחת חלון, אפשר לגרור את הקובץ ישירות לתוך המסגרת הריבועית.' }),
+          h('li', { text: 'אפשר לגרור את הקובץ ישירות לתוך המסגרת הריבועית.' }),
           h('li', { text: 'אם משהו עדיין לא עובד, צלמי את המסך עם ההודעה האדומה שמופיעה מתחת לתמונה.' }))))];
-    Gen.IMAGE_SLOTS.forEach(function (slot) {
-      var cur = P.images[slot.key], busy = slotBusy[slot.key], msg = slotMsg[slot.key];
-      var fileIn = h('input', { type: 'file', accept: 'image/*,.heic,.heif,.jpg,.jpeg,.png,.webp,.gif', id: 'file-' + slot.key });
-      fileIn.addEventListener('change', function () {
-        var f = fileIn.files && fileIn.files[0];
-        if (!f) return;
-        setSlotImage(slot, f);
-      });
-      var thumb = h('div', { class: 'thumb', 'data-drop': slot.key, tabindex: '-1' }, busy ? 'מעבדת את התמונה…' : (cur && cur.data ? h('img', { src: cur.data, alt: '' }) : 'גרירה לכאן'));
-      ['dragenter', 'dragover'].forEach(function (ev) { thumb.addEventListener(ev, function (e) { e.preventDefault(); thumb.classList.add('over'); }); });
-      thumb.addEventListener('dragleave', function () { thumb.classList.remove('over'); });
-      thumb.addEventListener('drop', function (e) { e.preventDefault(); thumb.classList.remove('over'); var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) setSlotImage(slot, f); });
-      var acts = h('div', { class: 'acts' },
-        h('button', { type: 'button', class: 'btn small', disabled: busy ? true : null, onclick: function () { fileIn.click(); } }, cur && cur.data ? 'החלפת תמונה' : 'בחירת תמונה'),
-        cur && cur.data ? h('button', { type: 'button', class: 'btn small ghost danger', onclick: function () { pushUndo(); delete P.images[slot.key]; slotMsg[slot.key] = null; changed(); renderContent(); } }, 'הסרה') : null, fileIn);
-      var extra = [];
-      if (cur && cur.data) {
-        extra.push(renderOne({ label: 'תיאור קצר של התמונה', hint: 'למי שלא רואה את התמונה, ולגוגל. למשל: "נועה מחזיקה תינוק".' }, function () { return cur.alt; }, function (v) { cur.alt = v; }));
-        var fid = uid(), sel = h('select', { id: fid }, h('option', { value: 'top', text: 'החלק העליון (מומלץ לפנים)' }), h('option', { value: 'center', text: 'האמצע' }), h('option', { value: 'bottom', text: 'החלק התחתון' }));
-        sel.value = cur.focus || 'center'; sel.addEventListener('change', function () { cur.focus = sel.value; changed(); });
-        extra.push(h('div', { class: 'field' }, h('label', { for: fid, text: 'איזה חלק יישאר כשהתמונה נחתכת' }), sel));
-      }
-      out.push(h('div', { class: 'img-slot' }, thumb, h('div', {}, h('h3', { text: slot.label }), slot.hint ? h('div', { class: 'hint', style: 'font-size:.88rem;color:var(--muted)', text: slot.hint }) : null,
-        cur && cur.data ? h('div', { class: 'hint', style: 'font-size:.85rem;color:var(--muted)', text: 'גודל התמונה: ⁦' + cur.w + '×' + cur.h + '⁩ פיקסלים, ' + kb(cur.data) + ' קילובייט' }) : null,
-        msg ? h('div', { class: 'img-err', role: 'alert', text: msg }) : null, acts, h('div', { style: 'display:grid;gap:10px;margin-top:12px' }, extra))));
-    });
+    Gen.IMAGE_SLOTS.forEach(function (slot) { out.push(imageSlot(slot)); });
     return out;
+  }
+  function photoGroup(tab, keys, title) {
+    return group(tab, title, true, [h('p', { class: 'hint', style: 'margin:0', text: 'בתצוגה משמאל התמונה מופיעה בתוך מסגרת. אפשר ללחוץ עליה שם, או לבחור כאן.' })].concat(keys.map(function (k) { return imageSlot(slotByKey(k)); })));
   }
 
   /* ---------- פרסום ---------- */
@@ -474,11 +478,25 @@
     var fr = $('frame'); if (e.source !== fr.contentWindow || !e.data) return;
     if (e.data.siteScroll != null) pvScroll[pvPage] = e.data.siteScroll;
     else if (e.data.siteReady) fr.contentWindow.postMessage({ restoreScroll: pvScroll[pvPage] || 0 }, '*');
+    else if (typeof e.data.sitePhoto === 'string') focusPhoto(e.data.sitePhoto);
     else if (typeof e.data.siteNav === 'string') {
       var f = e.data.siteNav.split('#')[0]; var known = P.services.map(function (s) { return s.file; }).concat(['index.html']);
       if (known.indexOf(f) >= 0) { pvPage = f; pvScroll[f] = 0; renderPvPages(); renderPreview(); }
     }
   });
+
+  function focusPhoto(key) {
+    var tab = key === 'hero' || key === 'about' ? 'home' : 'svc' + P.services.map(function (x) { return x.slug; }).indexOf(key);
+    if (tab !== tabId) gotoTab(tab);
+    setTimeout(function () {
+      var slot = document.querySelector('.img-slot[data-slot="' + key + '"]');
+      if (!slot) return;
+      var d = slot.closest('details'); if (d) d.open = true;
+      slot.scrollIntoView({ block: 'center', behavior: 'smooth' }); slot.classList.remove('flash'); void slot.offsetWidth; slot.classList.add('flash');
+      var inp = $('file-' + key); if (inp && !inp.disabled) { try { inp.click(); } catch (e) { } }
+      toast('בחרי תמונה מהמחשב. אם החלון לא נפתח, לחצי על "בחירת תמונה".');
+    }, 120);
+  }
 
   /* ---------- ציור ---------- */
   function gotoTab(id) { tabId = id; var pg = pageForTab(id); if (pg) { pvPage = pg; renderPvPages(); renderPreview(); } renderTabs(); renderContent(); $('panel').scrollTop = 0; }
@@ -521,7 +539,18 @@
   }
 
   /* ---------- אתחול ---------- */
+  function embeddedWarning() {
+    var emb = false;
+    try { emb = window.self !== window.top; } catch (e) { emb = true; }
+    if (!/^(file|http|https):$/.test(location.protocol)) emb = true;
+    if (!emb) return;
+    var b = h('div', { class: 'notice', role: 'alert', style: 'margin:0;border-radius:0;display:flex;gap:12px;align-items:center;justify-content:space-between' },
+      h('span', {}, h('b', { text: 'שימי לב: ' }), 'נראה שהעורך פתוח בתוך אפליקציה או חלון מוגבל. בחלון כזה בחירת קבצים, הורדה, גיבוי ושמירה אוטומטית עלולים לא לעבוד. שמרי את הקובץ site-editor.html במחשב ופתחי אותו בלחיצה כפולה ב-Chrome או ב-Edge.'),
+      h('button', { type: 'button', class: 'btn small', onclick: function () { b.remove(); } }, 'הבנתי'));
+    document.querySelector('.app').insertBefore(b, document.querySelector('.top'));
+  }
   function init() {
+    embeddedWarning();
     $('btnUndo').addEventListener('click', function () {
       if (!undoStack.length) return; P = JSON.parse(undoStack.pop()); $('btnUndo').disabled = !undoStack.length; renderAll(); scheduleSave(); toast('הפעולה האחרונה בוטלה');
     });

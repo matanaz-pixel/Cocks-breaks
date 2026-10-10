@@ -108,13 +108,14 @@
       var h = o.h;
       var previewScript = preview ? '<script>(function(){var t;addEventListener("scroll",function(){clearTimeout(t);t=setTimeout(function(){parent.postMessage({siteScroll:scrollY},"*")},80)},{passive:true});' +
         'addEventListener("message",function(e){if(e.data&&e.data.restoreScroll!=null){var d=document.documentElement;d.style.scrollBehavior="auto";scrollTo(0,e.data.restoreScroll);d.style.scrollBehavior=""}});' +
-        'document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a");if(!a)return;var h=a.getAttribute("href")||"";if(/\\.html(#|$)/.test(h)){e.preventDefault();parent.postMessage({siteNav:h},"*")}});' +
+        'document.addEventListener("click",function(e){var ph=e.target.closest&&e.target.closest("[data-photo]");if(ph){e.preventDefault();parent.postMessage({sitePhoto:ph.getAttribute("data-photo")},"*");return}var a=e.target.closest&&e.target.closest("a");if(!a)return;var h=a.getAttribute("href")||"";if(/\\.html(#|$)/.test(h)){e.preventDefault();parent.postMessage({siteNav:h},"*")}});' +
         'parent.postMessage({siteReady:true},"*")})()</script>' : '';
+      var previewCss = preview ? '[data-photo]{cursor:pointer}[data-photo]:hover{outline:4px dashed #a85a39;outline-offset:-6px}' : '';
       return '<!doctype html>\n<html lang="he" dir="rtl">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n' +
         '<title>' + esc(o.title) + '</title>\n<meta name="description" content="' + esc(o.desc) + '">\n<meta name="theme-color" content="#f6ecdf">\n' +
         '<meta property="og:title" content="' + esc(o.title) + '">\n<meta property="og:description" content="' + esc(o.desc) + '">\n<meta property="og:type" content="website">\n<meta property="og:locale" content="he_IL">\n' + canon + og +
         '<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 64 64\'%3E%3Crect width=\'64\' height=\'64\' rx=\'32\' fill=\'%23a85a39\'/%3E%3Cpath d=\'M44 36.5A14 14 0 1 1 28.6 19.8a11 11 0 0 0 15.4 16.7z\' fill=\'%23fffaf3\'/%3E%3C/svg%3E">\n' +
-        '<script type="application/ld+json">' + ldJson + '</script>\n<script>document.documentElement.classList.add(\'js\')</script>\n<style>\n' + assets.fonts + '\n' + assets.css + '\n</style>\n</head>\n<body' + bodyStyle + '>\n' +
+        '<script type="application/ld+json">' + ldJson + '</script>\n<script>document.documentElement.classList.add(\'js\')</script>\n<style>\n' + assets.fonts + '\n' + assets.css + '\n' + previewCss + '\n</style>\n</head>\n<body' + bodyStyle + '>\n' +
         '<a class="skip" href="#main">דלגו לתוכן</a>\n' + assets.sprite + '\n<header>\n <div class="wrap nav">\n  <a class="brand" href="' + (h || '#top') + '"><i>' + icon('moon') + '</i>' + esc(B.name) + '</a>\n' +
         '  <button class="burger" id="burger" type="button" aria-label="פתיחת תפריט" aria-expanded="false" aria-controls="menu">' + icon('menu') + '</button>\n' +
         '  <nav aria-label="ראשי">\n   <ul class="menu" id="menu">\n    ' + navHtml + '\n    <li><a href="' + esc(o.pageWa) + '" target="_blank" rel="noopener">בואו נדבר</a></li>\n   </ul>\n  </nav>\n </div>\n</header>\n' +
@@ -175,8 +176,9 @@
       if (fixUrl(B.facebook)) s += '  <a href="' + esc(fixUrl(B.facebook)) + '" target="_blank" rel="noopener" aria-label="פייסבוק">' + icon('facebook') + '</a>\n';
       return s + ' </div>\n</div></div></section>';
     }
+    function photoAttr(key) { return preview ? ' data-photo="' + esc(key) + '" title="לחצי כאן כדי להוסיף או להחליף תמונה"' : ''; }
     function photoInner(key, iconName, caption) {
-      return hasImg(key) ? imgTag(key) : icon(iconName) + '<small>' + esc(caption) + '</small>';
+      return hasImg(key) ? imgTag(key) : icon(iconName) + '<small>' + esc(preview ? 'לחצי כאן להוספת תמונה' : caption) + '</small>';
     }
     function sectionHead(tag, title, intro) {
       return '<div class="head">' + (tag ? '<span class="tag">' + esc(tag) + '</span>' : '') + '<h2>' + esc(title) + '</h2>' + (intro ? '<p>' + esc(intro) + '</p>' : '') + '</div>';
@@ -197,7 +199,7 @@
       m += '<div class="hero" id="top"><div class="wrap">\n <div>\n  <span class="eyebrow">' + esc(H.hero_eyebrow) + '</span>\n  <h1>' + ml(H.hero_title) + '</h1>\n  <p class="sub">' + esc(H.hero_sub) + '</p>\n' +
         '  <div class="actions">\n   <a class="btn" href="' + esc(pageWa) + '" target="_blank" rel="noopener">' + icon('whatsapp') + 'בואו נדבר בוואטסאפ</a>\n   <a class="btn line" href="#services">לכל השירותים</a>\n  </div>\n' +
         (arr(H.chips).length ? '  <ul class="chips">' + arr(H.chips).map(function (c) { return '<li>' + icon('heart') + esc(c) + '</li>'; }).join('') + '</ul>\n' : '') + ' </div>\n' +
-        ' <div class="arch"' + (hasImg('hero') ? '' : ' role="img" aria-label="מקום לתמונה"') + '>\n  <div class="shape b"></div><div class="shape c"></div><div class="shape"></div>\n  <div class="in">' + photoInner('hero', 'sun', 'כאן תהיה התמונה') + '</div>\n </div>\n</div></div>\n\n';
+        ' <div class="arch"' + photoAttr('hero') + (hasImg('hero') ? '' : ' role="img" aria-label="מקום לתמונה"') + '>\n  <div class="shape b"></div><div class="shape c"></div><div class="shape"></div>\n  <div class="in">' + photoInner('hero', 'sun', 'כאן תהיה התמונה') + '</div>\n </div>\n</div></div>\n\n';
 
       m += '<section id="services" style="padding-top:30px"><div class="wrap">\n ' + sectionHead('שירותים', H.services_title, H.services_sub) + '\n <div class="svcs">' +
         SV.map(function (s) {
@@ -214,7 +216,7 @@
         (arr(H.why).length ? ' <div class="why">' + arr(H.why).map(function (w) { return '<div><h3>' + esc(w.title) + '</h3><p>' + esc(w.text) + '</p></div>'; }).join('') + '</div>\n' : '') +
         (H.holistic_example ? ' <p class="example" style="max-width:900px;margin-inline:auto;margin-top:26px"><b>לדוגמה: </b>' + esc(H.holistic_example) + '</p>\n' : '') + '</div></section>\n\n';
 
-      m += '<section id="about" class="about white-bg" style="padding-top:20px"><div class="wrap">\n <div class="photo"' + (hasImg('about') ? '' : ' role="img" aria-label="מקום לתמונה אישית"') + '>' + photoInner('about', 'heart', 'תמונה אישית') + '</div>\n <div>\n  <span class="tag">קצת עליי</span>\n  <h2>' + esc(H.about_title) + '</h2>\n  ' +
+      m += '<section id="about" class="about white-bg" style="padding-top:20px"><div class="wrap">\n <div class="photo"' + photoAttr('about') + (hasImg('about') ? '' : ' role="img" aria-label="מקום לתמונה אישית"') + '>' + photoInner('about', 'heart', 'תמונה אישית') + '</div>\n <div>\n  <span class="tag">קצת עליי</span>\n  <h2>' + esc(H.about_title) + '</h2>\n  ' +
         aboutParas.map(function (p) { return '<p>' + esc(p) + '</p>'; }).join('') + '\n' +
         (arr(H.credentials).length ? '  <ul class="cred">' + arr(H.credentials).map(function (x) { return '<li>' + icon('check') + esc(x) + '</li>'; }).join('') + '</ul>\n' : '') + ' </div>\n</div></section>\n\n';
 
@@ -241,7 +243,7 @@
         (arr(S.highlights).length ? '  <ul class="hl">' + arr(S.highlights).map(function (x) { return '<li>' + icon('check') + esc(x) + '</li>'; }).join('') + '</ul>\n' : '') +
         '  <div class="actions">\n   <a class="btn" href="' + esc(pageWa) + '" target="_blank" rel="noopener">' + icon('whatsapp') + 'לשיחת היכרות בוואטסאפ</a>\n   <a class="btn line" href="#included">' + esc(S.included_title) + '</a>\n  </div>\n' +
         '  <p class="fund-line">' + icon('wallet') + '<span>אפשר לקבל השתתפות כספית דרך סל ההריון או המילואים, לפי זכאות. <a href="#funding">לפרטים</a></span></p>\n </div>\n' +
-        ' <div class="s-art"' + (hasImg(S.slug) ? '' : ' role="img" aria-label="מקום לתמונה"') + '>' + photoInner(S.slug, S.icon, 'כאן אפשר להוסיף תמונה') + '</div>\n</div></div>\n\n';
+        ' <div class="s-art"' + photoAttr(S.slug) + (hasImg(S.slug) ? '' : ' role="img" aria-label="מקום לתמונה"') + '>' + photoInner(S.slug, S.icon, 'כאן אפשר להוסיף תמונה') + '</div>\n</div></div>\n\n';
 
       m += '<div class="switch"><div class="wrap"><nav aria-label="שירותים נוספים"><ul><li>שירותים:</li>\n' + SV.map(function (s) {
         return ' <li><a href="' + esc(s.file) + '"' + (s.slug === S.slug ? ' aria-current="page"' : '') + '>' + icon(s.icon) + esc(s.short) + '</a></li>';

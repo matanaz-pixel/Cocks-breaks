@@ -78,7 +78,6 @@ button,input,select,textarea{font:inherit;color:inherit}
 .thumb img{width:100%;height:100%;object-fit:cover}
 .img-slot .acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
 .img-slot h3{font-size:1.05rem}
-.img-slot input[type=file]{display:none}
 /* publish */
 .issues{list-style:none;display:grid;gap:8px;margin:10px 0 18px}
 .issues li{display:flex;gap:10px;align-items:center;justify-content:space-between;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px}
@@ -120,11 +119,21 @@ dialog .acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;justify-conten
  .mode-switch{display:flex;position:fixed;bottom:14px;inset-inline-start:50%;transform:translateX(50%);z-index:40;background:var(--card);border-radius:99px;box-shadow:0 6px 24px rgba(0,0,0,.28)}
  .toast{bottom:84px}
 }
-@media (max-width:560px){.img-slot{grid-template-columns:1fr}.status{display:none}}
+@media (max-width:560px){.img-slot{grid-template-columns:1fr}}
 #content>.field{margin-bottom:14px}
 #content>.group+.group{margin-top:0}
 .thumb.over{outline:3px dashed var(--clay);outline-offset:-3px;background:#f4d9c8}
 .img-err{background:#fbe3dd;color:#7a2216;border-radius:12px;padding:10px 14px;margin:8px 0;font-size:.93rem;border:1px solid #e9b4a9}
+.filebtn{position:relative;overflow:hidden;cursor:pointer}
+.filebtn input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0}
+.filebtn:hover{background:var(--ink);color:#fff}
+.filebtn:focus-within{outline:3px solid var(--clay);outline-offset:2px}
+.filebtn.disabled{opacity:.45;pointer-events:none}
+dialog{margin:auto}
+.img-slot.flash{animation:flash 1.8s ease-out}
+@keyframes flash{0%{box-shadow:0 0 0 0 rgba(168,90,57,.8);background:#fbe9dc}100%{box-shadow:0 0 0 18px rgba(168,90,57,0)}}
+@media (max-width:560px){.status{display:block;flex-basis:100%;order:5;text-align:start}}
+@media (prefers-reduced-motion:reduce){.img-slot.flash{animation:none}}
 
 </style>
 </head>
@@ -267,13 +276,14 @@ dialog .acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;justify-conten
       var h = o.h;
       var previewScript = preview ? '<script>(function(){var t;addEventListener("scroll",function(){clearTimeout(t);t=setTimeout(function(){parent.postMessage({siteScroll:scrollY},"*")},80)},{passive:true});' +
         'addEventListener("message",function(e){if(e.data&&e.data.restoreScroll!=null){var d=document.documentElement;d.style.scrollBehavior="auto";scrollTo(0,e.data.restoreScroll);d.style.scrollBehavior=""}});' +
-        'document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a");if(!a)return;var h=a.getAttribute("href")||"";if(/\\.html(#|$)/.test(h)){e.preventDefault();parent.postMessage({siteNav:h},"*")}});' +
+        'document.addEventListener("click",function(e){var ph=e.target.closest&&e.target.closest("[data-photo]");if(ph){e.preventDefault();parent.postMessage({sitePhoto:ph.getAttribute("data-photo")},"*");return}var a=e.target.closest&&e.target.closest("a");if(!a)return;var h=a.getAttribute("href")||"";if(/\\.html(#|$)/.test(h)){e.preventDefault();parent.postMessage({siteNav:h},"*")}});' +
         'parent.postMessage({siteReady:true},"*")})()<\/script>' : '';
+      var previewCss = preview ? '[data-photo]{cursor:pointer}[data-photo]:hover{outline:4px dashed #a85a39;outline-offset:-6px}' : '';
       return '<!doctype html>\n<html lang="he" dir="rtl">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n' +
         '<title>' + esc(o.title) + '</title>\n<meta name="description" content="' + esc(o.desc) + '">\n<meta name="theme-color" content="#f6ecdf">\n' +
         '<meta property="og:title" content="' + esc(o.title) + '">\n<meta property="og:description" content="' + esc(o.desc) + '">\n<meta property="og:type" content="website">\n<meta property="og:locale" content="he_IL">\n' + canon + og +
         '<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 64 64\'%3E%3Crect width=\'64\' height=\'64\' rx=\'32\' fill=\'%23a85a39\'/%3E%3Cpath d=\'M44 36.5A14 14 0 1 1 28.6 19.8a11 11 0 0 0 15.4 16.7z\' fill=\'%23fffaf3\'/%3E%3C/svg%3E">\n' +
-        '<script type="application/ld+json">' + ldJson + '<\/script>\n<script>document.documentElement.classList.add(\'js\')<\/script>\n<style>\n' + assets.fonts + '\n' + assets.css + '\n</style>\n</head>\n<body' + bodyStyle + '>\n' +
+        '<script type="application/ld+json">' + ldJson + '<\/script>\n<script>document.documentElement.classList.add(\'js\')<\/script>\n<style>\n' + assets.fonts + '\n' + assets.css + '\n' + previewCss + '\n</style>\n</head>\n<body' + bodyStyle + '>\n' +
         '<a class="skip" href="#main">דלגו לתוכן</a>\n' + assets.sprite + '\n<header>\n <div class="wrap nav">\n  <a class="brand" href="' + (h || '#top') + '"><i>' + icon('moon') + '</i>' + esc(B.name) + '</a>\n' +
         '  <button class="burger" id="burger" type="button" aria-label="פתיחת תפריט" aria-expanded="false" aria-controls="menu">' + icon('menu') + '</button>\n' +
         '  <nav aria-label="ראשי">\n   <ul class="menu" id="menu">\n    ' + navHtml + '\n    <li><a href="' + esc(o.pageWa) + '" target="_blank" rel="noopener">בואו נדבר</a></li>\n   </ul>\n  </nav>\n </div>\n</header>\n' +
@@ -334,8 +344,9 @@ dialog .acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;justify-conten
       if (fixUrl(B.facebook)) s += '  <a href="' + esc(fixUrl(B.facebook)) + '" target="_blank" rel="noopener" aria-label="פייסבוק">' + icon('facebook') + '</a>\n';
       return s + ' </div>\n</div></div></section>';
     }
+    function photoAttr(key) { return preview ? ' data-photo="' + esc(key) + '" title="לחצי כאן כדי להוסיף או להחליף תמונה"' : ''; }
     function photoInner(key, iconName, caption) {
-      return hasImg(key) ? imgTag(key) : icon(iconName) + '<small>' + esc(caption) + '</small>';
+      return hasImg(key) ? imgTag(key) : icon(iconName) + '<small>' + esc(preview ? 'לחצי כאן להוספת תמונה' : caption) + '</small>';
     }
     function sectionHead(tag, title, intro) {
       return '<div class="head">' + (tag ? '<span class="tag">' + esc(tag) + '</span>' : '') + '<h2>' + esc(title) + '</h2>' + (intro ? '<p>' + esc(intro) + '</p>' : '') + '</div>';
@@ -356,7 +367,7 @@ dialog .acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;justify-conten
       m += '<div class="hero" id="top"><div class="wrap">\n <div>\n  <span class="eyebrow">' + esc(H.hero_eyebrow) + '</span>\n  <h1>' + ml(H.hero_title) + '</h1>\n  <p class="sub">' + esc(H.hero_sub) + '</p>\n' +
         '  <div class="actions">\n   <a class="btn" href="' + esc(pageWa) + '" target="_blank" rel="noopener">' + icon('whatsapp') + 'בואו נדבר בוואטסאפ</a>\n   <a class="btn line" href="#services">לכל השירותים</a>\n  </div>\n' +
         (arr(H.chips).length ? '  <ul class="chips">' + arr(H.chips).map(function (c) { return '<li>' + icon('heart') + esc(c) + '</li>'; }).join('') + '</ul>\n' : '') + ' </div>\n' +
-        ' <div class="arch"' + (hasImg('hero') ? '' : ' role="img" aria-label="מקום לתמונה"') + '>\n  <div class="shape b"></div><div class="shape c"></div><div class="shape"></div>\n  <div class="in">' + photoInner('hero', 'sun', 'כאן תהיה התמונה') + '</div>\n </div>\n</div></div>\n\n';
+        ' <div class="arch"' + photoAttr('hero') + (hasImg('hero') ? '' : ' role="img" aria-label="מקום לתמונה"') + '>\n  <div class="shape b"></div><div class="shape c"></div><div class="shape"></div>\n  <div class="in">' + photoInner('hero', 'sun', 'כאן תהיה התמונה') + '</div>\n </div>\n</div></div>\n\n';
 
       m += '<section id="services" style="padding-top:30px"><div class="wrap">\n ' + sectionHead('שירותים', H.services_title, H.services_sub) + '\n <div class="svcs">' +
         SV.map(function (s) {
@@ -373,7 +384,7 @@ dialog .acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;justify-conten
         (arr(H.why).length ? ' <div class="why">' + arr(H.why).map(function (w) { return '<div><h3>' + esc(w.title) + '</h3><p>' + esc(w.text) + '</p></div>'; }).join('') + '</div>\n' : '') +
         (H.holistic_example ? ' <p class="example" style="max-width:900px;margin-inline:auto;margin-top:26px"><b>לדוגמה: </b>' + esc(H.holistic_example) + '</p>\n' : '') + '</div></section>\n\n';
 
-      m += '<section id="about" class="about white-bg" style="padding-top:20px"><div class="wrap">\n <div class="photo"' + (hasImg('about') ? '' : ' role="img" aria-label="מקום לתמונה אישית"') + '>' + photoInner('about', 'heart', 'תמונה אישית') + '</div>\n <div>\n  <span class="tag">קצת עליי</span>\n  <h2>' + esc(H.about_title) + '</h2>\n  ' +
+      m += '<section id="about" class="about white-bg" style="padding-top:20px"><div class="wrap">\n <div class="photo"' + photoAttr('about') + (hasImg('about') ? '' : ' role="img" aria-label="מקום לתמונה אישית"') + '>' + photoInner('about', 'heart', 'תמונה אישית') + '</div>\n <div>\n  <span class="tag">קצת עליי</span>\n  <h2>' + esc(H.about_title) + '</h2>\n  ' +
         aboutParas.map(function (p) { return '<p>' + esc(p) + '</p>'; }).join('') + '\n' +
         (arr(H.credentials).length ? '  <ul class="cred">' + arr(H.credentials).map(function (x) { return '<li>' + icon('check') + esc(x) + '</li>'; }).join('') + '</ul>\n' : '') + ' </div>\n</div></section>\n\n';
 
@@ -400,7 +411,7 @@ dialog .acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;justify-conten
         (arr(S.highlights).length ? '  <ul class="hl">' + arr(S.highlights).map(function (x) { return '<li>' + icon('check') + esc(x) + '</li>'; }).join('') + '</ul>\n' : '') +
         '  <div class="actions">\n   <a class="btn" href="' + esc(pageWa) + '" target="_blank" rel="noopener">' + icon('whatsapp') + 'לשיחת היכרות בוואטסאפ</a>\n   <a class="btn line" href="#included">' + esc(S.included_title) + '</a>\n  </div>\n' +
         '  <p class="fund-line">' + icon('wallet') + '<span>אפשר לקבל השתתפות כספית דרך סל ההריון או המילואים, לפי זכאות. <a href="#funding">לפרטים</a></span></p>\n </div>\n' +
-        ' <div class="s-art"' + (hasImg(S.slug) ? '' : ' role="img" aria-label="מקום לתמונה"') + '>' + photoInner(S.slug, S.icon, 'כאן אפשר להוסיף תמונה') + '</div>\n</div></div>\n\n';
+        ' <div class="s-art"' + photoAttr(S.slug) + (hasImg(S.slug) ? '' : ' role="img" aria-label="מקום לתמונה"') + '>' + photoInner(S.slug, S.icon, 'כאן אפשר להוסיף תמונה') + '</div>\n</div></div>\n\n';
 
       m += '<div class="switch"><div class="wrap"><nav aria-label="שירותים נוספים"><ul><li>שירותים:</li>\n' + SV.map(function (s) {
         return ' <li><a href="' + esc(s.file) + '"' + (s.slug === S.slug ? ' aria-current="page"' : '') + '>' + icon(s.icon) + esc(s.short) + '</a></li>';
@@ -665,6 +676,7 @@ dialog .acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;justify-conten
     return [
       h('h2', { text: 'דף הבית' }),
       h('p', { class: 'lead', text: 'פתחי כל חלק כדי לערוך אותו. התצוגה משמאל מתעדכנת תוך שניות.' }),
+      photoGroup(T, ['hero', 'about'], 'תמונות בדף הבית'),
       group(T, 'ראש הדף', true, [
         F({ path: 'home.hero_eyebrow', label: 'שורה קטנה מעל הכותרת' }),
         F({ path: 'home.hero_title', t: 'title', label: 'הכותרת הגדולה', hint: 'לחיצה על Enter יוצרת שורה חדשה.' }),
@@ -706,6 +718,7 @@ dialog .acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;justify-conten
     var g = [
       h('h2', { text: S.short }),
       h('p', { class: 'lead', text: 'העמוד הזה והכרטיס שלו בדף הבית.' }),
+      photoGroup(T, [S.slug], 'התמונה של העמוד'),
       group(T, 'ראש העמוד', true, [F({ path: p + 'eyebrow', label: 'שורה קטנה מעל הכותרת' }), F({ path: p + 'hero_title', t: 'title', label: 'הכותרת הגדולה', hint: 'לחיצה על Enter יוצרת שורה חדשה.' }), F({ path: p + 'hero_sub', t: 'area', label: 'משפט הסבר' }), strList({ path: p + 'highlights', label: 'שלוש הנקודות מתחת להסבר', itemLabel: 'נקודה', addLabel: 'הוספת נקודה' })]),
       group(T, 'הכרטיס בדף הבית ושם השירות', false, [F({ path: p + 'short', label: 'שם השירות', hint: 'מופיע בתפריטים, בתחתית האתר ובכותרות.' }), F({ path: p + 'card_pain', label: 'שורה על הקושי של ההורים' }), F({ path: p + 'card_promise', t: 'area', label: 'ההבטחה של השירות' })]),
       group(T, 'זה בשבילכם אם', false, [F({ path: p + 'fits_title', label: 'כותרת' }), strList({ path: p + 'fits', label: 'המצבים', itemLabel: 'מצב', addLabel: 'הוספת מצב' })])
@@ -800,41 +813,43 @@ dialog .acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;justify-conten
       toast('לא הצלחתי להוסיף את התמונה. ההסבר מופיע מתחתיה.');
     });
   }
+  function imageSlot(slot) {
+    var cur = P.images[slot.key], busy = slotBusy[slot.key], msg = slotMsg[slot.key];
+    var fileIn = h('input', { type: 'file', accept: 'image/*,.heic,.heif,.jpg,.jpeg,.png,.webp,.gif', id: 'file-' + slot.key, disabled: busy ? true : null });
+    fileIn.addEventListener('change', function () { var f = fileIn.files && fileIn.files[0]; if (f) setSlotImage(slot, f); });
+    var thumb = h('div', { class: 'thumb', 'data-drop': slot.key, tabindex: '-1' }, busy ? 'מעבדת את התמונה…' : (cur && cur.data ? h('img', { src: cur.data, alt: '' }) : 'גרירה לכאן'));
+    ['dragenter', 'dragover'].forEach(function (ev) { thumb.addEventListener(ev, function (e) { e.preventDefault(); thumb.classList.add('over'); }); });
+    thumb.addEventListener('dragleave', function () { thumb.classList.remove('over'); });
+    thumb.addEventListener('drop', function (e) { e.preventDefault(); thumb.classList.remove('over'); var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) setSlotImage(slot, f); });
+    /* תווית עם שדה קובץ אמיתי מעליה: לחיצה עליה פותחת את בחירת הקבצים ישירות, בלי JavaScript באמצע */
+    var pick = h('label', { class: 'btn small filebtn' + (busy ? ' disabled' : '') }, cur && cur.data ? 'החלפת תמונה' : 'בחירת תמונה מהמחשב', fileIn);
+    var acts = h('div', { class: 'acts' }, pick,
+      cur && cur.data ? h('button', { type: 'button', class: 'btn small ghost danger', onclick: function () { pushUndo(); delete P.images[slot.key]; slotMsg[slot.key] = null; changed(); renderContent(); } }, 'הסרה') : null);
+    var extra = [];
+    if (cur && cur.data) {
+      extra.push(renderOne({ label: 'תיאור קצר של התמונה', hint: 'למי שלא רואה את התמונה, ולגוגל. למשל: "נועה מחזיקה תינוק".' }, function () { return cur.alt; }, function (v) { cur.alt = v; }));
+      var fid = uid(), sel = h('select', { id: fid }, h('option', { value: 'top', text: 'החלק העליון (מומלץ לפנים)' }), h('option', { value: 'center', text: 'האמצע' }), h('option', { value: 'bottom', text: 'החלק התחתון' }));
+      sel.value = cur.focus || 'center'; sel.addEventListener('change', function () { cur.focus = sel.value; changed(); });
+      extra.push(h('div', { class: 'field' }, h('label', { for: fid, text: 'איזה חלק יישאר כשהתמונה נחתכת' }), sel));
+    }
+    return h('div', { class: 'img-slot', 'data-slot': slot.key }, thumb, h('div', {}, h('h3', { text: slot.label }), slot.hint ? h('div', { class: 'hint', style: 'font-size:.88rem;color:var(--muted)', text: slot.hint }) : null,
+      cur && cur.data ? h('div', { class: 'hint', style: 'font-size:.85rem;color:var(--muted)', text: 'גודל התמונה: ⁦' + cur.w + '×' + cur.h + '⁩ פיקסלים, ' + kb(cur.data) + ' קילובייט' }) : null,
+      msg ? h('div', { class: 'img-err', role: 'alert', text: msg }) : null, acts, h('div', { style: 'display:grid;gap:10px;margin-top:12px' }, extra)));
+  }
+  function slotByKey(key) { return Gen.IMAGE_SLOTS.filter(function (x) { return x.key === key; })[0]; }
   function imagesTab() {
-    var out = [h('h2', { text: 'תמונות' }), h('p', { class: 'lead', text: 'בחרי תמונה מהמחשב, או גררי אותה לתוך המסגרת. היא תוקטן אוטומטית כדי שהאתר ייטען מהר, ותיחתך לצורת הקשת באתר.' }),
+    var out = [h('h2', { text: 'תמונות' }), h('p', { class: 'lead', text: 'בחרי תמונה מהמחשב, או גררי אותה לתוך המסגרת. היא תוקטן אוטומטית כדי שהאתר ייטען מהר, ותיחתך לצורת הקשת באתר. אפשר גם ללחוץ על מסגרת התמונה בתצוגה משמאל.' }),
       h('details', { class: 'group', style: 'margin-bottom:14px' }, h('summary', { text: 'לא מצליחה להוסיף תמונה?' }), h('div', { class: 'body' },
         h('ol', { style: 'margin:0 18px;display:grid;gap:6px' },
           h('li', { text: 'ודאי שפתחת את קובץ העורך ישירות מהמחשב, בדפדפן Chrome או Edge, ולא מתוך אפליקציה אחרת או תצוגה מקדימה.' }),
           h('li', { text: 'תמונות מאייפון בפורמט HEIC לא נפתחות בכל דפדפן. שלחי אותן לעצמך בוואטסאפ והורידי, או שמרי כ-JPG.' }),
-          h('li', { text: 'אם לחיצה על "בחירת תמונה" לא פותחת חלון, אפשר לגרור את הקובץ ישירות לתוך המסגרת הריבועית.' }),
+          h('li', { text: 'אפשר לגרור את הקובץ ישירות לתוך המסגרת הריבועית.' }),
           h('li', { text: 'אם משהו עדיין לא עובד, צלמי את המסך עם ההודעה האדומה שמופיעה מתחת לתמונה.' }))))];
-    Gen.IMAGE_SLOTS.forEach(function (slot) {
-      var cur = P.images[slot.key], busy = slotBusy[slot.key], msg = slotMsg[slot.key];
-      var fileIn = h('input', { type: 'file', accept: 'image/*,.heic,.heif,.jpg,.jpeg,.png,.webp,.gif', id: 'file-' + slot.key });
-      fileIn.addEventListener('change', function () {
-        var f = fileIn.files && fileIn.files[0];
-        if (!f) return;
-        setSlotImage(slot, f);
-      });
-      var thumb = h('div', { class: 'thumb', 'data-drop': slot.key, tabindex: '-1' }, busy ? 'מעבדת את התמונה…' : (cur && cur.data ? h('img', { src: cur.data, alt: '' }) : 'גרירה לכאן'));
-      ['dragenter', 'dragover'].forEach(function (ev) { thumb.addEventListener(ev, function (e) { e.preventDefault(); thumb.classList.add('over'); }); });
-      thumb.addEventListener('dragleave', function () { thumb.classList.remove('over'); });
-      thumb.addEventListener('drop', function (e) { e.preventDefault(); thumb.classList.remove('over'); var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) setSlotImage(slot, f); });
-      var acts = h('div', { class: 'acts' },
-        h('button', { type: 'button', class: 'btn small', disabled: busy ? true : null, onclick: function () { fileIn.click(); } }, cur && cur.data ? 'החלפת תמונה' : 'בחירת תמונה'),
-        cur && cur.data ? h('button', { type: 'button', class: 'btn small ghost danger', onclick: function () { pushUndo(); delete P.images[slot.key]; slotMsg[slot.key] = null; changed(); renderContent(); } }, 'הסרה') : null, fileIn);
-      var extra = [];
-      if (cur && cur.data) {
-        extra.push(renderOne({ label: 'תיאור קצר של התמונה', hint: 'למי שלא רואה את התמונה, ולגוגל. למשל: "נועה מחזיקה תינוק".' }, function () { return cur.alt; }, function (v) { cur.alt = v; }));
-        var fid = uid(), sel = h('select', { id: fid }, h('option', { value: 'top', text: 'החלק העליון (מומלץ לפנים)' }), h('option', { value: 'center', text: 'האמצע' }), h('option', { value: 'bottom', text: 'החלק התחתון' }));
-        sel.value = cur.focus || 'center'; sel.addEventListener('change', function () { cur.focus = sel.value; changed(); });
-        extra.push(h('div', { class: 'field' }, h('label', { for: fid, text: 'איזה חלק יישאר כשהתמונה נחתכת' }), sel));
-      }
-      out.push(h('div', { class: 'img-slot' }, thumb, h('div', {}, h('h3', { text: slot.label }), slot.hint ? h('div', { class: 'hint', style: 'font-size:.88rem;color:var(--muted)', text: slot.hint }) : null,
-        cur && cur.data ? h('div', { class: 'hint', style: 'font-size:.85rem;color:var(--muted)', text: 'גודל התמונה: ⁦' + cur.w + '×' + cur.h + '⁩ פיקסלים, ' + kb(cur.data) + ' קילובייט' }) : null,
-        msg ? h('div', { class: 'img-err', role: 'alert', text: msg }) : null, acts, h('div', { style: 'display:grid;gap:10px;margin-top:12px' }, extra))));
-    });
+    Gen.IMAGE_SLOTS.forEach(function (slot) { out.push(imageSlot(slot)); });
     return out;
+  }
+  function photoGroup(tab, keys, title) {
+    return group(tab, title, true, [h('p', { class: 'hint', style: 'margin:0', text: 'בתצוגה משמאל התמונה מופיעה בתוך מסגרת. אפשר ללחוץ עליה שם, או לבחור כאן.' })].concat(keys.map(function (k) { return imageSlot(slotByKey(k)); })));
   }
 
   /* ---------- פרסום ---------- */
@@ -938,11 +953,25 @@ dialog .acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;justify-conten
     var fr = $('frame'); if (e.source !== fr.contentWindow || !e.data) return;
     if (e.data.siteScroll != null) pvScroll[pvPage] = e.data.siteScroll;
     else if (e.data.siteReady) fr.contentWindow.postMessage({ restoreScroll: pvScroll[pvPage] || 0 }, '*');
+    else if (typeof e.data.sitePhoto === 'string') focusPhoto(e.data.sitePhoto);
     else if (typeof e.data.siteNav === 'string') {
       var f = e.data.siteNav.split('#')[0]; var known = P.services.map(function (s) { return s.file; }).concat(['index.html']);
       if (known.indexOf(f) >= 0) { pvPage = f; pvScroll[f] = 0; renderPvPages(); renderPreview(); }
     }
   });
+
+  function focusPhoto(key) {
+    var tab = key === 'hero' || key === 'about' ? 'home' : 'svc' + P.services.map(function (x) { return x.slug; }).indexOf(key);
+    if (tab !== tabId) gotoTab(tab);
+    setTimeout(function () {
+      var slot = document.querySelector('.img-slot[data-slot="' + key + '"]');
+      if (!slot) return;
+      var d = slot.closest('details'); if (d) d.open = true;
+      slot.scrollIntoView({ block: 'center', behavior: 'smooth' }); slot.classList.remove('flash'); void slot.offsetWidth; slot.classList.add('flash');
+      var inp = $('file-' + key); if (inp && !inp.disabled) { try { inp.click(); } catch (e) { } }
+      toast('בחרי תמונה מהמחשב. אם החלון לא נפתח, לחצי על "בחירת תמונה".');
+    }, 120);
+  }
 
   /* ---------- ציור ---------- */
   function gotoTab(id) { tabId = id; var pg = pageForTab(id); if (pg) { pvPage = pg; renderPvPages(); renderPreview(); } renderTabs(); renderContent(); $('panel').scrollTop = 0; }
@@ -985,7 +1014,18 @@ dialog .acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;justify-conten
   }
 
   /* ---------- אתחול ---------- */
+  function embeddedWarning() {
+    var emb = false;
+    try { emb = window.self !== window.top; } catch (e) { emb = true; }
+    if (!/^(file|http|https):$/.test(location.protocol)) emb = true;
+    if (!emb) return;
+    var b = h('div', { class: 'notice', role: 'alert', style: 'margin:0;border-radius:0;display:flex;gap:12px;align-items:center;justify-content:space-between' },
+      h('span', {}, h('b', { text: 'שימי לב: ' }), 'נראה שהעורך פתוח בתוך אפליקציה או חלון מוגבל. בחלון כזה בחירת קבצים, הורדה, גיבוי ושמירה אוטומטית עלולים לא לעבוד. שמרי את הקובץ site-editor.html במחשב ופתחי אותו בלחיצה כפולה ב-Chrome או ב-Edge.'),
+      h('button', { type: 'button', class: 'btn small', onclick: function () { b.remove(); } }, 'הבנתי'));
+    document.querySelector('.app').insertBefore(b, document.querySelector('.top'));
+  }
   function init() {
+    embeddedWarning();
     $('btnUndo').addEventListener('click', function () {
       if (!undoStack.length) return; P = JSON.parse(undoStack.pop()); $('btnUndo').disabled = !undoStack.length; renderAll(); scheduleSave(); toast('הפעולה האחרונה בוטלה');
     });
