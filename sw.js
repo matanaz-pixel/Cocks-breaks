@@ -1,9 +1,10 @@
-const CACHE_NAME = 'chef-breaks-v7';
+const CACHE_NAME = 'chef-breaks-v8';
 const FILES_TO_CACHE = [
   './index.html',
   './bank.html',
   './history.html',
   './chef.html',
+  './theme.css',
   './firebase-init.js',
   './manifest.json',
   './icon-192.png',
