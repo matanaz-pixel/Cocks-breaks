@@ -5,73 +5,41 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>ההפסקה שלי</title>
 
-<meta name="theme-color" content="#2a2019">
+<meta name="theme-color" content="#1a130f">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="ההפסקה שלי">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png">
+<link rel="stylesheet" href="./theme.css">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@400;600;800&family=Frank+Ruhl+Libre:wght@500;700&family=Oswald:wght@500;600;700&display=swap');
-  :root{
-    --steel-0:#1f1712; --steel-1:#2a2019; --steel-2:#34281f;
-    --line:#4a3a2c; --amber:#d1642f; --amber-dim:#7a3d20;
-    --text:#f3ece0; --text-dim:#b8a58f; --danger:#c0392b;
-  }
-  *{box-sizing:border-box;}
-  html,body{
-    margin:0; min-height:100%;
-    background:radial-gradient(circle at 50% -10%, #2f2418 0%, var(--steel-0) 55%);
-    color:var(--text); font-family:'Rubik',sans-serif;
-    -webkit-tap-highlight-color:transparent;
-  }
-  body{
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    min-height:100vh; padding:24px 16px;
-  }
-  .restaurant-tag{ font-size:12px; color:var(--amber); letter-spacing:.04em; margin-bottom:22px; }
-  .avatar{
-    width:110px; height:110px; border-radius:50%;
-    background:var(--steel-2); border:1px solid var(--line);
-    display:flex; align-items:center; justify-content:center;
-    font-family:'Oswald',sans-serif; font-size:38px; font-weight:600; color:var(--amber);
-    overflow:hidden; margin-bottom:18px;
-  }
-  .avatar img{ width:100%; height:100%; object-fit:cover; display:block; }
+  body{ flex-direction:column; align-items:center; justify-content:center; min-height:100vh; min-height:100dvh; text-align:center; }
+  .restaurant-tag{ font-size:13px; color:var(--amber); font-weight:500; margin-bottom:22px; }
+  .avatar{ width:112px; height:112px; font-size:38px; margin:0 auto 14px; }
+  .name{ font-family:'Frank Ruhl Libre',serif; font-size:28px; font-weight:700; margin-bottom:28px; }
 
-  .name{ font-family:'Frank Ruhl Libre',serif; font-size:25px; font-weight:700; margin-bottom:30px; }
-
-  .ring-wrap{ position:relative; width:260px; height:260px; margin-bottom:24px; }
-  svg{ transform:rotate(-90deg); }
-  .ring-bg{ fill:none; stroke:var(--steel-2); stroke-width:10; }
-  .ring-fg{ fill:none; stroke:var(--amber); stroke-width:10; stroke-linecap:round; transition:stroke-dashoffset 1s linear; }
-  .ring-fg.overtime{ stroke:var(--danger); animation:glow 1.4s ease-in-out infinite; }
+  .ring-wrap{ position:relative; width:min(270px,78vw); aspect-ratio:1; margin:0 auto 20px; }
+  .ring-wrap svg{ width:100%; height:100%; transform:rotate(-90deg); display:block; }
+  .ring-bg{ fill:none; stroke:var(--bg-2); stroke-width:12; }
+  .ring-fg{ fill:none; stroke:var(--amber); stroke-width:12; stroke-linecap:round; transition:stroke-dashoffset 1s linear; }
+  .ring-fg.overtime{ stroke:var(--danger-text); animation:glow 1.4s ease-in-out infinite; }
   @keyframes glow{ 0%,100%{ opacity:1; } 50%{ opacity:.5; } }
   .ring-center{
     position:absolute; inset:0; display:flex; flex-direction:column;
-    align-items:center; justify-content:center; gap:6px;
+    align-items:center; justify-content:center; gap:8px;
   }
-  .time{ font-family:'Oswald',sans-serif; font-size:52px; font-weight:700; font-variant-numeric:tabular-nums; }
-  .time.overtime{ color:var(--danger); }
-  .status-tag{ font-size:13px; color:var(--text-dim); }
-  .status-tag.overtime{ color:var(--danger); }
+  .time{ font-family:'Oswald',sans-serif; font-size:56px; font-weight:700; line-height:1; font-variant-numeric:tabular-nums; direction:ltr; }
+  .time.overtime{ color:var(--danger-text); }
+  .status-tag{ font-size:15px; color:var(--text-dim); }
+  .status-tag.overtime{ color:var(--danger-text); font-weight:600; }
 
-  .idle-box{ text-align:center; color:var(--text-dim); font-size:15px; max-width:280px; line-height:1.6; }
+  .idle-box{ color:var(--text-dim); font-size:16px; max-width:300px; line-height:1.6; margin:0 auto; }
+  .idle-box .badge{ margin-bottom:12px; font-size:14px; padding:7px 12px; }
 
-  .mute-btn{
-    background:transparent; border:1px solid var(--line); color:var(--text-dim);
-    border-radius:12px; padding:12px 24px; font-size:14px; cursor:pointer; margin-top:6px;
-  }
-  .mute-btn:active{ transform:scale(.96); }
-
-  .notify-btn{
-    background:var(--steel-1); border:1px solid var(--line); color:var(--text-dim);
-    border-radius:10px; padding:9px 16px; font-size:13px; cursor:pointer; margin-top:22px;
-  }
+  .mute-btn{ min-width:180px; }
+  .notify-btn{ margin-top:28px; font-size:14px; }
   .notify-btn.granted{ color:var(--amber); border-color:var(--amber-dim); }
-
-  .hidden{ display:none !important; }
 </style>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -89,7 +57,7 @@
 
   <div id="ringSection" class="hidden">
     <div class="ring-wrap">
-      <svg width="260" height="260">
+      <svg viewBox="0 0 260 260">
         <circle class="ring-bg" cx="130" cy="130" r="115"></circle>
         <circle id="ringFg" class="ring-fg" cx="130" cy="130" r="115"></circle>
       </svg>
@@ -99,15 +67,16 @@
       </div>
     </div>
     <div style="text-align:center;">
-      <button id="muteBtn" class="mute-btn hidden">השתק צפצוף</button>
+      <button id="muteBtn" class="btn mute-btn hidden" type="button">השתק צפצוף</button>
     </div>
   </div>
 
   <div id="idleSection" class="idle-box hidden">
+    <span class="badge badge-ok"><span class="dot"></span>במטבח</span><br>
     את/ה לא בהפסקה כרגע.<br>ברגע שהמנהל/ת יתחיל/תתחיל לך הפסקה, היא תופיע כאן אוטומטית עם ספירה לאחור.
   </div>
 
-  <button id="notifyBtn" class="notify-btn">אפשר התראות בטלפון</button>
+  <button id="notifyBtn" class="btn btn-ghost notify-btn" type="button">אפשר התראות בטלפון</button>
 </div>
 
 <script>
@@ -157,7 +126,12 @@
       notFoundBox.classList.add('hidden');
       content.classList.remove('hidden');
       chefNameEl.textContent = chef.name;
-      avatarEl.innerHTML = chef.photo ? `<img src="${chef.photo}" alt="">` : initials(chef.name);
+      if(chef.photo){
+        avatarEl.innerHTML = '<img alt="">';
+        avatarEl.firstChild.src = chef.photo;
+      } else {
+        avatarEl.textContent = initials(chef.name);
+      }
       render();
     });
 

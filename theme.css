@@ -1,0 +1,110 @@
+/* עיצוב משותף לכל דפי האפליקציה - צבעים, טיפוגרפיה ורכיבים בסיסיים */
+@import url('https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&family=Frank+Ruhl+Libre:wght@500;700&family=Oswald:wght@500;600;700&display=swap');
+
+:root{
+  --bg-0:#1a130f; --bg-1:#251c16; --bg-2:#30251d; --bg-3:#3b2e24;
+  --line:#4a3a2c; --line-soft:#382b21;
+  --amber:#e0703a; --amber-dim:#7a3d20; --amber-soft:rgba(224,112,58,.14); --on-amber:#2a1509;
+  --text:#f6efe4; --text-dim:#bfad97; --text-faint:#8f7d68;
+  --danger:#c0392b; --danger-text:#ff7a68; --danger-soft:rgba(192,57,43,.16); --danger-dim:#6b2318;
+  --ok:#5cc98a; --ok-soft:rgba(92,201,138,.13);
+  --radius-sm:10px; --radius:14px; --radius-lg:18px;
+  --tap:44px;
+  --ease:cubic-bezier(.2,.8,.2,1);
+  /* Steel aliases kept for page-specific rules */
+  --steel-0:var(--bg-0); --steel-1:var(--bg-1); --steel-2:var(--bg-2); --steel-3:var(--bg-3);
+}
+
+*{ box-sizing:border-box; }
+html,body{
+  margin:0; min-height:100%;
+  background:radial-gradient(120% 60% at 50% -10%, #33261b 0%, var(--bg-0) 60%) fixed, var(--bg-0);
+  color:var(--text); font-family:'Rubik',system-ui,sans-serif; font-size:16px; line-height:1.45;
+  -webkit-tap-highlight-color:transparent;
+}
+body{
+  display:flex; justify-content:center;
+  padding:calc(16px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) calc(48px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
+}
+.app{ width:100%; max-width:480px; }
+button,select,input{ font-family:inherit; }
+button{ cursor:pointer; }
+.num{ font-family:'Oswald',sans-serif; font-variant-numeric:tabular-nums; }
+.hidden{ display:none !important; }
+.sr-only{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+.icon{ width:20px; height:20px; flex:none; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+
+:focus-visible{ outline:2px solid var(--amber); outline-offset:2px; }
+
+/* ---------- סרגל עליון ---------- */
+.topbar{ display:flex; align-items:center; gap:10px; margin-bottom:18px; }
+.topbar-title{ flex:1; min-width:0; }
+.eyebrow{ font-size:12px; color:var(--amber); font-weight:500; letter-spacing:.02em; }
+h1{ font-family:'Frank Ruhl Libre',serif; font-weight:700; font-size:26px; line-height:1.15; margin:2px 0 0; }
+
+.icon-btn{
+  flex:none; width:var(--tap); height:var(--tap); border-radius:var(--radius-sm);
+  display:inline-flex; align-items:center; justify-content:center;
+  background:var(--bg-1); border:1px solid var(--line); color:var(--text-dim);
+  text-decoration:none; transition:transform .15s var(--ease), border-color .15s, color .15s;
+}
+.icon-btn:active{ transform:scale(.94); }
+.icon-btn.is-on{ color:var(--amber); border-color:var(--amber-dim); }
+.icon-btn:disabled{ opacity:.4; cursor:not-allowed; }
+
+/* ---------- כפתורים ---------- */
+.btn{
+  min-height:var(--tap); padding:0 16px; border-radius:var(--radius-sm);
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  font-size:15px; font-weight:500; white-space:nowrap;
+  background:transparent; border:1px solid var(--line); color:var(--text);
+  transition:transform .15s var(--ease), background-color .15s, border-color .15s, color .15s;
+}
+.btn:active{ transform:scale(.96); }
+.btn:disabled{ opacity:.4; cursor:not-allowed; }
+.btn-primary{ background:var(--amber); border-color:var(--amber); color:var(--on-amber); font-weight:600; }
+.btn-danger{ background:var(--danger); border-color:var(--danger); color:#fff; font-weight:600; }
+.btn-ghost-danger{ color:var(--danger-text); border-color:var(--danger-dim); }
+.btn-ghost{ color:var(--text-dim); }
+.btn .icon{ width:18px; height:18px; }
+
+/* ---------- רכיבים כלליים ---------- */
+.back-link{
+  display:inline-flex; align-items:center; gap:6px; min-height:var(--tap);
+  color:var(--text-dim); text-decoration:none; font-size:15px; margin-bottom:8px; padding-inline-end:8px;
+}
+.section-title{
+  display:flex; align-items:center; gap:8px;
+  font-size:13px; font-weight:600; color:var(--text-dim); margin:0 4px 10px;
+}
+.section-title .count{ color:var(--text-faint); font-weight:400; }
+.empty-note{
+  text-align:center; color:var(--text-dim); font-size:14px; padding:20px 12px;
+  border:1px dashed var(--line); border-radius:var(--radius);
+}
+.surface{
+  background:linear-gradient(180deg,var(--bg-1),var(--bg-0));
+  border:1px solid var(--line); border-radius:var(--radius);
+}
+.avatar{
+  width:56px; height:56px; flex:none; border-radius:50%;
+  background:var(--bg-2); border:1px solid var(--line);
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Oswald',sans-serif; font-size:19px; font-weight:600; color:var(--amber);
+  overflow:hidden;
+}
+.avatar img{ width:100%; height:100%; object-fit:cover; display:block; }
+
+.badge{
+  display:inline-flex; align-items:center; gap:4px;
+  font-size:12px; font-weight:500; line-height:1; padding:5px 8px; border-radius:999px;
+  background:var(--bg-2); color:var(--text-dim); white-space:nowrap;
+}
+.badge .dot{ width:7px; height:7px; border-radius:50%; background:currentColor; }
+.badge-ok{ background:var(--ok-soft); color:var(--ok); }
+.badge-run{ background:var(--amber-soft); color:var(--amber); }
+.badge-late{ background:var(--danger-soft); color:var(--danger-text); }
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{ animation:none !important; transition:none !important; }
+}
