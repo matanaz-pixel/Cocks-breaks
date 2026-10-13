@@ -3,8 +3,15 @@ import type { Diagnosis } from "./schema";
 
 // Shared between the browser and the API route.
 
-export const PHOTO_SLOTS = ["whole", "closeup", "underside", "soil"] as const;
+// The four guided slots, plus "extra" for a photo Claude asks for in a follow-up.
+export const MAIN_SLOTS = ["whole", "closeup", "underside", "soil"] as const;
+export const PHOTO_SLOTS = [...MAIN_SLOTS, "extra"] as const;
 export type PhotoSlot = (typeof PHOTO_SLOTS)[number];
+
+// Over-long text is trimmed rather than rejected, so a chatty answer never
+// fails the whole diagnosis. The inputs also cap length in the browser.
+export const TEXT_LIMITS = { short: 200, long: 2000, answer: 1000 } as const;
+const text = (max: number) => z.string().transform((s) => s.slice(0, max));
 
 export const QuestionnaireSchema = z.object({
   placement: z.enum(["indoor", "outdoor", "balcony"]).nullable(),
@@ -12,17 +19,17 @@ export const QuestionnaireSchema = z.object({
   container: z.enum(["pot", "ground"]).nullable(),
   potSize: z.enum(["small", "medium", "large"]).nullable(),
   drainageHole: z.enum(["yes", "no", "unknown"]).nullable(),
-  wateringFrequency: z.string().max(200).nullable(),
-  lastWatered: z.string().max(200).nullable(),
-  lastFertilized: z.string().max(200).nullable(),
+  wateringFrequency: text(TEXT_LIMITS.short).nullable(),
+  lastWatered: text(TEXT_LIMITS.short).nullable(),
+  lastFertilized: text(TEXT_LIMITS.short).nullable(),
   recentChanges: z.array(z.enum(["moved", "repotted", "pruned", "heatwave", "cold"])),
-  problemDuration: z.string().max(200).nullable(),
+  problemDuration: text(TEXT_LIMITS.short).nullable(),
   spreading: z.enum(["yes", "no", "unknown"]).nullable(),
   water: z.enum(["tap", "filtered", "rain"]).nullable(),
   petsOrKids: z.enum(["pets", "kids", "both", "none"]).nullable(),
-  description: z.string().max(2000).nullable(),
+  description: text(TEXT_LIMITS.long).nullable(),
 });
-export type Questionnaire = z.infer<typeof QuestionnaireSchema>;
+export type Questionnaire = z.input<typeof QuestionnaireSchema>;
 
 export const EMPTY_QUESTIONNAIRE: Questionnaire = {
   placement: null,
@@ -43,24 +50,24 @@ export const EMPTY_QUESTIONNAIRE: Questionnaire = {
 
 export const LocationSchema = z.union([
   z.object({ kind: z.literal("coords"), lat: z.number(), lon: z.number() }),
-  z.object({ kind: z.literal("city"), name: z.string().min(1).max(100) }),
+  z.object({ kind: z.literal("city"), name: text(100).pipe(z.string().min(1)) }),
 ]);
 export type UserLocation = z.infer<typeof LocationSchema>;
 
 export const DiagnoseRequestSchema = z.object({
-  slots: z.array(z.enum(PHOTO_SLOTS)).min(1).max(4),
+  slots: z.array(z.enum(PHOTO_SLOTS)).min(1).max(PHOTO_SLOTS.length),
   questionnaire: QuestionnaireSchema,
   location: LocationSchema.nullable(),
   followUp: z
-    .array(z.object({ question: z.string().max(500), answer: z.string().max(1000) }))
-    .max(3)
+    .array(z.object({ question: text(TEXT_LIMITS.answer), answer: text(TEXT_LIMITS.answer) }))
+    .transform((a) => a.slice(0, 4))
     .nullable(),
   // Set after one follow-up round, or when the user asks to skip questions.
   forceFinal: z.boolean(),
-  confirmedSpecies: z.string().max(200).nullable(),
+  confirmedSpecies: text(TEXT_LIMITS.short).nullable(),
   deep: z.boolean(),
 });
-export type DiagnoseRequest = z.infer<typeof DiagnoseRequestSchema>;
+export type DiagnoseRequest = z.input<typeof DiagnoseRequestSchema>;
 
 export type SourceName = "plantnet" | "weather" | "claude";
 

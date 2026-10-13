@@ -10,6 +10,7 @@ const ORGAN_BY_SLOT: Record<PhotoSlot, string> = {
   closeup: "leaf",
   underside: "leaf",
   soil: "auto",
+  extra: "auto",
 };
 
 const NameSchema = z.object({ scientificNameWithoutAuthor: z.string() });

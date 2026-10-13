@@ -85,6 +85,7 @@ export function LocationPicker({
             aria-label="שם העיר"
             className="min-h-11 flex-1 rounded-xl border border-border bg-surface px-3 text-base placeholder:text-muted/70 focus:border-accent focus:outline-none"
             placeholder="או כתוב עיר, למשל: חיפה"
+            maxLength={100}
             value={city}
             onChange={(e) => setCity(e.target.value)}
             onBlur={() => update(city.trim() ? { kind: "city", name: city.trim() } : null)}

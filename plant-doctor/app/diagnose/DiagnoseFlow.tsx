@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { FollowUp } from "@/components/FollowUp";
 import { LocationPicker, loadSavedLocation } from "@/components/LocationPicker";
-import { PhotoCapture, type Photos } from "@/components/PhotoCapture";
+import { PhotoCapture, revokePhotos, type Photos } from "@/components/PhotoCapture";
 import { IDLE_STAGES, ProgressSteps, type Stages } from "@/components/ProgressSteps";
 import { Questionnaire } from "@/components/Questionnaire";
 import { ResultView } from "@/components/ResultView";
@@ -20,7 +20,13 @@ import {
   type UserLocation,
 } from "@/lib/types";
 
-type Step = "photos" | "questions" | "result";
+const STEPS = ["photos", "questions", "result"] as const;
+type Step = (typeof STEPS)[number];
+
+function stepFromUrl(): Step {
+  const s = new URLSearchParams(window.location.search).get("step");
+  return STEPS.find((x) => x === s) ?? "photos";
+}
 type RunOptions = Pick<DiagnoseRequest, "followUp" | "forceFinal" | "confirmedSpecies" | "deep">;
 
 export function DiagnoseFlow() {
@@ -37,23 +43,62 @@ export function DiagnoseFlow() {
   const [followUpDismissed, setFollowUpDismissed] = useState(false);
   const [conflictDismissed, setConflictDismissed] = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
+  const stepRef = useRef<Step>("photos");
+  const runRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     // Saved location lives in localStorage, which only exists after hydration.
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time read of browser storage
     setLocation(loadSavedLocation());
     setLocationLoaded(true);
+
+    // Each step is a history entry, so the phone's back button steps back
+    // through the flow instead of leaving it. A reload loses the photos, so
+    // it always starts from the first step.
+    if (window.location.search) window.history.replaceState(null, "", window.location.pathname);
+    const onPopState = () => {
+      const next = stepFromUrl();
+      if (next !== "result") runRef.current?.abort();
+      stepRef.current = next;
+      setStep(next);
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => {
+      window.removeEventListener("popstate", onPopState);
+      // Leaving the page cancels a diagnosis in flight, so nobody pays for it.
+      runRef.current?.abort();
+    };
   }, []);
 
   const photoCount = Object.keys(photos).length;
   const firstPhotoUrl = PHOTO_SLOTS.map((s) => photos[s]?.url).find(Boolean) ?? null;
 
   function goTo(next: Step) {
+    if (next !== stepRef.current) {
+      const url = next === "photos" ? window.location.pathname : `?step=${next}`;
+      window.history.pushState(null, "", url);
+    }
+    stepRef.current = next;
     setStep(next);
     topRef.current?.scrollIntoView({ behavior: "smooth" });
   }
 
+  function startOver() {
+    runRef.current?.abort();
+    revokePhotos(photos);
+    setPhotos({});
+    setResult(null);
+    setError(null);
+    setQuestionnaire(EMPTY_QUESTIONNAIRE);
+    goTo("photos");
+  }
+
   async function run(options: RunOptions) {
+    // Ignore a second tap while a diagnosis is already running.
+    if (runRef.current && !runRef.current.signal.aborted) return;
+    const controller = new AbortController();
+    runRef.current = controller;
+
     const slots = PHOTO_SLOTS.filter((s) => photos[s]);
     const body: DiagnoseRequest = { slots, questionnaire, location, ...options };
     const form = new FormData();
@@ -67,7 +112,7 @@ export function DiagnoseFlow() {
     goTo("result");
 
     try {
-      const res = await fetch("/api/diagnose", { method: "POST", body: form });
+      const res = await fetch("/api/diagnose", { method: "POST", body: form, signal: controller.signal });
       if (res.status === 413) {
         throw new Error("התמונות גדולות מדי לשליחה. נסה עם פחות תמונות.");
       }
@@ -102,14 +147,16 @@ export function DiagnoseFlow() {
       }
       if (!gotResult) throw new Error("החיבור נקטע לפני שהאבחון הסתיים. נסה שוב.");
     } catch (e) {
+      if (controller.signal.aborted) return; // cancelled on purpose
       setError(
         e instanceof TypeError
           ? "אין חיבור לאינטרנט, או שהשרת לא זמין. בדוק את החיבור ונסה שוב."
-          : e instanceof Error
-            ? e.message
-            : "משהו השתבש. נסה שוב.",
+          : e instanceof SyntaxError || !(e instanceof Error)
+            ? "התקבלה תשובה לא תקינה מהשרת. נסה שוב."
+            : e.message,
       );
     } finally {
+      if (runRef.current === controller) runRef.current = null;
       setRunning(false);
     }
   }
@@ -220,11 +267,27 @@ export function DiagnoseFlow() {
                     key={d.followUpQuestions.join("|")}
                     questions={d.followUpQuestions}
                     requestedPhoto={d.requestedPhoto}
+                    extraPhoto={photos.extra ?? null}
+                    onExtraPhoto={(blob) =>
+                      setPhotos((current) => {
+                        if (current.extra) URL.revokeObjectURL(current.extra.url);
+                        return { ...current, extra: { blob, url: URL.createObjectURL(blob) } };
+                      })
+                    }
                     disabled={running}
                     onSkip={() => setFollowUpDismissed(true)}
-                    onSubmit={(answers) =>
-                      run({ followUp: answers, forceFinal: true, confirmedSpecies: null, deep: lastRun?.deep ?? false })
-                    }
+                    onSubmit={(answers) => {
+                      const followUp = d.requestedPhoto
+                        ? [
+                            ...answers,
+                            {
+                              question: `ביקשת תמונה: ${d.requestedPhoto}`,
+                              answer: photos.extra ? "צירפתי אותה" : "לא צירפתי",
+                            },
+                          ]
+                        : answers;
+                      void run({ followUp, forceFinal: true, confirmedSpecies: null, deep: lastRun?.deep ?? false });
+                    }}
                   />
                 </div>
               )}
@@ -252,12 +315,7 @@ export function DiagnoseFlow() {
               <div className="mt-4 flex flex-wrap gap-2">
                 <Button
                   variant="secondary"
-                  onClick={() => {
-                    setResult(null);
-                    setPhotos({});
-                    setQuestionnaire(EMPTY_QUESTIONNAIRE);
-                    goTo("photos");
-                  }}
+                  onClick={startOver}
                 >
                   אבחון של צמח אחר
                 </Button>

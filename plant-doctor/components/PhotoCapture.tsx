@@ -1,50 +1,61 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type Dispatch, type SetStateAction } from "react";
 import { compressImage } from "@/lib/clientImage";
 import { SLOT_INFO } from "@/lib/labels";
-import { PHOTO_SLOTS, type PhotoSlot } from "@/lib/types";
+import { MAIN_SLOTS, type PhotoSlot } from "@/lib/types";
 
 export type Photos = Partial<Record<PhotoSlot, { blob: Blob; url: string }>>;
 
-export function PhotoCapture({ photos, onChange }: { photos: Photos; onChange: (p: Photos) => void }) {
-  const [busy, setBusy] = useState<PhotoSlot | null>(null);
+export function revokePhotos(photos: Photos) {
+  for (const p of Object.values(photos)) if (p) URL.revokeObjectURL(p.url);
+}
+
+// Takes the state setter itself: photos are compressed asynchronously, and
+// updating from a stale copy would drop a photo picked meanwhile.
+export function PhotoCapture({ photos, onChange }: { photos: Photos; onChange: Dispatch<SetStateAction<Photos>> }) {
+  const [busy, setBusy] = useState<PhotoSlot[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   async function handleFile(slot: PhotoSlot, file: File | undefined) {
     if (!file) return;
     setError(null);
-    setBusy(slot);
+    setBusy((b) => [...b, slot]);
     try {
       const blob = await compressImage(file);
-      const prev = photos[slot];
-      if (prev) URL.revokeObjectURL(prev.url);
-      onChange({ ...photos, [slot]: { blob, url: URL.createObjectURL(blob) } });
+      const url = URL.createObjectURL(blob);
+      onChange((current) => {
+        const prev = current[slot];
+        if (prev) URL.revokeObjectURL(prev.url);
+        return { ...current, [slot]: { blob, url } };
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "עיבוד התמונה נכשל.");
     } finally {
-      setBusy(null);
+      setBusy((b) => b.filter((s) => s !== slot));
     }
   }
 
   function remove(slot: PhotoSlot) {
-    const prev = photos[slot];
-    if (prev) URL.revokeObjectURL(prev.url);
-    const next = { ...photos };
-    delete next[slot];
-    onChange(next);
+    onChange((current) => {
+      const prev = current[slot];
+      if (prev) URL.revokeObjectURL(prev.url);
+      const next = { ...current };
+      delete next[slot];
+      return next;
+    });
   }
 
   return (
     <div>
       <div className="grid grid-cols-2 gap-3">
-        {PHOTO_SLOTS.map((slot) => {
+        {MAIN_SLOTS.map((slot) => {
           const info = SLOT_INFO[slot];
           const photo = photos[slot];
           return (
             <div key={slot} className="relative">
               <label
-                className={`flex aspect-square cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border-2 text-center transition-colors ${
+                className={`flex aspect-square cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border-2 text-center transition-colors focus-within:outline-3 focus-within:outline-offset-2 focus-within:outline-accent ${
                   photo ? "border-accent" : "border-dashed border-border bg-surface hover:bg-surface-2"
                 }`}
               >
@@ -63,7 +74,7 @@ export function PhotoCapture({ photos, onChange }: { photos: Photos; onChange: (
                 ) : (
                   <div className="p-3">
                     <div className="text-3xl" aria-hidden="true">
-                      {busy === slot ? "⏳" : "📷"}
+                      {busy.includes(slot) ? "⏳" : "📷"}
                     </div>
                     <div className="mt-1 text-sm font-semibold">
                       {info.title}

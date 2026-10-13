@@ -127,12 +127,14 @@ export function TextField({
   onChange,
   placeholder,
   multiline,
+  maxLength,
 }: {
   label: string;
   value: string | null;
   onChange: (v: string | null) => void;
   placeholder?: string;
   multiline?: boolean;
+  maxLength: number;
 }) {
   const common =
     "w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-base placeholder:text-muted/70 focus:border-accent focus:outline-none";
@@ -145,6 +147,7 @@ export function TextField({
           className={common}
           value={value ?? ""}
           placeholder={placeholder}
+          maxLength={maxLength}
           onChange={(e) => onChange(e.target.value || null)}
         />
       ) : (
@@ -152,6 +155,7 @@ export function TextField({
           className={`${common} min-h-11`}
           value={value ?? ""}
           placeholder={placeholder}
+          maxLength={maxLength}
           onChange={(e) => onChange(e.target.value || null)}
         />
       )}

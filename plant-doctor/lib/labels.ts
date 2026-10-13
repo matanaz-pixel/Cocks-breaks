@@ -6,6 +6,7 @@ export const SLOT_INFO: Record<PhotoSlot, { title: string; hint: string }> = {
   closeup: { title: "תקריב של העלה הבעייתי", hint: "קרוב ובפוקוס, באור יום" },
   underside: { title: "הצד התחתון של העלה", hint: "שם מסתתרים רוב המזיקים" },
   soil: { title: "המצע והגבעול", hint: "בסיס הגבעול ופני האדמה" },
+  extra: { title: "התמונה שביקשנו", hint: "התמונה הנוספת מהשאלות" },
 };
 
 type Options<K extends keyof Questionnaire> = Array<{

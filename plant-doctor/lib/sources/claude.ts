@@ -1,7 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { estimateCostUsd } from "../cost";
-import { DiagnosisSchema, type Diagnosis } from "../schema";
+import { DIAGNOSIS_JSON_SCHEMA, parseDiagnosis, type Diagnosis } from "../schema";
 import { SYSTEM_PROMPT } from "../systemPrompt";
 import type {
   DiagnoseRequest,
@@ -16,10 +15,12 @@ const SLOT_LABEL: Record<PhotoSlot, string> = {
   closeup: "Photo: close-up of the affected leaf",
   underside: "Photo: underside of the leaf",
   soil: "Photo: soil / stem base",
+  extra: "Photo: the extra photo you asked for in your follow-up",
 };
 
 export function pickModel(deep: boolean): { model: string; effort: "low" | "medium" | "high" } {
-  if (deep) return { model: process.env.CLAUDE_DEEP_MODEL || "claude-opus-5-5", effort: "high" };
+  // Medium keeps the deep check inside the function's time limit.
+  if (deep) return { model: process.env.CLAUDE_DEEP_MODEL || "claude-opus-5-5", effort: "medium" };
   const effort = process.env.CLAUDE_EFFORT;
   return {
     model: process.env.CLAUDE_MODEL || "claude-sonnet-5-5",
@@ -92,9 +93,15 @@ function buildContext({ request, plantnet, weather }: ClaudeInput): string {
   return parts.join("\n\n");
 }
 
+export class RefusalError extends Error {}
+
+// A second attempt is only worth starting if it can plausibly finish in time.
+const MIN_MS_FOR_RETRY = 25_000;
+
 export async function diagnoseWithClaude(
   input: ClaudeInput,
   signal: AbortSignal,
+  deadline: number,
   onWriting: () => void,
 ): Promise<ClaudeOutput> {
   const client = new Anthropic({ maxRetries: 1 });
@@ -111,6 +118,8 @@ export async function diagnoseWithClaude(
   let lastError: unknown;
   // One extra attempt if the output fails validation.
   for (let attempt = 0; attempt < 2; attempt++) {
+    const remaining = deadline - Date.now();
+    if (attempt > 0 && remaining < MIN_MS_FOR_RETRY) break;
     try {
       const stream = client.beta.messages.stream(
         {
@@ -118,12 +127,12 @@ export async function diagnoseWithClaude(
           max_tokens: 16000,
           system: SYSTEM_PROMPT,
           messages: [{ role: "user", content }],
-          output_config: { effort, format: betaZodOutputFormat(DiagnosisSchema) },
+          output_config: { effort, format: { type: "json_schema", schema: DIAGNOSIS_JSON_SCHEMA } },
           // On a safety decline, the API re-runs the request on a fallback model.
           betas: ["server-side-fallback-2026-07-01"],
           fallbacks: "default",
         },
-        { signal },
+        { signal: AbortSignal.any([signal, AbortSignal.timeout(Math.max(remaining, 1_000))]) },
       );
 
       let announced = false;
@@ -138,13 +147,16 @@ export async function diagnoseWithClaude(
       totalCost += estimateCostUsd(model, message.usage);
 
       if (message.stop_reason === "refusal") {
-        throw new Error("Claude declined to answer this request");
+        throw new RefusalError("Claude declined to answer this request");
       }
       const text = message.content
         .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === "text")
         .map((b) => b.text)
         .join("");
-      const parsed = DiagnosisSchema.safeParse(JSON.parse(text));
+      if (message.stop_reason === "max_tokens") {
+        throw new Error("output was cut off at max_tokens");
+      }
+      const parsed = parseDiagnosis(JSON.parse(text));
       if (!parsed.success) {
         throw new Error(`schema validation failed: ${parsed.error.message.slice(0, 300)}`);
       }
@@ -157,6 +169,7 @@ export async function diagnoseWithClaude(
         err instanceof Anthropic.AuthenticationError ||
         err instanceof Anthropic.PermissionDeniedError ||
         err instanceof Anthropic.BadRequestError ||
+        err instanceof RefusalError ||
         signal.aborted
       ) {
         break;

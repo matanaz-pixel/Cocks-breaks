@@ -66,6 +66,8 @@ body {
   color: var(--text);
   font-family: var(--font-heebo), system-ui, sans-serif;
   -webkit-tap-highlight-color: transparent;
+  /* Long unbroken strings (URLs, Latin names) wrap instead of widening the page. */
+  overflow-wrap: anywhere;
 }
 
 :focus-visible {

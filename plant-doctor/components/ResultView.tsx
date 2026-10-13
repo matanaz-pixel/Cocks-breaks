@@ -142,7 +142,7 @@ function Conditions({ d }: { d: Diagnosis }) {
         {keys.map((k) => {
           const c = d.idealConditions[k];
           return (
-            <div key={k} className="grid grid-cols-[auto_1fr] gap-x-3 py-3">
+            <div key={k} className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 py-3">
               <span className={`row-span-3 text-lg font-bold ${STATUS_STYLE[c.status]}`} aria-label={c.status === "ok" ? "תקין" : c.status === "warn" ? "דורש שינוי" : "לא ידוע"}>
                 {STATUS_ICON[c.status]}
               </span>
@@ -248,7 +248,8 @@ export function ResultView({ d, meta, photoUrl }: { d: Diagnosis; meta: Diagnose
       <Safety d={d} />
       <WarningSigns d={d} />
       <p className="px-1 text-xs text-muted">
-        מקורות: {d.sources.join(" · ")} · {(meta.durationMs / 1000).toFixed(1)} שניות · עלות משוערת ${meta.estimatedCostUsd.toFixed(3)}
+        {d.sources.length > 0 && `מקורות: ${d.sources.join(" · ")} · `}
+        {(meta.durationMs / 1000).toFixed(1)} שניות · עלות משוערת ${meta.estimatedCostUsd.toFixed(3)}
       </p>
     </div>
   );

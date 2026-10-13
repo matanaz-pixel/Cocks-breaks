@@ -14,7 +14,11 @@ function label(stage: SourceName, s: StageState): string {
     case "plantnet":
       return s.status === "failed" ? "מאגר הזיהוי לא זמין, ממשיכים בלעדיו" : s.status === "done" ? "הצמח זוהה במאגר" : "מזהה את הצמח…";
     case "weather":
-      if (s.status === "failed") return s.note === "no-location" ? "בלי מיקום, אין התאמה למזג האוויר" : "מזג האוויר לא זמין כרגע";
+      if (s.status === "failed") {
+        if (s.note === "no-location") return "בלי מיקום, אין התאמה למזג האוויר";
+        if (s.note === "city-not-found") return "לא מצאנו את העיר שכתבת, ממשיכים בלי מזג אוויר";
+        return "מזג האוויר לא זמין כרגע";
+      }
       return s.status === "done" ? "מזג האוויר והתחזית נבדקו" : "בודק מזג אוויר…";
     case "claude":
       if (s.status === "failed") return "האבחון נכשל";

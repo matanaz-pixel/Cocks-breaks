@@ -10,7 +10,7 @@ import {
   WATER,
   YES_NO,
 } from "@/lib/labels";
-import type { Questionnaire as Q } from "@/lib/types";
+import { TEXT_LIMITS, type Questionnaire as Q } from "@/lib/types";
 import { Chips, MultiChips, TextField } from "./ui";
 
 export function Questionnaire({ value, onChange }: { value: Q; onChange: (q: Q) => void }) {
@@ -24,6 +24,7 @@ export function Questionnaire({ value, onChange }: { value: Q; onChange: (q: Q) 
         onChange={set("description")}
         placeholder="למשל: העלים התחתונים מצהיבים ונושרים כבר שבועיים"
         multiline
+        maxLength={TEXT_LIMITS.long}
       />
       <Chips label="איפה הצמח?" options={PLACEMENT} value={value.placement} onChange={set("placement")} />
       <Chips label="לאיזה כיוון החלון או החשיפה?" options={EXPOSURE} value={value.exposure} onChange={set("exposure")} />
@@ -39,13 +40,21 @@ export function Questionnaire({ value, onChange }: { value: Q; onChange: (q: Q) 
         value={value.wateringFrequency}
         onChange={set("wateringFrequency")}
         placeholder="למשל: פעמיים בשבוע, כוס מים"
+        maxLength={TEXT_LIMITS.short}
       />
-      <TextField label="מתי השקית לאחרונה?" value={value.lastWatered} onChange={set("lastWatered")} placeholder="למשל: אתמול" />
+      <TextField
+        label="מתי השקית לאחרונה?"
+        value={value.lastWatered}
+        onChange={set("lastWatered")}
+        placeholder="למשל: אתמול"
+        maxLength={TEXT_LIMITS.short}
+      />
       <TextField
         label="דישון אחרון ואיזה דשן"
         value={value.lastFertilized}
         onChange={set("lastFertilized")}
         placeholder="למשל: לפני חודש, דשן נוזלי 20-20-20"
+        maxLength={TEXT_LIMITS.short}
       />
       <MultiChips
         label="שינויים אחרונים"
@@ -58,6 +67,7 @@ export function Questionnaire({ value, onChange }: { value: Q; onChange: (q: Q) 
         value={value.problemDuration}
         onChange={set("problemDuration")}
         placeholder="למשל: שבוע"
+        maxLength={TEXT_LIMITS.short}
       />
       <Chips label="הבעיה מתפשטת?" options={YES_NO} value={value.spreading} onChange={set("spreading")} />
       <Chips label="באילו מים משקים?" options={WATER} value={value.water} onChange={set("water")} />

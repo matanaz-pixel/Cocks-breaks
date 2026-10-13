@@ -1,8 +1,15 @@
 import { z } from "zod";
 import { fetchJson, NonRetryableError } from "../adapter";
+import { findIsraeliCity } from "../israelCities";
 import type { UserLocation, WeatherSummary } from "../types";
 
 // Open-Meteo: free, no key. https://open-meteo.com/en/docs
+export class CityNotFoundError extends NonRetryableError {
+  constructor(city: string) {
+    super(`city not found: ${city}`);
+  }
+}
+
 const FORECAST = "https://api.open-meteo.com/v1/forecast";
 const GEOCODE = "https://geocoding-api.open-meteo.com/v1/search";
 
@@ -38,10 +45,13 @@ async function resolveLocation(
   if (location.kind === "coords") {
     return { lat: location.lat, lon: location.lon, placeName: null };
   }
+  const known = findIsraeliCity(location.name);
+  if (known) return { lat: known.lat, lon: known.lon, placeName: known.name };
+
   const url = `${GEOCODE}?name=${encodeURIComponent(location.name)}&count=1&language=he&format=json`;
   const geo = GeocodeSchema.parse(await fetchJson(url, { signal }));
   const hit = geo.results?.[0];
-  if (!hit) throw new NonRetryableError(`city not found: ${location.name}`);
+  if (!hit) throw new CityNotFoundError(location.name);
   return { lat: hit.latitude, lon: hit.longitude, placeName: hit.name };
 }
 

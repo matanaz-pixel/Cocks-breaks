@@ -1,20 +1,22 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { callSource } from "@/lib/adapter";
+import { findConflict } from "@/lib/conflict";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { diagnoseWithClaude, pickModel } from "@/lib/sources/claude";
-import { getWeather } from "@/lib/sources/openMeteo";
+import { CityNotFoundError, getWeather } from "@/lib/sources/openMeteo";
 import { identifyWithPlantNet } from "@/lib/sources/plantnet";
 import {
   DiagnoseRequestSchema,
   type DiagnoseEvent,
   type PhotoSlot,
-  type PlantNetCandidate,
   type SourceName,
-  type SpeciesConflict,
 } from "@/lib/types";
-import type { Diagnosis } from "@/lib/schema";
 
+// 60s works on every Vercel plan. With Fluid compute it can be raised to 300.
 export const maxDuration = 60;
+// Stop work shortly before the platform kills the function, so the user
+// gets a clear error instead of a cut-off stream.
+const DEADLINE_MS = (maxDuration - 8) * 1000;
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
@@ -22,30 +24,6 @@ type AllowedType = (typeof ALLOWED_TYPES)[number];
 
 function errorResponse(status: number, message: string, headers?: HeadersInit) {
   return Response.json({ error: message }, { status, headers });
-}
-
-// Genus-level comparison: species-level disagreement between two good
-// sources is common and not worth interrupting the user for.
-function findConflict(diagnosis: Diagnosis, plantnet: PlantNetCandidate[]): SpeciesConflict | null {
-  const top = plantnet[0];
-  if (!top || top.score < 0.25) return null;
-  const claudeGenus = diagnosis.plant.scientificName.trim().split(/\s+/)[0]?.toLowerCase();
-  if (!claudeGenus || claudeGenus === top.genus.toLowerCase()) return null;
-  const alt = diagnosis.plant.alternatives.find((a) =>
-    a.scientificName.toLowerCase().startsWith(top.genus.toLowerCase()),
-  );
-  return {
-    claude: {
-      name: diagnosis.plant.hebrewName,
-      scientificName: diagnosis.plant.scientificName,
-      confidence: diagnosis.plant.confidence,
-    },
-    plantnet: {
-      name: alt?.hebrewName ?? top.commonNames[0] ?? top.scientificName,
-      scientificName: top.scientificName,
-      confidence: Math.round(top.score * 100),
-    },
-  };
 }
 
 export async function POST(request: Request) {
@@ -119,7 +97,7 @@ export async function POST(request: Request) {
       send({ type: "stage", stage: "weather", status: "start" });
 
       const plantnetTask = callSource("plantnet", (signal) => identifyWithPlantNet(images, signal), {
-        timeoutMs: 12_000,
+        timeoutMs: 8_000,
       }).then((r) => {
         send({ type: "stage", stage: "plantnet", status: r.ok ? "done" : "failed" });
         if (!r.ok) missing.push("plantnet");
@@ -128,8 +106,9 @@ export async function POST(request: Request) {
 
       const location = req.location;
       const weatherTask = location
-        ? callSource("weather", (signal) => getWeather(location, signal), { timeoutMs: 8_000 }).then((r) => {
-            send({ type: "stage", stage: "weather", status: r.ok ? "done" : "failed" });
+        ? callSource("weather", (signal) => getWeather(location, signal), { timeoutMs: 6_000 }).then((r) => {
+            const note = !r.ok && r.cause instanceof CityNotFoundError ? "city-not-found" : undefined;
+            send({ type: "stage", stage: "weather", status: r.ok ? "done" : "failed", note });
             if (!r.ok) missing.push("weather");
             return r.ok ? r.data : null;
           })
@@ -146,6 +125,7 @@ export async function POST(request: Request) {
         const result = await diagnoseWithClaude(
           { images, request: req, plantnet, weather },
           abort.signal,
+          started + DEADLINE_MS,
           () => send({ type: "stage", stage: "claude", status: "start", note: "writing" }),
         );
         send({ type: "stage", stage: "claude", status: "done" });
@@ -179,7 +159,11 @@ export async function POST(request: Request) {
         }
         send({ type: "error", message });
       } finally {
-        controller.close();
+        try {
+          controller.close();
+        } catch {
+          // Already closed because the client disconnected.
+        }
       }
     },
     cancel() {
