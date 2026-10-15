@@ -1,0 +1,44 @@
+name: Shorts market scan
+
+on:
+  schedule:
+    - cron: "0 6 * * *"  # daily, 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: market-scan
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: shorts-engine
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Test
+        run: python -m unittest discover -s tests -t .
+      - name: Scan
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        run: python -m market --out reports --raw raw-snapshot.json
+      - name: Keep raw data for 14 days
+        uses: actions/upload-artifact@v4
+        with:
+          name: raw-snapshot-${{ github.run_id }}
+          path: shorts-engine/raw-snapshot.json
+          retention-days: 14
+      - name: Commit report
+        run: |
+          git config user.name "shorts-market-bot"
+          git config user.email "shorts-market-bot@users.noreply.github.com"
+          git add reports
+          git commit -m "Market report $(date -u +%F)" || echo "No changes"
+          git push
