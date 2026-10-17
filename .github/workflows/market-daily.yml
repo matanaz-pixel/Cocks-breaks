@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: market-scan
+  group: shorts-state
   cancel-in-progress: false
 
 jobs:
@@ -40,5 +40,5 @@ jobs:
           git config user.name "shorts-market-bot"
           git config user.email "shorts-market-bot@users.noreply.github.com"
           git add reports
-          git commit -m "Market report $(date -u +%F)" || echo "No changes"
-          git push
+          git commit -m "Market report $(date -u +%F)" || exit 0
+          git pull --rebase -q && git push

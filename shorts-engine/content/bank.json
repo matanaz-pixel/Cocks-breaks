@@ -1,0 +1,165 @@
+{
+  "_comment": "Hand-checked story bank. Each beat is one narrated line plus the graphic shown while it plays. Show types: title, year, number, text, versus, end.",
+  "stories": [
+    {
+      "id": "ronald-wayne",
+      "title": "He Sold 10% of Apple for $800",
+      "description": "In 1976 Ronald Wayne co-founded Apple with Steve Jobs and Steve Wozniak, then sold his 10% stake back twelve days later.",
+      "tags": ["apple", "steve jobs", "business history", "investing", "money"],
+      "sources": ["https://en.wikipedia.org/wiki/Ronald_Wayne"],
+      "beats": [
+        {"say": "This man owned ten percent of Apple, and sold it for eight hundred dollars.", "show": {"type": "title", "text": "He owned 10% of APPLE"}},
+        {"say": "In 1976, Ronald Wayne founded Apple with Steve Jobs and Steve Wozniak.", "show": {"type": "year", "value": 1976, "label": "Apple is founded"}},
+        {"say": "He even drew the company's first logo.", "show": {"type": "text", "text": "He drew the first logo"}},
+        {"say": "But just twelve days later, he got nervous about the debt, and sold his stake back for eight hundred dollars.", "show": {"type": "number", "value": 800, "prefix": "$", "label": "for a 10% stake"}},
+        {"say": "Apple is now one of the most valuable companies on Earth.", "show": {"type": "number", "value": 3, "prefix": "$", "suffix": "T+", "label": "Apple's value today"}},
+        {"say": "On paper, that ten percent would be worth hundreds of billions of dollars.", "show": {"type": "versus", "left": "$800", "left_label": "what he got", "right": "$300B+", "right_label": "on paper today"}},
+        {"say": "Wayne has said he doesn't regret it. Would you? Follow for more billion dollar blunders.", "show": {"type": "end", "text": "Would YOU regret it?"}}
+      ]
+    },
+    {
+      "id": "blockbuster-netflix",
+      "title": "Blockbuster Laughed at Netflix",
+      "description": "In 2000 Netflix offered to sell itself to Blockbuster for $50 million. Blockbuster said no.",
+      "tags": ["netflix", "blockbuster", "business history", "startups", "money"],
+      "sources": ["https://en.wikipedia.org/wiki/Blockbuster_LLC", "https://en.wikipedia.org/wiki/Netflix"],
+      "beats": [
+        {"say": "Blockbuster could have bought Netflix for fifty million dollars.", "show": {"type": "title", "text": "Blockbuster vs NETFLIX"}},
+        {"say": "In the year 2000, Netflix was a small DVD by mail company losing money.", "show": {"type": "year", "value": 2000, "label": "Netflix is losing money"}},
+        {"say": "Its founders flew to Dallas and offered to sell it to Blockbuster for fifty million dollars.", "show": {"type": "number", "value": 50, "prefix": "$", "suffix": "M", "label": "the asking price"}},
+        {"say": "Blockbuster passed. It had thousands of stores and didn't see the threat.", "show": {"type": "text", "text": "Blockbuster said NO"}},
+        {"say": "Ten years later, in 2010, Blockbuster filed for bankruptcy.", "show": {"type": "year", "value": 2010, "label": "Blockbuster goes bankrupt"}},
+        {"say": "Netflix is now worth hundreds of billions of dollars.", "show": {"type": "versus", "left": "$50M", "left_label": "the offer", "right": "$300B+", "right_label": "Netflix today"}},
+        {"say": "One meeting changed everything. Follow for more billion dollar blunders.", "show": {"type": "end", "text": "One meeting. One NO."}}
+      ]
+    },
+    {
+      "id": "kodak-digital-camera",
+      "title": "Kodak Invented the Digital Camera",
+      "description": "A Kodak engineer built the first digital camera in 1975. Kodak filed for bankruptcy in 2012.",
+      "tags": ["kodak", "innovation", "business history", "technology", "photography"],
+      "sources": ["https://en.wikipedia.org/wiki/Steven_Sasson", "https://en.wikipedia.org/wiki/Kodak"],
+      "beats": [
+        {"say": "Kodak invented the digital camera, and it destroyed Kodak.", "show": {"type": "title", "text": "KODAK invented it first"}},
+        {"say": "In 1975, a Kodak engineer named Steven Sasson built the first digital camera.", "show": {"type": "year", "value": 1975, "label": "the first digital camera"}},
+        {"say": "It weighed about eight pounds and took twenty three seconds to save one black and white photo.", "show": {"type": "number", "value": 23, "suffix": " sec", "label": "to save one photo"}},
+        {"say": "But Kodak made its money selling film, so digital looked like a threat, not an opportunity.", "show": {"type": "text", "text": "Film was the business"}},
+        {"say": "Others moved fast. Kodak moved slowly.", "show": {"type": "text", "text": "Others moved first"}},
+        {"say": "In 2012, the company that invented digital photography filed for bankruptcy.", "show": {"type": "year", "value": 2012, "label": "Kodak files for bankruptcy"}},
+        {"say": "Inventing the future isn't enough. You have to sell it. Follow for more billion dollar blunders.", "show": {"type": "end", "text": "Invent it. Then SELL it."}}
+      ]
+    },
+    {
+      "id": "yahoo-google",
+      "title": "Yahoo Passed on Google Twice",
+      "description": "Yahoo reportedly passed on buying Google in 1998 and again in 2002, then sold its core business to Verizon for about $4.5 billion in 2017.",
+      "tags": ["yahoo", "google", "business history", "tech", "startups"],
+      "sources": ["https://en.wikipedia.org/wiki/Yahoo", "https://en.wikipedia.org/wiki/History_of_Google"],
+      "beats": [
+        {"say": "Yahoo had two chances to buy Google, and said no both times.", "show": {"type": "title", "text": "Yahoo passed on GOOGLE"}},
+        {"say": "In 1998, Google's founders reportedly offered their search engine to Yahoo for about one million dollars.", "show": {"type": "number", "value": 1, "prefix": "$", "suffix": "M", "label": "the 1998 offer"}},
+        {"say": "Yahoo passed.", "show": {"type": "text", "text": "Pass."}},
+        {"say": "In 2002, Yahoo came back and talked about three billion. Google wanted five. Yahoo walked away again.", "show": {"type": "versus", "left": "$3B", "left_label": "Yahoo offered", "right": "$5B", "right_label": "Google asked"}},
+        {"say": "In 2017, Yahoo sold its core business to Verizon for about four and a half billion dollars.", "show": {"type": "number", "value": 4.5, "prefix": "$", "suffix": "B", "label": "Yahoo's sale price"}},
+        {"say": "Google's parent company is now worth over two trillion.", "show": {"type": "number", "value": 2, "prefix": "$", "suffix": "T+", "label": "Alphabet today"}},
+        {"say": "Sometimes the cheapest deal is the one you skip. Follow for more billion dollar blunders.", "show": {"type": "end", "text": "Would you have bought it?"}}
+      ]
+    },
+    {
+      "id": "bitcoin-pizza",
+      "title": "The Billion Dollar Pizza",
+      "description": "On May 22, 2010, Laszlo Hanyecz paid 10,000 bitcoin for two pizzas.",
+      "tags": ["bitcoin", "crypto", "pizza", "money", "investing"],
+      "sources": ["https://en.wikipedia.org/wiki/Laszlo_Hanyecz"],
+      "beats": [
+        {"say": "These two pizzas cost more than a billion dollars.", "show": {"type": "title", "text": "The BILLION dollar pizza"}},
+        {"say": "On May twenty second, 2010, a programmer named Laszlo Hanyecz wanted to prove bitcoin could buy something real.", "show": {"type": "year", "value": 2010, "label": "May 22"}},
+        {"say": "He paid ten thousand bitcoin for two pizzas.", "show": {"type": "number", "value": 10000, "suffix": " BTC", "label": "for two pizzas"}},
+        {"say": "Back then, that was worth about forty one dollars.", "show": {"type": "number", "value": 41, "prefix": "$", "label": "value in 2010"}},
+        {"say": "When bitcoin passed one hundred thousand dollars, those coins were worth over one billion.", "show": {"type": "versus", "left": "$41", "left_label": "in 2010", "right": "$1B+", "right_label": "at $100K per coin"}},
+        {"say": "May twenty second is now celebrated as Bitcoin Pizza Day.", "show": {"type": "text", "text": "Bitcoin Pizza Day"}},
+        {"say": "Most expensive meal ever? Follow for more billion dollar blunders.", "show": {"type": "end", "text": "Worth it?"}}
+      ]
+    },
+    {
+      "id": "decca-beatles",
+      "title": "The Label That Rejected The Beatles",
+      "description": "On January 1, 1962 the Beatles auditioned for Decca Records. Decca turned them down.",
+      "tags": ["beatles", "music business", "history", "decca", "money"],
+      "sources": ["https://en.wikipedia.org/wiki/Decca_audition"],
+      "beats": [
+        {"say": "A record label once turned down The Beatles.", "show": {"type": "title", "text": "They rejected THE BEATLES"}},
+        {"say": "On New Year's Day 1962, the band auditioned for Decca Records in London.", "show": {"type": "year", "value": 1962, "label": "the Decca audition"}},
+        {"say": "They played fifteen songs in about an hour.", "show": {"type": "number", "value": 15, "label": "songs in the audition"}},
+        {"say": "Decca said no, and signed another band instead.", "show": {"type": "text", "text": "Decca said NO"}},
+        {"say": "Legend says an executive told their manager that guitar groups were on their way out.", "show": {"type": "text", "text": "\"Guitar groups are on the way out\""}},
+        {"say": "The Beatles went on to sell hundreds of millions of records.", "show": {"type": "number", "value": 600, "suffix": "M+", "label": "records sold, estimated"}},
+        {"say": "Biggest miss in music history? Follow for more billion dollar blunders.", "show": {"type": "end", "text": "Biggest miss ever?"}}
+      ]
+    },
+    {
+      "id": "nokia-phones",
+      "title": "How Nokia Lost the Phone War",
+      "description": "Nokia was the world's biggest phone maker. In 2013 it sold its phone business to Microsoft, which wrote off most of it two years later.",
+      "tags": ["nokia", "smartphones", "microsoft", "business history", "tech"],
+      "sources": ["https://en.wikipedia.org/wiki/Nokia", "https://en.wikipedia.org/wiki/Microsoft_Mobile"],
+      "beats": [
+        {"say": "Nokia once sold more phones than anyone on the planet.", "show": {"type": "title", "text": "NOKIA ruled the world"}},
+        {"say": "For more than a decade it was the world's biggest phone maker.", "show": {"type": "text", "text": "Number 1 phone maker"}},
+        {"say": "Then in 2007, the iPhone arrived. Nokia bet that people would keep loving keyboards.", "show": {"type": "year", "value": 2007, "label": "the iPhone arrives"}},
+        {"say": "By 2013, Nokia sold its phone business to Microsoft for about seven billion dollars.", "show": {"type": "number", "value": 7.2, "prefix": "$", "suffix": "B", "label": "sold to Microsoft"}},
+        {"say": "Two years later, Microsoft wrote off almost all of it.", "show": {"type": "number", "value": 7.6, "prefix": "$", "suffix": "B", "label": "written off in 2015"}},
+        {"say": "From king of phones to a footnote in under ten years.", "show": {"type": "text", "text": "King to footnote"}},
+        {"say": "Who is the next Nokia? Follow for more billion dollar blunders.", "show": {"type": "end", "text": "Who's the next Nokia?"}}
+      ]
+    },
+    {
+      "id": "new-coke",
+      "title": "Coca-Cola Changed Its Recipe",
+      "description": "In April 1985 Coca-Cola replaced its formula with New Coke. After 79 days of backlash, the original came back.",
+      "tags": ["coca cola", "marketing", "business history", "brands", "money"],
+      "sources": ["https://en.wikipedia.org/wiki/New_Coke"],
+      "beats": [
+        {"say": "Coca-Cola once changed its secret recipe, and America lost its mind.", "show": {"type": "title", "text": "They changed COKE"}},
+        {"say": "In April 1985, Pepsi was winning taste tests, so Coke launched a new sweeter formula.", "show": {"type": "year", "value": 1985, "label": "New Coke launches"}},
+        {"say": "In blind tests, people actually liked it more.", "show": {"type": "text", "text": "Blind tests loved it"}},
+        {"say": "But real customers were furious. The company got hundreds of thousands of angry calls and letters.", "show": {"type": "text", "text": "Customers were FURIOUS"}},
+        {"say": "After just seventy nine days, Coca-Cola brought the original back.", "show": {"type": "number", "value": 79, "suffix": " days", "label": "until the U-turn"}},
+        {"say": "Sales of the classic recipe went up. Some people still think it was a marketing trick.", "show": {"type": "text", "text": "Blunder or genius?"}},
+        {"say": "Blunder or genius? Tell me below, and follow for more billion dollar blunders.", "show": {"type": "end", "text": "Blunder or genius?"}}
+      ]
+    },
+    {
+      "id": "quibi",
+      "title": "$1.75 Billion Gone in 6 Months",
+      "description": "Quibi raised $1.75 billion for short-form streaming and shut down about six months after launch in 2020.",
+      "tags": ["quibi", "startups", "streaming", "business history", "money"],
+      "sources": ["https://en.wikipedia.org/wiki/Quibi"],
+      "beats": [
+        {"say": "This app burned through almost two billion dollars in six months.", "show": {"type": "title", "text": "$1.75B in 6 MONTHS"}},
+        {"say": "Quibi raised one point seven five billion dollars from Hollywood's biggest names.", "show": {"type": "number", "value": 1.75, "prefix": "$", "suffix": "B", "label": "raised before launch"}},
+        {"say": "The idea: expensive TV shows, cut into ten minute episodes, only for your phone.", "show": {"type": "text", "text": "Hollywood shows, phone only"}},
+        {"say": "It launched in April 2020, right when everyone was stuck at home, watching on big screens.", "show": {"type": "year", "value": 2020, "label": "launch in a lockdown"}},
+        {"say": "You couldn't even share clips. And free short videos were everywhere.", "show": {"type": "text", "text": "Free short videos everywhere"}},
+        {"say": "About six months after launch, Quibi shut down.", "show": {"type": "number", "value": 6, "suffix": " months", "label": "from launch to shutdown"}},
+        {"say": "Money can't buy timing. Follow for more billion dollar blunders.", "show": {"type": "end", "text": "Money can't buy timing"}}
+      ]
+    },
+    {
+      "id": "xerox-parc",
+      "title": "Xerox Gave Away the Future",
+      "description": "Xerox PARC built a computer with windows, icons and a mouse in the 1970s. Apple and Microsoft turned those ideas into empires.",
+      "tags": ["xerox", "apple", "steve jobs", "tech history", "innovation"],
+      "sources": ["https://en.wikipedia.org/wiki/PARC_(company)", "https://en.wikipedia.org/wiki/Xerox_Alto"],
+      "beats": [
+        {"say": "Xerox built the modern computer, and let others get rich from it.", "show": {"type": "title", "text": "XEROX built it first"}},
+        {"say": "In 1973, Xerox's research lab built the Alto, a computer with windows, icons, and a mouse.", "show": {"type": "year", "value": 1973, "label": "the Xerox Alto"}},
+        {"say": "Xerox was a copier company, and it didn't know what to do with it.", "show": {"type": "text", "text": "A copier company"}},
+        {"say": "In 1979, a young Steve Jobs got a tour of the lab.", "show": {"type": "year", "value": 1979, "label": "Steve Jobs visits"}},
+        {"say": "Apple's Lisa and Macintosh followed. Then Microsoft Windows.", "show": {"type": "text", "text": "Mac. Then Windows."}},
+        {"say": "Today, almost every computer on Earth works that way.", "show": {"type": "text", "text": "Now on every computer"}},
+        {"say": "Great ideas are worthless in the wrong hands. Follow for more billion dollar blunders.", "show": {"type": "end", "text": "Right idea. Wrong company."}}
+      ]
+    }
+  ]
+}
