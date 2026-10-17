@@ -1,0 +1,44 @@
+name: Shorts studio - upload approved
+
+on:
+  schedule:
+    - cron: "*/20 * * * *"  # check Telegram for Approve taps every 20 minutes
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: shorts-state
+  cancel-in-progress: false
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: shorts-engine
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Read approvals and upload
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+          YT_PRIVACY: ${{ vars.YT_PRIVACY }}
+        run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ]; then echo "Telegram not set up yet"; exit 0; fi
+          python -m studio poll
+      - name: Save state
+        run: |
+          git config user.name "shorts-studio-bot"
+          git config user.email "shorts-studio-bot@users.noreply.github.com"
+          git add state
+          git commit -m "Studio: approvals $(date -u +%FT%H:%M)" || exit 0
+          git pull --rebase -q && git push
