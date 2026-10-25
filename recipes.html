@@ -66,9 +66,10 @@
 </div>
 
 <script>
-// כתובת ה-CSV של הגיליון המפורסם (קובץ > שיתוף > פרסום באינטרנט > CSV).
-// כל עוד השדה ריק, הדף קורא את recipes.csv מהריפו.
-const SHEET_CSV_URL = '';
+// הגיליון שממנו נטענים המתכונים (חייב להיות משותף "כל מי שיש לו קישור - צפייה").
+// אם הטעינה נכשלת, הדף קורא את recipes.csv מהריפו.
+const SHEET_ID = '1H3tzII7pSwy0KS3UyI1gCcPn9ipNpVwAh8Mg1AqiilM';
+const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`;
 const CATEGORIES = ['פס קר', 'פס חם', 'טאבון', "צ'קר", 'קונדיטוריה'];
 
 let recipes = [];
@@ -108,7 +109,8 @@ function el(tag, cls, text){
 async function load(){
   const list = document.getElementById('list');
   try{
-    const res = await fetch(SHEET_CSV_URL || './recipes.csv', { cache: 'no-store' });
+    let res = await fetch(SHEET_CSV_URL, { cache: 'no-store' }).catch(() => null);
+    if(!res || !res.ok) res = await fetch('./recipes.csv', { cache: 'no-store' });
     if(!res.ok) throw new Error(res.status);
     const rows = parseCSV(await res.text()).slice(1);
     recipes = rows.map(r => ({
