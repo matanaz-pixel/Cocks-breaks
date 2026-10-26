@@ -10,14 +10,16 @@
  *
  * חשוב: הגיליון צריך להיות משותף לצפייה בלבד. כל מי שיכול לערוך את הגיליון יכול גם לאשר בקשות.
  *
- * הזרימה: האתר שולח בקשה (doPost) > נוספת שורה בטאב "בקשות תיקון" בסטטוס "ממתין" >
+ * הזרימה: הטבח בוחר מתכון ומשנה כמויות (שדה לכל מצרך) ו/או את הוראות ההכנה > האתר שולח בקשה (doPost) >
+ * נוספת שורה בטאב "בקשות תיקון" בסטטוס "ממתין", עם עמודת "מה השתנה" (לפני/אחרי) >
  * בוחרים "אושר" בעמודת הסטטוס (אפשר כמה שורות יחד) > onEdit מעדכן את טאב המתכונים.
+ * בקשה שמשנה גם כמויות וגם הוראות הכנה נרשמת כשתי שורות, שכל אחת מהן מאושרת בנפרד.
  */
 const RECIPES_SHEET = 'recipes';
 const REQUESTS_SHEET = 'בקשות תיקון';
 const FIELDS = { 'שם': 'שם', 'מצרכים': 'מצרכים', 'הוראות הכנה': 'הוראות הכנה', 'הערות': 'הערות' };   // שדה > כותרת העמודה בטאב המתכונים
-const HEADERS = ['זמן', 'קטגוריה', 'שם מתכון', 'שדה', 'הנוסח שהטבח ראה', 'נוסח מוצע', 'הערה', 'שולח', 'סטטוס'];
-const STATUS_COL = 9;
+const HEADERS = ['זמן', 'קטגוריה', 'שם מתכון', 'שדה', 'הנוסח שהטבח ראה', 'נוסח מוצע', 'מה השתנה', 'הערה', 'שולח', 'סטטוס'];
+const STATUS_COL = 10;
 const ST = { PENDING: 'ממתין', APPROVED: 'אושר', FORCE: 'אשר בכל מקרה', REJECTED: 'נדחה', APPLIED: 'הוחל', CONFLICT: 'התנגשות', NOTFOUND: 'מתכון לא נמצא' };
 const RATE_LIMIT = 30;            // בקשות לכל 10 דקות, לכל השולחים יחד
 const NOTIFY_OWNER = true;        // מייל לבעלים, לכל היותר פעם בשעה
@@ -47,7 +49,7 @@ function doPost(e) {
 
     const sh = requestsSheet();
     if (isDuplicate(sh, cat, title, field, proposed)) return reply('ok');
-    sh.appendRow([new Date(), cat, title, field, base, proposed, clip(d.comment, 300), clip(d.sender, 60), ST.PENDING].map(safe));
+    sh.appendRow([new Date(), cat, title, field, base, proposed, summarize(base, proposed), clip(d.comment, 300), clip(d.sender, 60), ST.PENDING].map(safe));
     notify();
     return reply('ok');
   } catch (err) {
@@ -71,7 +73,7 @@ function onEdit(e) {
 }
 
 function applyRequest(sh, r, force) {
-  const [, cat, title, field, base, proposed] = sh.getRange(r, 1, 1, STATUS_COL).getValues()[0];
+  const [, cat, title, field, base, proposed] = sh.getRange(r, 1, 1, 6).getValues()[0];
   const statusCell = sh.getRange(r, STATUS_COL);
   const recipes = SpreadsheetApp.getActive().getSheetByName(RECIPES_SHEET);
   const row = findRecipeRow(recipes, cat, title);
@@ -121,7 +123,17 @@ function isDuplicate(sh, cat, title, field, proposed) {
   if (last < 2) return false;
   const from = Math.max(2, last - 49);
   const rows = sh.getRange(from, 1, last - from + 1, STATUS_COL).getValues();
-  return rows.some(r => r[1] === safe(cat) && r[2] === safe(title) && r[3] === field && norm(r[5]) === norm(safe(proposed)) && r[8] === ST.PENDING);
+  return rows.some(r => r[1] === safe(cat) && r[2] === safe(title) && r[3] === field && norm(r[5]) === norm(safe(proposed)) && r[STATUS_COL - 1] === ST.PENDING);
+}
+
+// תקציר קריא של השינוי, כדי שאפשר יהיה לאשר בלי להשוות שני תאים ארוכים
+function summarize(base, proposed) {
+  const a = String(base).split('\n').map(x => x.trim()).filter(Boolean);
+  const b = String(proposed).split('\n').map(x => x.trim()).filter(Boolean);
+  if (a.length !== b.length) return 'מספר השורות השתנה: ' + a.length + ' ← ' + b.length;
+  const out = [];
+  a.forEach((x, i) => { if (x !== b[i]) out.push('לפני: ' + x + '\nאחרי: ' + b[i]); });
+  return out.slice(0, 15).join('\n\n') + (out.length > 15 ? '\n... ועוד ' + (out.length - 15) : '');
 }
 
 function rateOk() {

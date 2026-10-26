@@ -69,7 +69,7 @@
   .fix-form .sub2{ font-size:13px; color:var(--text-dim); margin-top:-6px; }
   .fix-form label{ font-size:13px; color:var(--text-dim); display:flex; flex-direction:column; gap:5px; }
   .fix-form select, .fix-form input[type=text], .fix-form textarea{ border:1px solid var(--line); border-radius:12px; padding:10px 12px; font:inherit; font-size:16px; background:#fff; color:var(--text); }
-  .fix-form textarea{ min-height:150px; resize:vertical; line-height:1.6; }
+  .fix-form textarea{ width:100%; min-height:150px; resize:vertical; line-height:1.6; }
   @media (max-height:700px){ .fix-form{ padding:14px; gap:8px; } .fix-form textarea{ min-height:90px; } }
   .fix-form select:focus, .fix-form input:focus, .fix-form textarea:focus{ outline:none; border-color:var(--green); box-shadow:0 0 0 3px var(--green-soft); }
   .fix-actions{ display:flex; gap:10px; justify-content:flex-start; }
@@ -79,6 +79,33 @@
   .fix-actions button:disabled{ opacity:.55; cursor:default; }
   .fix-msg{ font-size:14px; padding:10px 12px; border-radius:12px; background:var(--green-soft); color:var(--green); }
   .fix-msg.err{ background:#fde8e3; color:#a3300f; }
+  .fix-form .seg{ display:flex; gap:6px; }
+  .fix-form .seg button{ flex:1; min-height:44px; border:1px solid var(--line); border-radius:999px; background:#fff; color:var(--text-dim); font:inherit; font-size:14px; cursor:pointer; }
+  .fix-form .seg button.on{ background:var(--green); border-color:var(--green); color:#fff; }
+  .fix-form .chosen{ display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; padding:8px 12px; background:var(--green-soft); border-radius:12px; }
+  .fix-form .chosen .ct{ font-weight:600; color:var(--green); }
+  .fix-form .chosen small{ color:var(--accent); }
+  .fix-form .swap{ margin-inline-start:auto; min-height:36px; border:none; background:none; color:var(--text-dim); text-decoration:underline; font:inherit; font-size:13px; cursor:pointer; }
+  .fix-form .work{ display:flex; flex-direction:column; gap:12px; }
+  .fix-form .work[hidden], .fix-form .pick[hidden]{ display:none; }
+  .fix-form .pick{ display:flex; flex-direction:column; gap:10px; }
+  .pick-list{ display:flex; flex-direction:column; gap:6px; }
+  .pick-item{ display:flex; justify-content:space-between; align-items:center; gap:8px; min-height:48px; padding:0 14px; border:1px solid var(--line); border-radius:12px; background:#fff; color:var(--text); font:inherit; font-size:15px; cursor:pointer; text-align:right; }
+  .pick-item small{ color:var(--accent); font-size:12px; }
+  .pick-none{ color:var(--text-dim); font-size:13px; padding:6px 2px; }
+  .hint2{ font-size:12px; color:var(--text-dim); margin-bottom:6px; }
+  .hint2.warn{ color:#7a4a00; }
+  .qlist{ max-height:44dvh; overflow:auto; border:1px solid var(--line); border-radius:12px; background:#fff; padding:2px 10px; }
+  .qsub{ font-weight:600; color:var(--green); font-size:13px; padding:10px 0 2px; }
+  .qrow{ display:flex; align-items:center; gap:8px; padding:5px 0; border-bottom:1px solid var(--line); }
+  .qrow:last-child{ border-bottom:none; }
+  .qrow .pre{ color:var(--text-dim); font-size:14px; }
+  .qrow input{ width:92px; min-height:44px; text-align:center; border:1px solid var(--line); border-radius:10px; font:inherit; font-size:16px; background:#fff; color:var(--text); padding:0 6px; }
+  .qrow .rest{ flex:1; font-size:14px; }
+  .qrow.plain .rest{ color:var(--text-dim); padding:8px 0; }
+  .qrow.chg input{ border-color:var(--accent); background:#fff4f0; font-weight:600; }
+  .qrow.bad input{ border-color:#c0392b; background:#fde8e3; }
+  .qcount{ margin-top:6px; font-size:13px; color:var(--accent); font-weight:500; }
   .hp{ position:absolute; left:-9999px; width:1px; height:1px; opacity:0; }
   .yield{ white-space:pre-line; margin-top:14px; padding:10px 14px; border-radius:12px; background:var(--green); color:#fff; font-size:16px; font-weight:500; }
   .card-actions{ display:flex; gap:10px; align-items:center; margin-top:12px; }
@@ -702,6 +729,10 @@ function refreshFooter(){
     w.onclick = () => { state.wake = !state.wake; save(); updateWake(); };
     row.append(w);
   }
+  if(CORRECTION_URL){
+    const c = el('button', 'foot-btn', '✎ בקשת תיקון'); c.type = 'button'; c.onclick = () => openFix(null);
+    row.append(c);
+  }
   if(!window.matchMedia('(display-mode: standalone)').matches){
     const a = el('button', 'foot-btn', '📲 הוסף למסך הבית'); a.type = 'button';
     a.onclick = async () => {
@@ -715,65 +746,140 @@ function refreshFooter(){
 }
 
 // ---- בקשת תיקון ----
+// נבחר מתכון ספציפי (מתוך הכרטיס, או מהכפתור הכללי עם בורר). שני סוגי תיקון:
+//  1. כמויות: שדה לכל מצרך, משנים רק את המספר. 2. הוראות הכנה: עריכת טקסט חופשי.
 const FIX_REPLIES = {
-  ok: ['הבקשה נשלחה וממתינה לאישור. תודה!', false],
-  same: ['הנוסח ששלחת זהה לנוסח שכבר בספר. אין מה לתקן.', true],
-  unknown: ['המתכון לא נמצא בגיליון (אולי שמו שונה). רעננו את הדף ונסו שוב.', true],
-  invalid: ['הבקשה לא תקינה. בדקו שהנוסח לא ריק.', true],
-  busy: ['יש כרגע הרבה בקשות. נסו שוב בעוד כמה דקות.', true],
-  error: ['אירעה שגיאה בשמירת הבקשה. נסו שוב.', true]
+  ok: ['נשלחה', false],
+  same: ['הנוסח זהה לנוסח שכבר בספר', true],
+  unknown: ['המתכון לא נמצא בגיליון (אולי שמו שונה). רעננו את הדף ונסו שוב', true],
+  invalid: ['הבקשה לא תקינה', true],
+  busy: ['יש כרגע הרבה בקשות. נסו שוב בעוד כמה דקות', true],
+  error: ['אירעה שגיאה בשמירה', true]
 };
-function openFix(r){
+const QTY_RE = new RegExp(String.raw`^((?:תפוקה:\s*)?(?:כ-|ל-|ל)?)((?:${NUM})(?:\s*-\s*(?:${NUM}))?|חצי|רבע|שליש)(?=\s|$)(.*)$`);
+const QTY_OK = new RegExp(String.raw`^(?:(?:${NUM})(?:\s*-\s*(?:${NUM}))?|חצי|רבע|שליש)$`);
+const splitQty = line => { const m = line.match(QTY_RE); return m ? { pre: m[1], qty: m[2], rest: m[3] } : null; };
+
+async function postRequest(body){
+  try{
+    const res = await fetch(CORRECTION_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) });
+    return (await res.text()).trim();
+  }catch(e){ return null; }
+}
+
+function openFix(preset){
+  let r = preset || null, mode = 'qty', sent = false;
   const dlg = document.createElement('dialog'); dlg.className = 'fix';
-  const form = el('form', 'fix-form');
-  const sel = el('select');
-  ['מצרכים', 'הוראות הכנה', 'הערות', 'שם'].forEach(f => sel.append(new Option(f === 'שם' ? 'שם המתכון' : f, f)));
-  const txt = el('textarea'); txt.required = true;
+  const form = el('form', 'fix-form'); form.noValidate = true;
+  const msg = el('div'); msg.hidden = true;
+  const say = (text, err) => { msg.className = 'fix-msg' + (err ? ' err' : ''); msg.textContent = text; msg.hidden = false; msg.scrollIntoView({ block: 'nearest' }); };
+
+  // 1. בורר מתכון
+  const pick = el('div', 'pick');
+  const pickIn = el('input'); pickIn.type = 'search'; pickIn.placeholder = 'הקלידו שם מתכון...'; pickIn.autocomplete = 'off';
+  const pickList = el('div', 'pick-list');
+  const fillPick = () => {
+    const tokens = queryTokens(pickIn.value);
+    const hits = recipes.filter(x => tokens.every(t => loose(x.title + ' ' + x.cat).includes(t))).slice(0, 8);
+    pickList.replaceChildren(...(hits.length ? hits.map(x => {
+      const b = el('button', 'pick-item'); b.type = 'button'; b.append(el('span', '', x.title), el('small', '', x.cat));
+      b.onclick = () => choose(x); return b;
+    }) : [el('div', 'pick-none', 'לא נמצא מתכון בשם הזה')]));
+  };
+  pickIn.addEventListener('input', fillPick);
+  const pl = el('label', '', 'איזה מתכון לתקן?'); pl.append(pickIn);
+  pick.append(pl, pickList);
+
+  // 2. אזור העבודה
+  const work = el('div', 'work');
+  const chosen = el('div', 'chosen');
+  const seg = el('div', 'seg');
+  const bQty = el('button', 'on', 'שינוי כמויות'), bTxt = el('button', '', 'שינוי הוראות הכנה');
+  bQty.type = bTxt.type = 'button'; seg.append(bQty, bTxt);
+  const pQty = el('div', 'panel'), pTxt = el('div', 'panel'); pTxt.hidden = true;
+  const setMode = m => { mode = m; bQty.classList.toggle('on', m === 'qty'); bTxt.classList.toggle('on', m === 'txt'); pQty.hidden = m !== 'qty'; pTxt.hidden = m !== 'txt'; };
+  bQty.onclick = () => setMode('qty'); bTxt.onclick = () => setMode('txt');
   const comment = el('input'); comment.type = 'text'; comment.maxLength = 300; comment.placeholder = 'מה לא נכון? (לא חובה)';
   const sender = el('input'); sender.type = 'text'; sender.maxLength = 60; sender.placeholder = 'השם שלך (לא חובה)';
   const hp = el('input', 'hp'); hp.type = 'text'; hp.tabIndex = -1; hp.autocomplete = 'off'; hp.setAttribute('aria-hidden', 'true');
-  const msg = el('div'); msg.hidden = true;
-  const send = el('button', 'send', 'שליחה לאישור'); send.type = 'submit';
+  const l3 = el('label', '', 'הערה'); l3.append(comment);
+  const l4 = el('label', '', 'שולח'); l4.append(sender);
+  work.append(chosen, seg, pQty, pTxt, l3, l4, hp);
+  work.hidden = true;
+
+  let qrows = [], txt = null;
+  function choose(x){
+    r = x; pick.hidden = true; work.hidden = false; send.hidden = false; msg.hidden = true;
+    chosen.replaceChildren(el('div', 'ct', r.title), el('small', '', r.cat));
+    if(!preset){ const sw = el('button', 'swap', 'החלפה'); sw.type = 'button'; sw.onclick = () => { work.hidden = true; send.hidden = true; pick.hidden = false; pickIn.focus(); }; chosen.append(sw); }
+    // כמויות: שדה לכל מצרך שיש לו כמות בתחילת השורה
+    pQty.replaceChildren(el('div', 'hint2', 'הכמויות כפי שהן בספר (בלי הכפלה). משנים רק את המספר.'));
+    const box = el('div', 'qlist');
+    qrows = r.ingredients.map((line, idx) => {
+      if(line.endsWith(':')){ box.append(el('div', 'qsub', line)); return null; }
+      const s = splitQty(line), row = el('div', 'qrow');
+      if(!s){ row.append(el('span', 'rest', line)); row.classList.add('plain'); box.append(row); return null; }
+      const inp = el('input'); inp.type = 'text'; inp.inputMode = 'decimal'; inp.value = s.qty; inp.setAttribute('aria-label', 'כמות: ' + line);
+      const q = { s, inp, idx, row };
+      inp.addEventListener('input', () => { const v = inp.value.trim(); row.classList.toggle('chg', v !== s.qty); row.classList.remove('bad'); count(); });
+      row.append(...(s.pre ? [el('span', 'pre', s.pre)] : []), inp, el('span', 'rest', s.rest.trim()));
+      box.append(row); return q;
+    }).filter(Boolean);
+    if(!r.ingredients.length) box.append(el('div', 'pick-none', 'אין מצרכים במתכון הזה'));
+    const cnt = el('div', 'qcount'); cnt.hidden = true;
+    function count(){ const n = qrows.filter(q => q.inp.value.trim() !== q.s.qty).length; cnt.hidden = !n; cnt.textContent = n + ' שינויים'; }
+    pQty.append(box, cnt);
+    // הוראות הכנה
+    txt = el('textarea'); txt.value = r.raw['הוראות הכנה'] || '';
+    pTxt.replaceChildren(el('div', 'hint2', 'עריכה חופשית. כל שורה היא שלב.'), txt);
+    if(!r.steps.length) pTxt.prepend(el('div', 'hint2 warn', 'למתכון הזה אין עדיין הוראות הכנה, אפשר לכתוב אותן כאן.'));
+    setMode(r.ingredients.length ? 'qty' : 'txt');
+  }
+
+  const send = el('button', 'send', 'שליחה לאישור'); send.type = 'submit'; send.hidden = true;
   const cancel = el('button', 'cancel', 'ביטול'); cancel.type = 'button';
-  const drafts = {};                                   // טיוטה נפרדת לכל שדה, כך שמעבר בין שדות לא מוחק עריכה
-  let field = sel.value, sent = false;
-  txt.value = r.raw[field] || '';
-  sel.onchange = () => { drafts[field] = txt.value; field = sel.value; txt.value = drafts[field] ?? (r.raw[field] || ''); };
-  const dirty = () => !sent && (txt.value.trim() !== (r.raw[field] || '').trim() || Object.keys(drafts).some(f => drafts[f].trim() !== (r.raw[f] || '').trim()) || comment.value.trim());
+  const actions = el('div', 'fix-actions'); actions.append(send, cancel);
+  form.append(el('h2', '', 'בקשת תיקון'), pick, work, msg, actions);
+  dlg.append(form);
+
+  const dirty = () => !sent && r && (qrows.some(q => q.inp.value.trim() !== q.s.qty) || (txt && txt.value.trim() !== (r.raw['הוראות הכנה'] || '').trim()) || comment.value.trim());
   const tryClose = () => { if(!dirty() || confirm('לסגור בלי לשלוח? מה שכתבת יימחק.')) dlg.close(); };
   cancel.onclick = tryClose;
   dlg.addEventListener('cancel', ev => { ev.preventDefault(); tryClose(); });   // ESC
   dlg.addEventListener('click', ev => { if(ev.target === dlg) tryClose(); });
-  const l1 = el('label', '', 'מה לתקן'); l1.append(sel);
-  const l2 = el('label', '', 'הנוסח המתוקן (מתחילים מהנוסח הנוכחי, ללא הכפלה)'); l2.append(txt);
-  const l3 = el('label', '', 'הערה'); l3.append(comment);
-  const l4 = el('label', '', 'שולח'); l4.append(sender);
-  const actions = el('div', 'fix-actions'); actions.append(send, cancel);
-  form.append(el('h2', '', 'בקשת תיקון'), el('div', 'sub2', r.title + ' · ' + r.cat), l1, l2, l3, l4, hp, msg, actions);
-  dlg.append(form);
-  const say = (text, err) => { msg.className = 'fix-msg' + (err ? ' err' : ''); msg.textContent = text; msg.hidden = false; msg.scrollIntoView({ block: 'nearest' }); };
+
   form.addEventListener('submit', async ev => {
     ev.preventDefault();
-    const proposed = txt.value.trim();
-    if(!proposed || proposed === (r.raw[field] || '').trim()){ say('לא בוצע שינוי בנוסח.', true); return; }
-    send.disabled = true; msg.hidden = true;
-    const body = JSON.stringify({ cat: r.cat, title: r.title, field, base: r.raw[field] || '', proposed,
-      comment: comment.value.trim(), sender: sender.value.trim(), website: hp.value });
-    let answer = null;
-    try{
-      const res = await fetch(CORRECTION_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body });
-      answer = (await res.text()).trim();
-    }catch(e){
-      say('לא הצלחתי לוודא שהבקשה נשמרה. בדקו חיבור ונסו לשלוח שוב (בקשה כפולה לא תירשם פעמיים).', true);
-      send.disabled = false; return;
+    if(!r) return;
+    const reqs = [];
+    // כמויות
+    const changed = qrows.filter(q => q.inp.value.trim() !== q.s.qty);
+    const badRows = changed.filter(q => !QTY_OK.test(q.inp.value.trim()));
+    if(badRows.length){ badRows.forEach(q => q.row.classList.add('bad')); setMode('qty'); say('יש כמות שאינה מספר תקין. אפשר מספר (למשל 350 או 1.5), טווח (60-75) או חצי/רבע/שליש.', true); badRows[0].inp.focus(); return; }
+    if(changed.length){
+      const lines = r.ingredients.slice();
+      changed.forEach(q => { lines[q.idx] = q.s.pre + q.inp.value.trim() + q.s.rest; });
+      reqs.push({ field: 'מצרכים', base: r.raw['מצרכים'] || '', proposed: lines.join('\n') });
     }
-    const [text, err] = FIX_REPLIES[answer] || FIX_REPLIES.error;
-    say(text, err);
-    if(!err){ sent = true; send.hidden = true; cancel.textContent = 'סגירה'; }
-    else send.disabled = false;
+    // הוראות הכנה
+    const t = txt ? txt.value.trim() : '';
+    if(txt && t && t !== (r.raw['הוראות הכנה'] || '').trim()) reqs.push({ field: 'הוראות הכנה', base: r.raw['הוראות הכנה'] || '', proposed: t });
+    if(!reqs.length){ say('לא בוצע שום שינוי.', true); return; }
+    send.disabled = true; msg.hidden = true;
+    const results = [];
+    for(const q of reqs){
+      const a = await postRequest({ cat: r.cat, title: r.title, ...q, comment: comment.value.trim(), sender: sender.value.trim(), website: hp.value });
+      results.push({ field: q.field, reply: a === null ? null : (FIX_REPLIES[a] ? a : 'error') });
+    }
+    const lost = results.filter(x => x.reply === null), bad = results.filter(x => x.reply && x.reply !== 'ok');
+    if(lost.length){ say('לא הצלחתי לוודא שהבקשה נשמרה. בדקו חיבור ונסו לשלוח שוב (בקשה כפולה לא תירשם פעמיים).', true); send.disabled = false; return; }
+    if(bad.length){ say(bad.map(x => x.field + ': ' + FIX_REPLIES[x.reply][0]).join('\n'), true); send.disabled = false; return; }
+    sent = true; send.hidden = true; cancel.textContent = 'סגירה';
+    say(reqs.length === 1 ? 'הבקשה נשלחה וממתינה לאישור. תודה!' : 'נשלחו ' + reqs.length + ' בקשות (כמויות והוראות הכנה) וממתינות לאישור. תודה!', false);
   });
   dlg.addEventListener('close', () => dlg.remove());
   document.body.append(dlg); dlg.showModal();
+  if(preset) choose(preset); else { fillPick(); pickIn.focus(); }
 }
 
 // ---- אתחול ----
