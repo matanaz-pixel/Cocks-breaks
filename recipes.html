@@ -77,7 +77,9 @@
   .card-body h3{ font-size:12px; font-weight:600; color:var(--green); letter-spacing:.1em; margin:16px 0 6px; }
   .card-body ul, .card-body ol{ margin:0; padding-inline-start:20px; line-height:1.75; font-size:15px; }
   .card-body li::marker{ color:var(--green); }
-  .note{ margin-top:14px; font-size:13px; color:var(--text-dim); background:var(--green-soft); border-radius:10px; padding:9px 12px; }
+  .card-body li.sub{ list-style:none; margin:10px -20px 2px 0; font-weight:600; color:var(--green); font-size:14px; }
+  .card-body li.sub::marker{ content:''; }
+  .note{ white-space:pre-line; margin-top:14px; font-size:13px; color:var(--text-dim); background:var(--green-soft); border-radius:10px; padding:9px 12px; }
 
   .empty-note, .status{ text-align:center; color:var(--text-dim); font-size:14px; padding:26px 10px; border:1px dashed var(--line); border-radius:16px; }
   .status.error{ color:var(--accent); border-color:var(--accent); }
@@ -119,10 +121,10 @@ const SCALE_RE = new RegExp('\\([^)]*\\)|(' + NUM + ')(?:\\s*-\\s*(' + NUM + '))
 const toNum = s => parseFloat(s.replace(/,/g, ''));
 function scaleLine(s, k){
   if(k === 1) return s;
-  const fw = s.match(/^(ל?)(חצי|רבע|שליש)(?=\s)/);
+  const fw = s.match(/^(תפוקה:\s*)?(ל?)(חצי|רבע|שליש)(?=\s)/);
   if(fw){
-    const v = { 'חצי': 0.5, 'רבע': 0.25, 'שליש': 1 / 3 }[fw[2]];
-    s = (fw[1] ? 'ל-' : '') + fmtNum(v * k) + s.slice(fw[0].length);
+    const v = { 'חצי': 0.5, 'רבע': 0.25, 'שליש': 1 / 3 }[fw[3]];
+    s = (fw[1] || '') + (fw[2] ? 'ל-' : '') + fmtNum(v * k) + s.slice(fw[0].length);
     return s;
   }
   return s.replace(SCALE_RE, (m, a, b, sp, unit) => {
@@ -258,14 +260,14 @@ function buildCard(r){
     hint.textContent = f === 1 ? '' : 'הכמויות במצרכים מוכפלות ב-' + fmtNum(f) + '. זמנים, טמפרטורות ומשקלים בהוראות ההכנה לא משתנים.';
     dyn.replaceChildren();
     if(r.ingredients.length){
-      const ul = el('ul'); r.ingredients.forEach(i => ul.append(el('li', '', scaleLine(i, f))));
+      const ul = el('ul'); r.ingredients.forEach(i => ul.append(i.endsWith(':') ? el('li', 'sub', i) : el('li', '', scaleLine(i, f))));
       dyn.append(el('h3', '', 'מצרכים'), ul);
     }
     if(r.steps.length){
       const ol = el('ol'); r.steps.forEach(s => ol.append(el('li', '', s)));
       dyn.append(el('h3', '', 'הכנה'), ol);
     }
-    if(r.note) dyn.append(el('div', 'note', scaleLine(r.note, f)));
+    if(r.note) dyn.append(el('div', 'note', r.note.split('\n').map(l => l.startsWith('תפוקה') ? scaleLine(l, f) : l).join('\n')));
   }
   input.addEventListener('input', update);
   body.append(bar, hint, dyn);
