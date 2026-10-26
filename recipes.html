@@ -289,7 +289,9 @@ async function load(){
 function buildTabs(){
   const tabs = document.getElementById('tabs');
   const extra = [...new Set(recipes.map(r => r.cat))].filter(c => c && !CATEGORIES.includes(c));
-  tabs.replaceChildren(...['הכל', CURRENT_TAB, ...CATEGORIES, ...extra].map(name => {
+  // קטגוריה בלי מתכונים לא מוצגת. ברגע שמוסיפים לה מתכון בגיליון, הטאב מופיע מעצמו.
+  const used = CATEGORIES.filter(c => recipes.some(r => r.cat === c));
+  tabs.replaceChildren(...['הכל', CURRENT_TAB, ...used, ...extra].map(name => {
     const b = el('button', 'tab' + (name === activeTab ? ' active' : '') + (name === CURRENT_TAB ? ' current' : ''), name === CURRENT_TAB ? '★ ' + name : name);
     const n = name === 'הכל' ? recipes.length : name === CURRENT_TAB ? recipes.filter(r => r.current).length : recipes.filter(r => r.cat === name).length;
     b.append(el('span', 'n', String(n)));
