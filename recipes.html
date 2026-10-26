@@ -47,9 +47,11 @@
   .scale input.bad{ border-color:var(--accent); }
   .scale .chip{ border:1px solid var(--line); background:#fff; color:var(--text-dim); border-radius:999px; padding:5px 9px; font:inherit; font-size:13px; cursor:pointer; }
   .scale .chip.on{ background:var(--green); border-color:var(--green); color:#fff; }
+  .mult-tag{ display:inline-block; margin-inline-start:8px; padding:2px 9px; border-radius:999px; background:var(--accent); color:#fff; font-size:11px; font-weight:600; vertical-align:middle; }
+  .scale-hint.bad{ color:var(--accent); font-weight:500; }
   .scale-hint{ font-size:12px; color:var(--text-dim); margin-top:6px; }
   .fix-btn{ margin-top:14px; background:none; border:none; padding:4px 0; color:var(--text-dim); font:inherit; font-size:13px; text-decoration:underline; cursor:pointer; }
-  dialog.fix{ border:none; border-radius:18px; padding:0; width:min(520px, calc(100vw - 32px)); max-height:calc(100vh - 32px); background:var(--cream); color:var(--text); box-shadow:0 20px 60px rgba(0,0,0,.25); }
+  dialog.fix{ border:none; border-radius:18px; padding:0; width:min(520px, calc(100vw - 32px)); max-height:calc(100dvh - 24px); overflow:auto; background:var(--cream); color:var(--text); box-shadow:0 20px 60px rgba(0,0,0,.25); }
   dialog.fix::backdrop{ background:rgba(2,51,5,.45); }
   .fix-form{ padding:20px; display:flex; flex-direction:column; gap:12px; }
   .fix-form h2{ margin:0; font-size:18px; font-weight:500; color:var(--green); }
@@ -57,6 +59,7 @@
   .fix-form label{ font-size:13px; color:var(--text-dim); display:flex; flex-direction:column; gap:5px; }
   .fix-form select, .fix-form input[type=text], .fix-form textarea{ border:1px solid var(--line); border-radius:12px; padding:10px 12px; font:inherit; font-size:16px; background:#fff; color:var(--text); }
   .fix-form textarea{ min-height:150px; resize:vertical; line-height:1.6; }
+  @media (max-height:700px){ .fix-form{ padding:14px; gap:8px; } .fix-form textarea{ min-height:90px; } }
   .fix-form select:focus, .fix-form input:focus, .fix-form textarea:focus{ outline:none; border-color:var(--green); box-shadow:0 0 0 3px var(--green-soft); }
   .fix-actions{ display:flex; gap:10px; justify-content:flex-start; }
   .fix-actions button{ border-radius:999px; padding:10px 20px; font:inherit; font-size:15px; cursor:pointer; border:1px solid var(--green); }
@@ -81,6 +84,7 @@
   .card-body li.sub::marker{ content:''; }
   .note{ white-space:pre-line; margin-top:14px; font-size:13px; color:var(--text-dim); background:var(--green-soft); border-radius:10px; padding:9px 12px; }
 
+  .banner{ background:#fff4e0; border:1px solid #f0c27a; color:#7a4a00; border-radius:12px; padding:10px 14px; font-size:13px; margin-bottom:12px; }
   .empty-note, .status{ text-align:center; color:var(--text-dim); font-size:14px; padding:26px 10px; border:1px dashed var(--line); border-radius:16px; }
   .status.error{ color:var(--accent); border-color:var(--accent); }
 </style>
@@ -97,11 +101,11 @@
 </div>
 
 <script>
-// מקור המתכונים: recipes.csv מהריפו. כדי לעבור לעריכה מגיליון Google Sheets:
-// מייבאים את recipes.csv לגיליון, משתפים "כל מי שיש לו קישור - צפייה", מדביקים את ה-ID וקובעים USE_SHEET = true.
+// מקור המתכונים: גיליון Google Sheets (טאב recipes, משותף "כל מי שיש לו קישור - צפייה").
+// אם הגיליון לא זמין, מוצג recipes.csv מהריפו עם הודעה. USE_SHEET = false קורא רק את הקובץ.
 const USE_SHEET = true;
 const SHEET_ID = '1H3tzII7pSwy0KS3UyI1gCcPn9ipNpVwAh8Mg1AqiilM';
-const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=recipes`;
+const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&headers=1&sheet=recipes`;
 const CURRENT_TAB = 'תפריט נוכחי';
 // כתובת ה-Web App של בקשות התיקון (Apps Script, ראו apps-script/Code.gs). ריק = הכפתור מוסתר.
 const CORRECTION_URL = '';
@@ -110,35 +114,77 @@ const CATEGORIES = ['פס קר', 'פס חם', 'טאבון', "צ'קר", 'קונד
 const multipliers = new Map();   // הכפלה שנבחרה לכל מתכון, נשמרת בזמן סינון וחיפוש
 
 // ---- הכפלת כמויות ----
-function fmtNum(x){
+// מוכפלת רק הכמות שבתחילת שורת מצרך ("2 ק"ג ...", "כ-3 ...", "חצי פח ...", או "מ-2 לימונים" כשאין כמות בהתחלה).
+// מספרים אחרים בשורה (אחוזים, עובי, זמן, משקל ליחידה, "לכל 2 ק"ג") נשארים כמו שהם.
+const FRACTIONS = [[1/8, '⅛'], [1/4, '¼'], [1/3, '⅓'], [1/2, '½'], [2/3, '⅔'], [3/4, '¾']];
+const METRIC = ['גרם', 'ק"ג', 'מ"ל', 'ליטר'];
+function fmtNum(x, unit){
+  if(unit && !METRIC.includes(unit) && x < 20){                     // יחידות ספירה: ½ כפית, 1¼ פח
+    const whole = Math.floor(x + 1e-9), frac = x - whole;
+    if(frac < 0.02) return String(whole);
+    const f = FRACTIONS.find(([v]) => Math.abs(frac - v) < 0.02);
+    if(f) return (whole ? whole : '') + f[1];
+  }
   const v = Math.round(x * 100) / 100;
-  const s = String(v);
-  const [i, d] = s.split('.');
+  const [i, d] = String(v).split('.');
   return (i.length > 3 ? i.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : i) + (d ? '.' + d : '');
 }
-const NUM = '\\d{1,3}(?:,\\d{3})+(?:\\.\\d+)?|\\d+(?:\\.\\d+)?';
-const SCALE_RE = new RegExp('\\([^)]*\\)|(' + NUM + ')(?:\\s*-\\s*(' + NUM + '))?(?:(\\s+)(גרם|מ"ל))?', 'g');
 const toNum = s => parseFloat(s.replace(/,/g, ''));
+const NUM = String.raw`\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?`;
+const WORD_NUM = { 'חצי': 0.5, 'רבע': 0.25, 'שליש': 1 / 3 };
+// כמות בתחילת שורה: [קידומת][מספר או טווח או מילה][רווח][יחידה]
+const LEAD_RE = new RegExp(String.raw`^((?:תפוקה:\s*)?(?:כ-|ל-|ל)?)(?:(${NUM})(?:\s*-\s*(${NUM}))?|(חצי|רבע|שליש))(?=\s|$)(\s+)?(\S+)?`);
+const FROM_RE = new RegExp(String.raw`(^|[\s(])מ-(${NUM})(?=\s)`);
+function scaleQty(a, b, word, unit, k){
+  let v = word ? WORD_NUM[word] * k : toNum(a) * k;
+  if(b !== undefined){
+    return { text: fmtNum(v, unit) + '-' + fmtNum(toNum(b) * k, unit), unit };
+  }
+  if(unit === 'גרם' && v >= 1000){ v /= 1000; unit = 'ק"ג'; }
+  else if(unit === 'מ"ל' && v >= 1000){ v /= 1000; unit = 'ליטר'; }
+  else if(unit === 'ק"ג' && v < 1){ v *= 1000; unit = 'גרם'; }
+  else if(unit === 'ליטר' && v < 1){ v *= 1000; unit = 'מ"ל'; }
+  return { text: fmtNum(v, unit), unit };
+}
 function scaleLine(s, k){
   if(k === 1) return s;
-  const fw = s.match(/^(תפוקה:\s*)?(ל?)(חצי|רבע|שליש)(?=\s)/);
-  if(fw){
-    const v = { 'חצי': 0.5, 'רבע': 0.25, 'שליש': 1 / 3 }[fw[3]];
-    s = (fw[1] || '') + (fw[2] ? 'ל-' : '') + fmtNum(v * k) + s.slice(fw[0].length);
-    return s;
+  const m = s.match(LEAD_RE);
+  if(m){
+    const [all, pre, a, b, word, sp, unit] = m;
+    const q = scaleQty(a, b, word, unit, k);
+    const prefix = pre === 'ל' ? 'ל-' : pre;                         // "לחצי ליטר" > "ל-1 ליטר"
+    return prefix + q.text + (sp || '') + (q.unit || '') + s.slice(all.length);
   }
-  return s.replace(SCALE_RE, (m, a, b, sp, unit) => {
-    if(a === undefined) return m;                                  // תוכן בסוגריים נשאר כמו שהוא
-    if(b !== undefined) return fmtNum(toNum(a) * k) + '-' + fmtNum(toNum(b) * k) + (sp ? sp + unit : '');
-    let v = toNum(a) * k;
-    if(unit === 'גרם' && v >= 1000) { v /= 1000; unit = 'ק"ג'; }
-    else if(unit === 'מ"ל' && v >= 1000) { v /= 1000; unit = 'ליטר'; }
-    return fmtNum(v) + (unit ? sp + unit : '');
+  const f = s.match(FROM_RE);                                         // "מיץ מ-2 לימונים"
+  if(f) return s.slice(0, f.index) + f[1] + 'מ-' + fmtNum(toNum(f[2]) * k, 'יח') + s.slice(f.index + f[0].length);
+  return s;
+}
+// כותרת משנה ושורת תפוקה: כל המספרים מתייחסים לגודל המנה, ולכן כולם מוכפלים
+function scaleAll(s, k){
+  if(k === 1) return s;
+  return s.replace(new RegExp(String.raw`(${NUM})(\s+(?:גרם|מ"ל))?`, 'g'), (m, n, u) => {
+    const q = scaleQty(n, undefined, undefined, u && u.trim(), k);
+    return q.text + (u ? ' ' + q.unit : '');
   });
 }
+function scaleYield(s, k){
+  if(k === 1) return s;
+  if(!/\d|חצי|רבע|שליש/.test(s)) return s + ' (×' + fmtNum(k) + ')';   // "תפוקה: גסטרונום אחד"
+  const lead = scaleLine(s, k);
+  const i = lead.indexOf('(');
+  return i < 0 ? lead : lead.slice(0, i) + scaleAll(lead.slice(i), k);   // גם "(כ-5 מנות)"
+}
 function parseMultiplier(str){
-  const v = Number(String(str).trim().replace(',', '.'));
-  return isFinite(v) && v > 0 && v <= 1000 ? v : null;
+  let s = String(str).trim().replace(/^[x×*]\s*|\s*[x×*]$/gi, '').replace(',', '.');
+  const glyph = FRACTIONS.find(([, g]) => s.endsWith(g));
+  if(glyph) s = (s.slice(0, -1).trim() || '0') + '+' + glyph[0];
+  let v;
+  const mixed = s.match(/^(\d+)\s+(\d+)\/(\d+)$/), frac = s.match(/^(\d+)\/(\d+)$/), sum = s.match(/^(\d*\.?\d*)\+([\d.]+)$/);
+  if(mixed) v = +mixed[1] + mixed[2] / mixed[3];
+  else if(frac) v = frac[1] / frac[2];
+  else if(sum) v = (+sum[1] || 0) + +sum[2];
+  else if(/^\d*\.?\d+$/.test(s)) v = +s;
+  return isFinite(v) && v > 0 && v <= 100 ? v : null;
 }
 
 let recipes = [];
@@ -175,35 +221,60 @@ function el(tag, cls, text){
   return e;
 }
 
+// עמודות מזוהות לפי שם הכותרת, כך שהוספת עמודה או שינוי סדר בגיליון לא משבשים את הספר
+const COLUMNS = { cat: 'קטגוריה', title: 'שם', ingredients: 'מצרכים', steps: 'הוראות הכנה', note: 'הערות', current: 'תפריט נוכחי' };
+const REQUIRED = ['cat', 'title', 'ingredients', 'steps'];
+const SHEET_TIMEOUT_MS = 8000;
+
+function parseTable(text){
+  const rows = parseCSV(text);
+  if(!rows.length) return null;
+  const header = rows[0].map(h => h.trim());
+  const idx = {};
+  for(const [k, name] of Object.entries(COLUMNS)) idx[k] = header.indexOf(name);
+  if(REQUIRED.some(k => idx[k] < 0)) return null;
+  const get = (r, k) => idx[k] < 0 ? '' : (r[idx[k]] || '').trim();
+  const list = rows.slice(1).map((r, i) => ({
+    cat: get(r, 'cat'), title: get(r, 'title'),
+    ingredients: lines(get(r, 'ingredients')), steps: lines(get(r, 'steps')), note: get(r, 'note'),
+    raw: { 'שם': get(r, 'title'), 'מצרכים': get(r, 'ingredients'), 'הוראות הכנה': get(r, 'steps'), 'הערות': get(r, 'note') },
+    current: get(r, 'current') === 'כן',
+    order: i
+  })).filter(r => r.title);
+  return list.length ? list : null;
+}
+
+async function fetchText(url, ms){
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), ms);
+  try{
+    const r = await fetch(url, { cache: 'no-store', signal: ctl.signal });
+    return r.ok ? await r.text() : '';
+  }finally{ clearTimeout(timer); }
+}
+
+function showBanner(msg){
+  const b = el('div', 'banner', msg);
+  document.querySelector('.app').prepend(b);
+}
+
 async function load(){
   const list = document.getElementById('list');
-  try{
-    let text = '';
-    if(USE_SHEET){
-      try{
-        const r = await fetch(SHEET_CSV_URL, { cache: 'no-store' });
-        const t = r.ok ? await r.text() : '';
-        if(t.replace(/^\uFEFF/, '').startsWith('"קטגוריה"')) text = t;
-      }catch(e){}
-    }
-    if(!text){
-      const res = await fetch('./recipes.csv', { cache: 'no-store' });
-      if(!res.ok) throw new Error(res.status);
-      text = await res.text();
-    }
-    const rows = parseCSV(text).slice(1);
-    recipes = rows.map((r, i) => ({
-      cat: (r[0] || '').trim(), title: (r[1] || '').trim(),
-      ingredients: lines(r[2]), steps: lines(r[3]), note: (r[4] || '').trim(),
-      raw: { 'שם': (r[1] || '').trim(), 'מצרכים': (r[2] || '').trim(), 'הוראות הכנה': (r[3] || '').trim(), 'הערות': (r[4] || '').trim() },
-      current: !['', 'לא', 'no', '0', 'false'].includes((r[5] || '').trim().toLowerCase()),
-      order: i
-    })).filter(r => r.title);
-    buildTabs();
-    render();
-  }catch(e){
-    list.replaceChildren(el('div', 'status error', 'לא הצלחתי לטעון את המתכונים. נסו לרענן.'));
+  let data = null;
+  if(USE_SHEET){
+    try{ data = parseTable(await fetchText(SHEET_CSV_URL, SHEET_TIMEOUT_MS)); }catch(e){}
   }
+  if(!data){
+    try{ data = parseTable(await fetchText('./recipes.csv', 15000)); }catch(e){}
+    if(data && USE_SHEET) showBanner('לא הצלחתי להתחבר לגיליון המתכונים, ולכן מוצגת גרסה שמורה שעלולה לא להיות מעודכנת. נסו לרענן בעוד רגע.');
+  }
+  if(!data){
+    list.replaceChildren(el('div', 'status error', 'לא הצלחתי לטעון את המתכונים. בדקו חיבור לאינטרנט ונסו לרענן.'));
+    return;
+  }
+  recipes = data;
+  buildTabs();
+  render();
 }
 
 function buildTabs(){
@@ -235,6 +306,8 @@ function buildCard(r){
   const head = el('button', 'card-head');
   const t = el('span'); t.append(el('div', '', r.title), el('div', 'cat', r.cat));
   if(r.current) t.firstChild.append(el('span', 'badge', '★ תפריט נוכחי'));
+  const multTag = el('span', 'mult-tag'); multTag.hidden = true;
+  t.firstChild.append(multTag);
   head.append(t, el('span', 'chev', '▾'));
   head.onclick = () => card.classList.toggle('open');
   const body = el('div', 'card-body');
@@ -253,21 +326,25 @@ function buildCard(r){
   const dyn = el('div');
   function update(){
     const k = parseMultiplier(input.value);
-    input.classList.toggle('bad', k === null);
+    const bad = k === null && input.value.trim() !== '';
+    input.classList.toggle('bad', bad);
     const f = k === null ? 1 : k;
     multipliers.set(key, f);
     chips.forEach((c, i) => c.classList.toggle('on', f === [0.5, 1, 2, 3][i]));
-    hint.textContent = f === 1 ? '' : 'הכמויות במצרכים מוכפלות ב-' + fmtNum(f) + '. זמנים, טמפרטורות ומשקלים בהוראות ההכנה לא משתנים.';
+    multTag.hidden = f === 1; multTag.textContent = '×' + fmtNum(f);
+    hint.classList.toggle('bad', bad);
+    hint.textContent = bad ? 'מספר לא תקין (אפשר למשל 1.5, ½ או 1/2). מוצגות הכמויות הרגילות.'
+      : f === 1 ? '' : 'מוכפלת רק הכמות שבתחילת כל שורת מצרך (×' + fmtNum(f) + '). אחוזים, מידות, זמנים וכמויות בתוך הוראות ההכנה לא משתנים.';
     dyn.replaceChildren();
     if(r.ingredients.length){
-      const ul = el('ul'); r.ingredients.forEach(i => ul.append(i.endsWith(':') ? el('li', 'sub', i) : el('li', '', scaleLine(i, f))));
+      const ul = el('ul'); r.ingredients.forEach(i => ul.append(i.endsWith(':') ? el('li', 'sub', scaleAll(i, f)) : el('li', '', scaleLine(i, f))));
       dyn.append(el('h3', '', 'מצרכים'), ul);
     }
     if(r.steps.length){
       const ol = el('ol'); r.steps.forEach(s => ol.append(el('li', '', s)));
       dyn.append(el('h3', '', 'הכנה'), ol);
     }
-    if(r.note) dyn.append(el('div', 'note', r.note.split('\n').map(l => l.startsWith('תפוקה') ? scaleLine(l, f) : l).join('\n')));
+    if(r.note) dyn.append(el('div', 'note', r.note.split('\n').map(l => l.startsWith('תפוקה') ? scaleYield(l, f) : l).join('\n')));
   }
   input.addEventListener('input', update);
   body.append(bar, hint, dyn);
@@ -283,9 +360,17 @@ function buildCard(r){
 }
 
 // ---- בקשת תיקון ----
+const FIX_REPLIES = {
+  ok: ['הבקשה נשלחה וממתינה לאישור. תודה!', false],
+  same: ['הנוסח ששלחת זהה לנוסח שכבר בספר. אין מה לתקן.', true],
+  unknown: ['המתכון לא נמצא בגיליון (אולי שמו שונה). רעננו את הדף ונסו שוב.', true],
+  invalid: ['הבקשה לא תקינה. בדקו שהנוסח לא ריק.', true],
+  busy: ['יש כרגע הרבה בקשות. נסו שוב בעוד כמה דקות.', true],
+  error: ['אירעה שגיאה בשמירת הבקשה. נסו שוב.', true]
+};
 function openFix(r){
   const dlg = document.createElement('dialog'); dlg.className = 'fix';
-  const form = el('form', 'fix-form'); form.method = 'dialog';
+  const form = el('form', 'fix-form');
   const sel = el('select');
   ['מצרכים', 'הוראות הכנה', 'הערות', 'שם'].forEach(f => sel.append(new Option(f === 'שם' ? 'שם המתכון' : f, f)));
   const txt = el('textarea'); txt.required = true;
@@ -294,9 +379,16 @@ function openFix(r){
   const hp = el('input', 'hp'); hp.type = 'text'; hp.tabIndex = -1; hp.autocomplete = 'off'; hp.setAttribute('aria-hidden', 'true');
   const msg = el('div'); msg.hidden = true;
   const send = el('button', 'send', 'שליחה לאישור'); send.type = 'submit';
-  const cancel = el('button', 'cancel', 'סגירה'); cancel.type = 'button'; cancel.onclick = () => dlg.close();
-  const fillText = () => { txt.value = r.raw[sel.value] || ''; };
-  sel.onchange = fillText; fillText();
+  const cancel = el('button', 'cancel', 'ביטול'); cancel.type = 'button';
+  const drafts = {};                                   // טיוטה נפרדת לכל שדה, כך שמעבר בין שדות לא מוחק עריכה
+  let field = sel.value, sent = false;
+  txt.value = r.raw[field] || '';
+  sel.onchange = () => { drafts[field] = txt.value; field = sel.value; txt.value = drafts[field] ?? (r.raw[field] || ''); };
+  const dirty = () => !sent && (txt.value.trim() !== (r.raw[field] || '').trim() || Object.keys(drafts).some(f => drafts[f].trim() !== (r.raw[f] || '').trim()) || comment.value.trim());
+  const tryClose = () => { if(!dirty() || confirm('לסגור בלי לשלוח? מה שכתבת יימחק.')) dlg.close(); };
+  cancel.onclick = tryClose;
+  dlg.addEventListener('cancel', ev => { ev.preventDefault(); tryClose(); });   // ESC
+  dlg.addEventListener('click', ev => { if(ev.target === dlg) tryClose(); });
   const l1 = el('label', '', 'מה לתקן'); l1.append(sel);
   const l2 = el('label', '', 'הנוסח המתוקן (מתחילים מהנוסח הנוכחי, ללא הכפלה)'); l2.append(txt);
   const l3 = el('label', '', 'הערה'); l3.append(comment);
@@ -304,27 +396,28 @@ function openFix(r){
   const actions = el('div', 'fix-actions'); actions.append(send, cancel);
   form.append(el('h2', '', 'בקשת תיקון'), el('div', 'sub2', r.title + ' · ' + r.cat), l1, l2, l3, l4, hp, msg, actions);
   dlg.append(form);
+  const say = (text, err) => { msg.className = 'fix-msg' + (err ? ' err' : ''); msg.textContent = text; msg.hidden = false; msg.scrollIntoView({ block: 'nearest' }); };
   form.addEventListener('submit', async ev => {
     ev.preventDefault();
     const proposed = txt.value.trim();
-    if(!proposed || proposed === (r.raw[sel.value] || '').trim()){
-      msg.className = 'fix-msg err'; msg.textContent = 'לא בוצע שינוי בנוסח.'; msg.hidden = false; return;
-    }
+    if(!proposed || proposed === (r.raw[field] || '').trim()){ say('לא בוצע שינוי בנוסח.', true); return; }
     send.disabled = true; msg.hidden = true;
+    const body = JSON.stringify({ cat: r.cat, title: r.title, field, base: r.raw[field] || '', proposed,
+      comment: comment.value.trim(), sender: sender.value.trim(), website: hp.value });
+    let answer = null;
     try{
-      await fetch(CORRECTION_URL, {
-        method: 'POST', mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ cat: r.cat, title: r.title, field: sel.value, proposed, comment: comment.value.trim(), sender: sender.value.trim(), website: hp.value })
-      });
-      msg.className = 'fix-msg'; msg.textContent = 'הבקשה נשלחה וממתינה לאישור. תודה!'; msg.hidden = false;
-      send.hidden = true; cancel.textContent = 'סגירה';
+      const res = await fetch(CORRECTION_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body });
+      answer = (await res.text()).trim();
     }catch(e){
-      msg.className = 'fix-msg err'; msg.textContent = 'השליחה נכשלה. בדקו חיבור ונסו שוב.'; msg.hidden = false; send.disabled = false;
+      say('לא הצלחתי לוודא שהבקשה נשמרה. בדקו חיבור ונסו לשלוח שוב (בקשה כפולה לא תירשם פעמיים).', true);
+      send.disabled = false; return;
     }
+    const [text, err] = FIX_REPLIES[answer] || FIX_REPLIES.error;
+    say(text, err);
+    if(!err){ sent = true; send.hidden = true; cancel.textContent = 'סגירה'; }
+    else send.disabled = false;
   });
   dlg.addEventListener('close', () => dlg.remove());
-  dlg.addEventListener('click', ev => { if(ev.target === dlg) dlg.close(); });
   document.body.append(dlg); dlg.showModal();
 }
 
