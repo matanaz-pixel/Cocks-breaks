@@ -7,6 +7,12 @@
 <meta name="theme-color" content="#023305">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" type="image/png" href="./roberta-logo.png">
+<link rel="manifest" href="./recipes.webmanifest">
+<link rel="apple-touch-icon" href="./roberta-icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ספר מתכונים">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600&display=swap');
 
@@ -74,6 +80,56 @@
   .fix-msg{ font-size:14px; padding:10px 12px; border-radius:12px; background:var(--green-soft); color:var(--green); }
   .fix-msg.err{ background:#fde8e3; color:#a3300f; }
   .hp{ position:absolute; left:-9999px; width:1px; height:1px; opacity:0; }
+  .yield{ white-space:pre-line; margin-top:14px; padding:10px 14px; border-radius:12px; background:var(--green); color:#fff; font-size:16px; font-weight:500; }
+  .card-actions{ display:flex; gap:10px; align-items:center; margin-top:12px; }
+  .cook-btn{ flex:1; min-height:48px; border:none; border-radius:999px; background:var(--green); color:#fff; font:inherit; font-size:16px; font-weight:500; cursor:pointer; }
+  .clear-btn{ min-height:44px; padding:0 14px; border:1px solid var(--line); border-radius:999px; background:#fff; color:var(--text-dim); font:inherit; font-size:13px; cursor:pointer; }
+  li.tick{ cursor:pointer; padding:3px 0; }
+  li.tick.done{ text-decoration:line-through; opacity:.45; }
+  .tbtns{ display:flex; flex-wrap:wrap; gap:6px; margin:4px 0 6px; }
+  .tbtn{ min-height:44px; padding:0 14px; border:1px solid var(--green); border-radius:999px; background:#fff; color:var(--green); font:inherit; font-size:14px; cursor:pointer; }
+  .tbtns.big .tbtn{ min-height:56px; font-size:18px; padding:0 20px; }
+  .recent{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:0 0 10px; }
+  .recent .lbl{ font-size:12px; color:var(--text-dim); }
+  .rchip{ min-height:36px; padding:0 12px; border:1px solid var(--line); border-radius:999px; background:#fff; color:var(--text); font:inherit; font-size:13px; cursor:pointer; }
+  .foot{ margin-top:22px; text-align:center; color:var(--text-dim); font-size:12px; }
+  .foot-row{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:8px; }
+  .foot-btn{ min-height:44px; padding:0 14px; border:1px solid var(--line); border-radius:999px; background:#fff; color:var(--text-dim); font:inherit; font-size:13px; cursor:pointer; }
+  .foot-help{ margin-top:10px; font-size:13px; color:var(--text); background:var(--green-soft); border-radius:12px; padding:10px 14px; }
+  .timers{ position:fixed; inset-inline:0; bottom:0; z-index:30; display:flex; flex-direction:column; gap:6px; padding:8px 12px calc(8px + env(safe-area-inset-bottom)); background:var(--green); }
+  .timers:empty{ display:none; }
+  .cook-timers{ display:flex; flex-direction:column; gap:6px; background:var(--green); padding:0 12px; }
+  .cook-timers:not(:empty){ padding:0 12px 8px; }
+  .timer{ display:flex; align-items:center; gap:10px; background:rgba(255,255,255,.14); color:#fff; border-radius:14px; padding:4px 6px 4px 14px; font-size:14px; }
+  .timer .tl{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .timer b{ font-size:20px; font-variant-numeric:tabular-nums; }
+  .timer .tx{ min-width:44px; min-height:44px; border:none; border-radius:10px; background:rgba(255,255,255,.18); color:#fff; font-size:18px; cursor:pointer; }
+  .timer.ring{ background:var(--accent); animation:blink 1s steps(2) infinite; }
+  @keyframes blink{ 50%{ opacity:.55; } }
+  body.has-timers .app{ padding-bottom:calc(120px + env(safe-area-inset-bottom)); }
+  body.has-timers .to-top{ bottom:calc(120px + env(safe-area-inset-bottom)); }
+  dialog.cook{ border:none; padding:0; margin:0; width:100vw; max-width:100vw; height:100dvh; max-height:100dvh; background:var(--cream); color:var(--text); }
+  dialog.cook::backdrop{ background:var(--cream); }
+  .cook-wrap{ display:flex; flex-direction:column; height:100dvh; }
+  .cook-top{ display:flex; align-items:center; gap:10px; padding:10px 16px; padding-top:calc(10px + env(safe-area-inset-top)); background:var(--green); color:#fff; }
+  .cook-top h2{ flex:1; margin:0; font-size:19px; font-weight:500; }
+  .cook-close{ min-width:48px; min-height:48px; border:none; border-radius:12px; background:rgba(255,255,255,.16); color:#fff; font-size:22px; cursor:pointer; }
+  .cook-prog{ height:6px; background:var(--green-soft); }
+  .cook-prog i{ display:block; height:100%; background:var(--accent); transition:width .2s; }
+  .cook-body{ flex:1; overflow:auto; padding:18px; font-size:26px; line-height:1.55; }
+  .cook-body .step-no{ font-size:14px; color:var(--text-dim); margin-bottom:10px; }
+  .cook-body .big-step{ font-size:28px; line-height:1.6; font-weight:500; }
+  .cook-body ul{ margin:0; padding:0; list-style:none; font-size:22px; line-height:1.4; }
+  .cook-body li{ padding:12px 4px; border-bottom:1px solid var(--line); }
+  .cook-body li.sub{ margin:14px 0 0; border:none; color:var(--green); font-weight:600; font-size:18px; padding-bottom:2px; }
+  .cook-body .yield{ margin:0 0 14px; font-size:18px; }
+  .tick-step{ margin-top:22px; min-height:56px; padding:0 22px; border:1px solid var(--green); border-radius:999px; background:#fff; color:var(--green); font:inherit; font-size:18px; cursor:pointer; }
+  .tick-step.done{ background:var(--green); color:#fff; }
+  .cook-nav{ display:flex; gap:12px; padding:12px 16px calc(12px + env(safe-area-inset-bottom)); background:#fff; border-top:1px solid var(--line); }
+  .cook-nav button{ flex:1; min-height:68px; border-radius:18px; font:inherit; font-size:21px; border:1px solid var(--green); cursor:pointer; }
+  .cook-nav .next{ background:var(--green); color:#fff; }
+  .cook-nav .prev{ background:#fff; color:var(--green); }
+  .cook-nav button:disabled{ opacity:.35; cursor:default; }
   .badge{ display:inline-block; margin-inline-start:8px; padding:2px 9px; border-radius:999px; background:var(--green); color:#fff; font-size:11px; font-weight:500; vertical-align:middle; }
   .card.is-current{ border-color:var(--green); box-shadow:inset -3px 0 0 var(--green); }
   .tab.current:not(.active){ color:var(--green); border-color:var(--green); }
@@ -105,12 +161,15 @@
     <input class="search" id="search" type="search" placeholder="חיפוש מתכון, מצרך או הערה..." autocomplete="off" enterkeyhint="search">
   </div>
   <div class="tabs" id="tabs"></div>
+  <div class="recent" id="recent" hidden></div>
   <div id="list"><div class="status">טוען מתכונים...</div></div>
+  <div class="foot" id="foot"></div>
 </div>
+<div class="timers" id="timers" aria-live="polite"></div>
 
 <script>
 // מקור המתכונים: גיליון Google Sheets (טאב recipes, משותף "כל מי שיש לו קישור - צפייה").
-// אם הגיליון לא זמין, מוצג recipes.csv מהריפו עם הודעה. USE_SHEET = false קורא רק את הקובץ.
+// אם הגיליון לא זמין: העותק האחרון שנשמר במכשיר, ואם אין, recipes.csv מהריפו. USE_SHEET = false קורא רק את הקובץ.
 const USE_SHEET = true;
 const SHEET_ID = '1H3tzII7pSwy0KS3UyI1gCcPn9ipNpVwAh8Mg1AqiilM';
 const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&headers=1&sheet=recipes`;
@@ -119,8 +178,58 @@ const CURRENT_TAB = 'תפריט נוכחי';
 const CORRECTION_URL = '';
 const CATEGORIES = ['פס קר', 'פס חם', 'טאבון', "צ'קר", 'קונדיטוריה'];
 
+// ---- מצב שנשמר במכשיר בלבד (לא משותף בין משתמשים) ----
+const STORE_KEY = 'rb-state-v1', SHEET_CACHE_KEY = 'rb-sheet-v1', TTL = 12 * 3600e3;
+const now = () => Date.now();
+let state = (() => { try{ const s = JSON.parse(localStorage.getItem(STORE_KEY)); return s && typeof s === 'object' ? s : {}; }catch(e){ return {}; } })();
+state.mult = state.mult || {}; state.prog = state.prog || {}; state.recent = state.recent || []; state.timers = state.timers || [];
+if(state.wake === undefined) state.wake = true;
+for(const k of Object.keys(state.mult)) if(!Array.isArray(state.mult[k]) || now() - state.mult[k][1] > TTL) delete state.mult[k];   // הכפלה פגה אחרי 12 שעות
+for(const k of Object.keys(state.prog)) if(!state.prog[k] || now() - state.prog[k].ts > TTL) delete state.prog[k];              // סימונים פגים אחרי 12 שעות
+function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){} }
+const getMult = key => (state.mult[key] && state.mult[key][0]) || 1;
+function setMult(key, f){ if(f === 1) delete state.mult[key]; else state.mult[key] = [f, now()]; save(); }
+const NO_PROG = { ing: [], st: [], step: 0 };
+const peek = key => state.prog[key] || NO_PROG;                       // קריאה בלבד, לא יוצרת רשומה
+function prog(key){ return state.prog[key] || (state.prog[key] = { ts: now(), ing: [], st: [], step: 0 }); }
+function toggleDone(key, kind, i){
+  const p = prog(key), arr = p[kind], at = arr.indexOf(i);
+  if(at < 0) arr.push(i); else arr.splice(at, 1);
+  p.ts = now(); save(); return at < 0;
+}
+
 const openCards = new Set();        // כרטיסים פתוחים נשארים פתוחים בזמן חיפוש
-const multipliers = new Map();   // הכפלה שנבחרה לכל מתכון, נשמרת בזמן סינון וחיפוש
+
+function parseCSV(text){
+  const rows = []; let row = [], cell = '', quoted = false;
+  text = text.replace(/^﻿/, '');
+  for(let i = 0; i < text.length; i++){
+    const c = text[i];
+    if(quoted){
+      if(c === '"'){ if(text[i+1] === '"'){ cell += '"'; i++; } else quoted = false; }
+      else cell += c;
+    } else if(c === '"') quoted = true;
+    else if(c === ','){ row.push(cell); cell = ''; }
+    else if(c === '\n' || c === '\r'){
+      if(c === '\r' && text[i+1] === '\n') i++;
+      row.push(cell); cell = '';
+      if(row.some(x => x.trim() !== '')) rows.push(row);
+      row = [];
+    } else cell += c;
+  }
+  row.push(cell);
+  if(row.some(x => x.trim() !== '')) rows.push(row);
+  return rows;
+}
+
+function lines(s){ return (s || '').split('\n').map(x => x.trim()).filter(Boolean); }
+
+function el(tag, cls, text){
+  const e = document.createElement(tag);
+  if(cls) e.className = cls;
+  if(text !== undefined) e.textContent = text;
+  return e;
+}
 
 // ---- הכפלת כמויות ----
 // מוכפלת רק הכמות שבתחילת שורת מצרך ("2 ק"ג ...", "כ-3 ...", "חצי פח ...", או "מ-2 לימונים" כשאין כמות בהתחלה).
@@ -196,40 +305,6 @@ function parseMultiplier(str){
   return isFinite(v) && v > 0 && v <= 100 ? v : null;
 }
 
-let recipes = [];
-let activeTab = 'הכל';
-
-function parseCSV(text){
-  const rows = []; let row = [], cell = '', quoted = false;
-  text = text.replace(/^﻿/, '');
-  for(let i = 0; i < text.length; i++){
-    const c = text[i];
-    if(quoted){
-      if(c === '"'){ if(text[i+1] === '"'){ cell += '"'; i++; } else quoted = false; }
-      else cell += c;
-    } else if(c === '"') quoted = true;
-    else if(c === ','){ row.push(cell); cell = ''; }
-    else if(c === '\n' || c === '\r'){
-      if(c === '\r' && text[i+1] === '\n') i++;
-      row.push(cell); cell = '';
-      if(row.some(x => x.trim() !== '')) rows.push(row);
-      row = [];
-    } else cell += c;
-  }
-  row.push(cell);
-  if(row.some(x => x.trim() !== '')) rows.push(row);
-  return rows;
-}
-
-function lines(s){ return (s || '').split('\n').map(x => x.trim()).filter(Boolean); }
-
-function el(tag, cls, text){
-  const e = document.createElement(tag);
-  if(cls) e.className = cls;
-  if(text !== undefined) e.textContent = text;
-  return e;
-}
-
 // עמודות מזוהות לפי שם הכותרת, כך שהוספת עמודה או שינוי סדר בגיליון לא משבשים את הספר
 const COLUMNS = { cat: 'קטגוריה', title: 'שם', ingredients: 'מצרכים', steps: 'הוראות הכנה', note: 'הערות', current: 'תפריט נוכחי' };
 const REQUIRED = ['cat', 'title', 'ingredients', 'steps'];
@@ -262,44 +337,6 @@ async function fetchText(url, ms){
   }finally{ clearTimeout(timer); }
 }
 
-function showBanner(msg){
-  const b = el('div', 'banner', msg);
-  document.querySelector('.app').prepend(b);
-}
-
-async function load(){
-  const list = document.getElementById('list');
-  let data = null;
-  if(USE_SHEET){
-    try{ data = parseTable(await fetchText(SHEET_CSV_URL, SHEET_TIMEOUT_MS)); }catch(e){}
-  }
-  if(!data){
-    try{ data = parseTable(await fetchText('./recipes.csv', 15000)); }catch(e){}
-    if(data && USE_SHEET) showBanner('לא הצלחתי להתחבר לגיליון המתכונים, ולכן מוצגת גרסה שמורה שעלולה לא להיות מעודכנת. נסו לרענן בעוד רגע.');
-  }
-  if(!data){
-    list.replaceChildren(el('div', 'status error', 'לא הצלחתי לטעון את המתכונים. בדקו חיבור לאינטרנט ונסו לרענן.'));
-    return;
-  }
-  recipes = data;
-  buildTabs();
-  render();
-}
-
-function buildTabs(){
-  const tabs = document.getElementById('tabs');
-  const extra = [...new Set(recipes.map(r => r.cat))].filter(c => c && !CATEGORIES.includes(c));
-  // קטגוריה בלי מתכונים לא מוצגת. ברגע שמוסיפים לה מתכון בגיליון, הטאב מופיע מעצמו.
-  const used = CATEGORIES.filter(c => recipes.some(r => r.cat === c));
-  tabs.replaceChildren(...['הכל', CURRENT_TAB, ...used, ...extra].map(name => {
-    const b = el('button', 'tab' + (name === activeTab ? ' active' : '') + (name === CURRENT_TAB ? ' current' : ''), name === CURRENT_TAB ? '★ ' + name : name);
-    const n = name === 'הכל' ? recipes.length : name === CURRENT_TAB ? recipes.filter(r => r.current).length : recipes.filter(r => r.cat === name).length;
-    b.append(el('span', 'n', String(n)));
-    b.onclick = () => { activeTab = name; openCards.clear(); buildTabs(); render(); window.scrollTo({ top: 0 }); };
-    return b;
-  }));
-}
-
 // ---- חיפוש סלחני: אותיות סופיות, גרשיים, ניקוד, כתיב מלא/חסר (י/ו) וריבוי ----
 const FINALS = { 'ך': 'כ', 'ם': 'מ', 'ן': 'נ', 'ף': 'פ', 'ץ': 'צ' };
 function fold(s){
@@ -319,6 +356,82 @@ function searchText(r){ return r._s || (r._s = loose([r.title, r.cat, r.ingredie
 function titleHit(r, tokens){ if(!tokens.length) return 0; const t = loose(r.title); return tokens.every(x => t.includes(x)) ? 0 : 1; }
 function catRank(c){ const i = CATEGORIES.indexOf(c); return i < 0 ? CATEGORIES.length : i; }
 
+let recipes = [];
+let activeTab = 'הכל';
+let dataInfo = { source: '', stamp: null };
+
+function showBanner(msg){
+  document.querySelector('.banner')?.remove();
+  document.querySelector('.app').prepend(el('div', 'banner', msg));
+}
+const fmtStamp = ts => ts ? new Date(ts).toLocaleString('he-IL', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+
+async function load(){
+  const list = document.getElementById('list');
+  let data = null, source = '', stamp = null;
+  if(USE_SHEET){
+    try{
+      const t = await fetchText(SHEET_CSV_URL, SHEET_TIMEOUT_MS);
+      data = parseTable(t);
+      if(data){ source = 'sheet'; stamp = now(); try{ localStorage.setItem(SHEET_CACHE_KEY, JSON.stringify({ t, ts: stamp })); }catch(e){} }
+    }catch(e){}
+    if(!data){
+      try{ const c = JSON.parse(localStorage.getItem(SHEET_CACHE_KEY)); data = parseTable(c.t); if(data){ source = 'device'; stamp = c.ts; } }catch(e){}
+    }
+  }
+  if(!data){
+    try{ data = parseTable(await fetchText('./recipes.csv', 15000)); if(data) source = 'repo'; }catch(e){}
+  }
+  if(!data){
+    list.replaceChildren(el('div', 'status error', 'לא הצלחתי לטעון את המתכונים. בדקו חיבור לאינטרנט ונסו לרענן.'));
+    return;
+  }
+  if(source === 'device') showBanner('אין חיבור לגיליון. מוצגת הגרסה האחרונה שנשמרה במכשיר' + (stamp ? ' (' + fmtStamp(stamp) + ')' : '') + '. הכמויות עשויות להיות לא מעודכנות.');
+  else if(source === 'repo' && USE_SHEET) showBanner('לא הצלחתי להתחבר לגיליון המתכונים, ולכן מוצגת גרסה שמורה שעלולה לא להיות מעודכנת. נסו לרענן בעוד רגע.');
+  dataInfo = { source, stamp };
+  recipes = data;
+  if(state.tab && (state.tab === 'הכל' || state.tab === CURRENT_TAB || recipes.some(r => r.cat === state.tab))) activeTab = state.tab;
+  buildTabs(); renderRecent(); render(); refreshFooter();
+  restoreTimers();
+}
+
+function buildTabs(){
+  const tabs = document.getElementById('tabs');
+  const extra = [...new Set(recipes.map(r => r.cat))].filter(c => c && !CATEGORIES.includes(c));
+  // קטגוריה בלי מתכונים לא מוצגת. ברגע שמוסיפים לה מתכון בגיליון, הטאב מופיע מעצמו.
+  const used = CATEGORIES.filter(c => recipes.some(r => r.cat === c));
+  tabs.replaceChildren(...['הכל', CURRENT_TAB, ...used, ...extra].map(name => {
+    const b = el('button', 'tab' + (name === activeTab ? ' active' : '') + (name === CURRENT_TAB ? ' current' : ''), name === CURRENT_TAB ? '★ ' + name : name);
+    const n = name === 'הכל' ? recipes.length : name === CURRENT_TAB ? recipes.filter(r => r.current).length : recipes.filter(r => r.cat === name).length;
+    b.append(el('span', 'n', String(n)));
+    b.onclick = () => { activeTab = name; state.tab = name; save(); openCards.clear(); buildTabs(); render(); updateWake(); window.scrollTo({ top: 0 }); };
+    return b;
+  }));
+}
+
+function renderRecent(){
+  const box = document.getElementById('recent');
+  const items = state.recent.map(k => recipes.find(r => keyOf(r) === k)).filter(Boolean);
+  const q = document.getElementById('search').value.trim();
+  box.hidden = !items.length || !!q;
+  if(box.hidden) return;
+  box.replaceChildren(el('span', 'lbl', 'נצפו לאחרונה:'), ...items.map(r => {
+    const b = el('button', 'rchip', r.title); b.type = 'button'; b.onclick = () => openRecipe(keyOf(r)); return b;
+  }));
+}
+function pushRecent(key){
+  state.recent = [key, ...state.recent.filter(k => k !== key)].slice(0, 6);
+  save();
+}
+function openRecipe(key){
+  const r = recipes.find(x => keyOf(x) === key); if(!r) return;
+  activeTab = 'הכל'; state.tab = 'הכל'; document.getElementById('search').value = '';
+  openCards.add(key); buildTabs(); render(); renderRecent(); updateWake();
+  document.querySelector(`.card[data-key="${CSS.escape(key)}"]`)?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+}
+
+const keyOf = r => r.cat + '|' + r.title;
+
 function render(){
   const tokens = queryTokens(document.getElementById('search').value);
   const shown = recipes.filter(r =>
@@ -334,9 +447,35 @@ function render(){
   list.replaceChildren(...shown.map(buildCard));
 }
 
+// שורות "תפוקה:" מוצגות בולט בראש המתכון, שאר ההערות בתחתית
+const splitNote = note => { const ls = note.split('\n'); return { yld: ls.filter(l => l.startsWith('תפוקה')), rest: ls.filter(l => l && !l.startsWith('תפוקה')).join('\n') }; };
+
+// מסנכרן את כל השורות המסומנות והכפתורים "נקה סימונים" במסך לפי המצב השמור
+function syncTicks(){
+  document.querySelectorAll('[data-tick]').forEach(n => {
+    const [cat, title, kind, i] = n.dataset.tick.split('|');
+    const on = (state.prog[cat + '|' + title]?.[kind] || []).includes(+i);
+    n.classList.toggle('done', on); n.setAttribute('aria-checked', on);
+  });
+  document.querySelectorAll('.clear-btn').forEach(b => { const p = peek(b.closest('.card').dataset.key); b.hidden = !(p.ing.length || p.st.length); });
+}
+function tickList(tag, items, key, kind, f, scaler){
+  const done = peek(key)[kind];
+  const list = el(tag);
+  items.forEach((text, i) => {
+    if(text.endsWith(':') && kind === 'ing'){ list.append(el('li', 'sub', scaleAll(text, f))); return; }
+    const li = el('li', 'tick' + (done.includes(i) ? ' done' : ''), scaler ? scaler(text, f) : text);
+    li.setAttribute('role', 'checkbox'); li.setAttribute('aria-checked', done.includes(i));
+    li.onclick = () => { toggleDone(key, kind, i); syncTicks(); };
+    li.dataset.tick = key + '|' + kind + '|' + i;
+    list.append(li);
+  });
+  return list;
+}
+
 function buildCard(r){
-  const key = r.cat + '|' + r.title;
-  const card = el('div', 'card' + (r.current ? ' is-current' : ''));
+  const key = keyOf(r);
+  const card = el('div', 'card' + (r.current ? ' is-current' : '')); card.dataset.key = key;
   const head = el('button', 'card-head');
   const t = el('span'); t.append(el('div', '', r.title), el('div', 'cat', r.cat));
   if(r.current) t.firstChild.append(el('span', 'badge', '★ תפריט נוכחי'));
@@ -348,14 +487,14 @@ function buildCard(r){
   head.onclick = () => {
     const open = card.classList.toggle('open');
     head.setAttribute('aria-expanded', open);
-    open ? openCards.add(key) : openCards.delete(key);
-    if(open) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    if(open){ openCards.add(key); pushRecent(key); card.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } else openCards.delete(key);
+    updateWake();
   };
   const body = el('div', 'card-body');
 
   // כלי הכפלה
   const bar = el('div', 'scale');
-  const input = el('input'); input.type = 'text'; input.inputMode = 'decimal'; input.value = String(multipliers.get(key) || 1);
+  const input = el('input'); input.type = 'text'; input.inputMode = 'decimal'; input.value = String(getMult(key));
   input.setAttribute('aria-label', 'מכפלה');
   const chips = [0.5, 1, 2, 3].map(n => {
     const c = el('button', 'chip', n === 0.5 ? '½' : '×' + n); c.type = 'button';
@@ -365,31 +504,36 @@ function buildCard(r){
   const chipRow = el('div', 'chips'); chipRow.append(...chips);
   bar.append(el('label', '', 'כפול ×'), input, chipRow);
   const hint = el('div', 'scale-hint');
+  const actions = el('div', 'card-actions');
+  const cook = el('button', 'cook-btn', '▶ מצב בישול'); cook.type = 'button'; cook.onclick = () => openCook(r, key);
+  const clear = el('button', 'clear-btn', 'נקה סימונים'); clear.type = 'button';
+  clear.onclick = () => { delete state.prog[key]; save(); syncTicks(); };
+  actions.append(cook, clear);
   const dyn = el('div');
+  const { yld, rest } = splitNote(r.note);
   function update(){
     const k = parseMultiplier(input.value);
     const bad = k === null && input.value.trim() !== '';
     input.classList.toggle('bad', bad);
     const f = k === null ? 1 : k;
-    multipliers.set(key, f);
+    setMult(key, f);
     chips.forEach((c, i) => c.classList.toggle('on', f === [0.5, 1, 2, 3][i]));
     multTag.hidden = f === 1; multTag.textContent = '×' + fmtNum(f);
     hint.classList.toggle('bad', bad);
     hint.textContent = bad ? 'מספר לא תקין (אפשר למשל 1.5, ½ או 1/2). מוצגות הכמויות הרגילות.'
       : f === 1 ? '' : 'מוכפלת רק הכמות שבתחילת כל שורת מצרך (×' + fmtNum(f) + '). אחוזים, מידות, זמנים וכמויות בתוך הוראות ההכנה לא משתנים.';
+    clear.hidden = !(peek(key).ing.length || peek(key).st.length);
     dyn.replaceChildren();
-    if(r.ingredients.length){
-      const ul = el('ul'); r.ingredients.forEach(i => ul.append(i.endsWith(':') ? el('li', 'sub', scaleAll(i, f)) : el('li', '', scaleLine(i, f))));
-      dyn.append(el('h3', '', 'מצרכים'), ul);
+    if(yld.length) dyn.append(el('div', 'yield', yld.map(l => scaleYield(l, f)).join('\n')));
+    if(r.ingredients.length) dyn.append(el('h3', '', 'מצרכים'), tickList('ul', r.ingredients, key, 'ing', f, scaleLine));
+    if(r.steps.length) dyn.append(el('h3', '', 'הכנה'), tickList('ol', r.steps, key, 'st', f, null));
+    if(rest) dyn.append(el('div', 'note', rest));
+    if(r.steps.some(s => findTimes(s).length)){
+      dyn.querySelectorAll('ol li.tick').forEach((li, idx) => timerButtons(li, r, r.steps[idx]));
     }
-    if(r.steps.length){
-      const ol = el('ol'); r.steps.forEach(s => ol.append(el('li', '', s)));
-      dyn.append(el('h3', '', 'הכנה'), ol);
-    }
-    if(r.note) dyn.append(el('div', 'note', r.note.split('\n').map(l => l.startsWith('תפוקה') ? scaleYield(l, f) : l).join('\n')));
   }
-  input.addEventListener('input', update);
-  body.append(bar, hint, dyn);
+  input.addEventListener('input', () => { update(); });
+  body.append(bar, hint, actions, dyn);
   update();
 
   if(CORRECTION_URL){
@@ -399,6 +543,175 @@ function buildCard(r){
   }
   card.append(head, body);
   return card;
+}
+
+// ---- טיימרים ----
+const TIME_RE = /(\d+(?:\.\d+)?)(?:\s*-\s*\d+(?:\.\d+)?)?\s*(שעות|שעה|דקות|דקה|דק['׳]|שניות)|(?<![א-ת])[כלבוש]{0,2}(שעה וחצי|חצי שעה|שעתיים|שעה|דקה)(?![א-ת])/g;
+function findTimes(text){
+  const out = [];
+  for(const m of text.matchAll(TIME_RE)){
+    let sec;
+    if(m[1]){ const u = m[2]; sec = parseFloat(m[1]) * (u.startsWith('שע') ? 3600 : u.startsWith('שנ') ? 1 : 60); }
+    else sec = { 'שעה וחצי': 5400, 'חצי שעה': 1800, 'שעתיים': 7200, 'שעה': 3600, 'דקה': 60 }[m[3]];
+    if(sec > 0 && sec <= 48 * 3600) out.push({ label: m[0].replace(/^[כלבוש]{1,2}(?=שע|חצי|דק)/, '').trim(), sec });
+  }
+  return out;
+}
+function fmtDur(s){
+  s = Math.max(0, Math.ceil(s));
+  const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), ss = s % 60;
+  return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(ss).padStart(2, '0');
+}
+function timerButtons(host, r, stepText){
+  const times = findTimes(stepText);
+  if(!times.length) return;
+  const row = el('div', 'tbtns');
+  times.forEach(t => {
+    const b = el('button', 'tbtn', '⏱ ' + t.label); b.type = 'button';
+    b.onclick = ev => { ev.stopPropagation(); startTimer(r.title, t); };
+    row.append(b);
+  });
+  host.append(row);
+}
+let actx = null, tickHandle = null;
+function unlockAudio(){ try{ actx = actx || new (window.AudioContext || window.webkitAudioContext)(); actx.resume(); }catch(e){} }
+function beep(){
+  try{
+    unlockAudio();
+    [0, 0.35, 0.7].forEach(d => {
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.frequency.value = 880; o.connect(g); g.connect(actx.destination);
+      g.gain.setValueAtTime(0.0001, actx.currentTime + d); g.gain.exponentialRampToValueAtTime(0.4, actx.currentTime + d + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + d + 0.28);
+      o.start(actx.currentTime + d); o.stop(actx.currentTime + d + 0.3);
+    });
+  }catch(e){}
+  try{ navigator.vibrate && navigator.vibrate([400, 200, 400, 200, 400]); }catch(e){}
+}
+function startTimer(title, t){
+  unlockAudio();
+  state.timers.push({ id: now() + Math.random(), label: title + ' · ' + t.label, end: now() + t.sec * 1000, fired: false });
+  save(); renderTimers(); ensureTick(); updateWake();
+}
+function dismissTimer(id){
+  state.timers = state.timers.filter(t => t.id !== id); save(); renderTimers(); updateWake();
+}
+function timerNode(t){
+  const left = (t.end - now()) / 1000;
+  const n = el('div', 'timer' + (left <= 0 ? ' ring' : ''));
+  n.append(el('span', 'tl', t.label), el('b', '', left <= 0 ? 'הסתיים!' : fmtDur(left)));
+  const x = el('button', 'tx', '✕'); x.type = 'button'; x.setAttribute('aria-label', 'סגירת טיימר'); x.onclick = () => dismissTimer(t.id);
+  n.append(x); return n;
+}
+function renderTimers(){
+  const hosts = [document.getElementById('timers'), ...document.querySelectorAll('.cook-timers')];
+  hosts.forEach(h => h.replaceChildren(...state.timers.map(timerNode)));
+  document.body.classList.toggle('has-timers', state.timers.length > 0);
+}
+function ensureTick(){
+  if(tickHandle || !state.timers.length) return;
+  tickHandle = setInterval(() => {
+    let ringing = false;
+    state.timers.forEach(t => {
+      const left = t.end - now();
+      if(left <= 0){ ringing = true; if(!t.fired){ t.fired = true; t.lastBeep = now(); save(); beep(); } else if(now() - t.lastBeep > 4000 && now() - t.end < 60000){ t.lastBeep = now(); beep(); } }
+    });
+    document.title = ringing ? '⏰ טיימר הסתיים' : 'ספר מתכונים';
+    renderTimers();
+    if(!state.timers.length){ clearInterval(tickHandle); tickHandle = null; document.title = 'ספר מתכונים'; }
+  }, 500);
+}
+function restoreTimers(){ state.timers = state.timers.filter(t => now() - t.end < 3600e3); renderTimers(); ensureTick(); updateWake(); }
+
+// ---- מצב בישול: שלב אחד בכל פעם, טקסט גדול ----
+function openCook(r, key){
+  const f = getMult(key), steps = r.steps, total = steps.length + 1;     // 0 = מצרכים
+  let i = Math.min(peek(key).step || 0, total - 1);
+  const dlg = document.createElement('dialog'); dlg.className = 'cook';
+  const wrap = el('div', 'cook-wrap');
+  const top = el('div', 'cook-top');
+  const title = el('h2', '', r.title + (f !== 1 ? '  ×' + fmtNum(f) : ''));
+  const close = el('button', 'cook-close', '✕'); close.type = 'button'; close.setAttribute('aria-label', 'סגירה'); close.onclick = () => dlg.close();
+  top.append(title, close);
+  const timersBox = el('div', 'cook-timers');
+  const barWrap = el('div', 'cook-prog'), barFill = el('i'); barWrap.append(barFill);
+  const body = el('div', 'cook-body');
+  const nav = el('div', 'cook-nav');
+  const prev = el('button', 'prev', '‹ הקודם'), next = el('button', 'next', 'הבא ›');
+  prev.type = next.type = 'button';
+  nav.append(prev, next);
+  wrap.append(top, timersBox, barWrap, body, nav); dlg.append(wrap);
+  const { yld } = splitNote(r.note);
+  function show(){
+    const p = prog(key); p.step = i; p.ts = now(); save();
+    barFill.style.width = (i / (total - 1 || 1) * 100) + '%';
+    prev.disabled = i === 0;
+    next.textContent = i === total - 1 ? 'סיום ✓' : 'הבא ›';
+    body.replaceChildren();
+    if(i === 0){
+      body.append(el('div', 'step-no', 'מצרכים' + (steps.length ? ' · ' + steps.length + ' שלבים' : '')));
+      if(yld.length) body.append(el('div', 'yield', yld.map(l => scaleYield(l, f)).join('\n')));
+      body.append(tickList('ul', r.ingredients, key, 'ing', f, scaleLine));
+    }else{
+      body.append(el('div', 'step-no', 'שלב ' + i + ' מתוך ' + steps.length));
+      const s = el('div', 'big-step', steps[i - 1]);
+      body.append(s);
+      const times = findTimes(steps[i - 1]);
+      if(times.length){ const row = el('div', 'tbtns big'); times.forEach(t => { const b = el('button', 'tbtn', '⏱ ' + t.label); b.type = 'button'; b.onclick = () => startTimer(r.title, t); row.append(b); }); body.append(row); }
+      const isDone = peek(key).st.includes(i - 1);
+      const cur = el('button', 'tick-step' + (isDone ? ' done' : ''), isDone ? '✓ בוצע' : 'סמן כבוצע'); cur.type = 'button';
+      cur.onclick = () => { const on = toggleDone(key, 'st', i - 1); cur.classList.toggle('done', on); cur.textContent = on ? '✓ בוצע' : 'סמן כבוצע'; syncTicks(); };
+      body.append(cur);
+    }
+    body.scrollTop = 0;
+  }
+  prev.onclick = () => { if(i > 0){ i--; show(); } };
+  next.onclick = () => { if(i < total - 1){ i++; show(); } else dlg.close(); };
+  let x0 = null;
+  dlg.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; }, { passive: true });
+  dlg.addEventListener('touchend', e => { if(x0 === null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if(Math.abs(dx) > 70) (dx < 0 ? next : prev).click(); }, { passive: true });
+  dlg.addEventListener('keydown', e => { if(e.key === 'ArrowLeft') next.click(); else if(e.key === 'ArrowRight') prev.click(); });
+  dlg.addEventListener('close', () => { dlg.remove(); syncTicks(); updateWake(); });
+  document.body.append(dlg); dlg.showModal(); pushRecent(key); show(); renderTimers(); updateWake();
+}
+
+// ---- מסך ער ----
+let wl = null;
+async function updateWake(){
+  const want = state.wake && (openCards.size > 0 || document.querySelector('dialog.cook[open]') || state.timers.length > 0);
+  if(want && !wl && 'wakeLock' in navigator && document.visibilityState === 'visible'){
+    try{ const l = await navigator.wakeLock.request('screen'); wl = l; l.addEventListener('release', () => { if(wl === l) wl = null; refreshFooter(); }); }catch(e){}
+  }else if(!want && wl){
+    const l = wl; wl = null; try{ await l.release(); }catch(e){}
+  }
+  refreshFooter();
+}
+document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible'){ updateWake(); renderTimers(); } });
+
+// ---- תחתית: מקור הנתונים, מסך ער והתקנה ----
+let installEvt = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; });
+function refreshFooter(){
+  const f = document.getElementById('foot'); if(!f) return;
+  const src = { sheet: 'גיליון', device: 'עותק שמור במכשיר', repo: 'גרסה שמורה' }[dataInfo.source] || '';
+  f.replaceChildren();
+  if(src) f.append(el('div', 'foot-line', 'מקור: ' + src + (dataInfo.stamp ? ' · עודכן ' + fmtStamp(dataInfo.stamp) : '')));
+  const row = el('div', 'foot-row');
+  if('wakeLock' in navigator){
+    const w = el('button', 'foot-btn', (state.wake ? '🔆 מסך ער בזמן קריאה: פעיל' : '🌙 מסך ער: כבוי') + (wl ? ' ●' : '')); w.type = 'button';
+    w.onclick = () => { state.wake = !state.wake; save(); updateWake(); };
+    row.append(w);
+  }
+  if(!window.matchMedia('(display-mode: standalone)').matches){
+    const a = el('button', 'foot-btn', '📲 הוסף למסך הבית'); a.type = 'button';
+    a.onclick = async () => {
+      if(installEvt){ installEvt.prompt(); installEvt = null; return; }
+      const m = f.querySelector('.foot-help') || f.appendChild(el('div', 'foot-help'));
+      m.textContent = 'באייפון: כפתור השיתוף ← "הוסף למסך הבית". באנדרואיד: תפריט ⋮ ← "הוספה למסך הבית".';
+    };
+    row.append(a);
+  }
+  f.append(row);
 }
 
 // ---- בקשת תיקון ----
@@ -463,11 +776,15 @@ function openFix(r){
   document.body.append(dlg); dlg.showModal();
 }
 
-document.getElementById('search').addEventListener('input', render);
+// ---- אתחול ----
+document.getElementById('search').addEventListener('input', () => { render(); renderRecent(); });
 const toTop = el('button', 'to-top', '↑'); toTop.type = 'button'; toTop.hidden = true; toTop.setAttribute('aria-label', 'חזרה למעלה');
 toTop.onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 document.body.append(toTop);
 window.addEventListener('scroll', () => { toTop.hidden = window.scrollY < 600; }, { passive: true });
+if('serviceWorker' in navigator && location.protocol !== 'file:'){
+  window.addEventListener('load', () => navigator.serviceWorker.register('./recipes-sw.js', { scope: './recipes.html' }).catch(() => {}));
+}
 load();
 </script>
 </body>
