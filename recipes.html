@@ -40,6 +40,32 @@
     width:100%; background:none; border:none; color:var(--text); font-family:inherit; font-size:17px; font-weight:500;
     text-align:right; padding:16px 18px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:10px;
   }
+  .scale{ display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin:14px 0 2px; padding:10px 12px; background:var(--green-soft); border-radius:12px; font-size:14px; }
+  .scale label{ color:var(--green); font-weight:500; }
+  .scale input{ width:64px; padding:7px 10px; border:1px solid var(--line); border-radius:10px; font:inherit; font-size:16px; text-align:center; background:#fff; color:var(--text); }
+  .scale input:focus{ outline:none; border-color:var(--green); box-shadow:0 0 0 3px #d4e4d4; }
+  .scale input.bad{ border-color:var(--accent); }
+  .scale .chip{ border:1px solid var(--line); background:#fff; color:var(--text-dim); border-radius:999px; padding:5px 9px; font:inherit; font-size:13px; cursor:pointer; }
+  .scale .chip.on{ background:var(--green); border-color:var(--green); color:#fff; }
+  .scale-hint{ font-size:12px; color:var(--text-dim); margin-top:6px; }
+  .fix-btn{ margin-top:14px; background:none; border:none; padding:4px 0; color:var(--text-dim); font:inherit; font-size:13px; text-decoration:underline; cursor:pointer; }
+  dialog.fix{ border:none; border-radius:18px; padding:0; width:min(520px, calc(100vw - 32px)); max-height:calc(100vh - 32px); background:var(--cream); color:var(--text); box-shadow:0 20px 60px rgba(0,0,0,.25); }
+  dialog.fix::backdrop{ background:rgba(2,51,5,.45); }
+  .fix-form{ padding:20px; display:flex; flex-direction:column; gap:12px; }
+  .fix-form h2{ margin:0; font-size:18px; font-weight:500; color:var(--green); }
+  .fix-form .sub2{ font-size:13px; color:var(--text-dim); margin-top:-6px; }
+  .fix-form label{ font-size:13px; color:var(--text-dim); display:flex; flex-direction:column; gap:5px; }
+  .fix-form select, .fix-form input[type=text], .fix-form textarea{ border:1px solid var(--line); border-radius:12px; padding:10px 12px; font:inherit; font-size:16px; background:#fff; color:var(--text); }
+  .fix-form textarea{ min-height:150px; resize:vertical; line-height:1.6; }
+  .fix-form select:focus, .fix-form input:focus, .fix-form textarea:focus{ outline:none; border-color:var(--green); box-shadow:0 0 0 3px var(--green-soft); }
+  .fix-actions{ display:flex; gap:10px; justify-content:flex-start; }
+  .fix-actions button{ border-radius:999px; padding:10px 20px; font:inherit; font-size:15px; cursor:pointer; border:1px solid var(--green); }
+  .fix-actions .send{ background:var(--green); color:#fff; }
+  .fix-actions .cancel{ background:transparent; color:var(--green); }
+  .fix-actions button:disabled{ opacity:.55; cursor:default; }
+  .fix-msg{ font-size:14px; padding:10px 12px; border-radius:12px; background:var(--green-soft); color:var(--green); }
+  .fix-msg.err{ background:#fde8e3; color:#a3300f; }
+  .hp{ position:absolute; left:-9999px; width:1px; height:1px; opacity:0; }
   .badge{ display:inline-block; margin-inline-start:8px; padding:2px 9px; border-radius:999px; background:var(--green); color:#fff; font-size:11px; font-weight:500; vertical-align:middle; }
   .card.is-current{ border-color:var(--green); box-shadow:inset -3px 0 0 var(--green); }
   .tab.current:not(.active){ color:var(--green); border-color:var(--green); }
@@ -73,9 +99,45 @@
 // מייבאים את recipes.csv לגיליון, משתפים "כל מי שיש לו קישור - צפייה", מדביקים את ה-ID וקובעים USE_SHEET = true.
 const USE_SHEET = true;
 const SHEET_ID = '1H3tzII7pSwy0KS3UyI1gCcPn9ipNpVwAh8Mg1AqiilM';
-const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`;
+const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=recipes`;
 const CURRENT_TAB = 'תפריט נוכחי';
+// כתובת ה-Web App של בקשות התיקון (Apps Script, ראו apps-script/Code.gs). ריק = הכפתור מוסתר.
+const CORRECTION_URL = '';
 const CATEGORIES = ['פס קר', 'פס חם', 'טאבון', "צ'קר", 'קונדיטוריה'];
+
+const multipliers = new Map();   // הכפלה שנבחרה לכל מתכון, נשמרת בזמן סינון וחיפוש
+
+// ---- הכפלת כמויות ----
+function fmtNum(x){
+  const v = Math.round(x * 100) / 100;
+  const s = String(v);
+  const [i, d] = s.split('.');
+  return (i.length > 3 ? i.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : i) + (d ? '.' + d : '');
+}
+const NUM = '\\d{1,3}(?:,\\d{3})+(?:\\.\\d+)?|\\d+(?:\\.\\d+)?';
+const SCALE_RE = new RegExp('\\([^)]*\\)|(' + NUM + ')(?:\\s*-\\s*(' + NUM + '))?(?:(\\s+)(גרם|מ"ל))?', 'g');
+const toNum = s => parseFloat(s.replace(/,/g, ''));
+function scaleLine(s, k){
+  if(k === 1) return s;
+  const fw = s.match(/^(ל?)(חצי|רבע|שליש)(?=\s)/);
+  if(fw){
+    const v = { 'חצי': 0.5, 'רבע': 0.25, 'שליש': 1 / 3 }[fw[2]];
+    s = (fw[1] ? 'ל-' : '') + fmtNum(v * k) + s.slice(fw[0].length);
+    return s;
+  }
+  return s.replace(SCALE_RE, (m, a, b, sp, unit) => {
+    if(a === undefined) return m;                                  // תוכן בסוגריים נשאר כמו שהוא
+    if(b !== undefined) return fmtNum(toNum(a) * k) + '-' + fmtNum(toNum(b) * k) + (sp ? sp + unit : '');
+    let v = toNum(a) * k;
+    if(unit === 'גרם' && v >= 1000) { v /= 1000; unit = 'ק"ג'; }
+    else if(unit === 'מ"ל' && v >= 1000) { v /= 1000; unit = 'ליטר'; }
+    return fmtNum(v) + (unit ? sp + unit : '');
+  });
+}
+function parseMultiplier(str){
+  const v = Number(String(str).trim().replace(',', '.'));
+  return isFinite(v) && v > 0 && v <= 1000 ? v : null;
+}
 
 let recipes = [];
 let activeTab = 'הכל';
@@ -131,6 +193,7 @@ async function load(){
     recipes = rows.map((r, i) => ({
       cat: (r[0] || '').trim(), title: (r[1] || '').trim(),
       ingredients: lines(r[2]), steps: lines(r[3]), note: (r[4] || '').trim(),
+      raw: { 'שם': (r[1] || '').trim(), 'מצרכים': (r[2] || '').trim(), 'הוראות הכנה': (r[3] || '').trim(), 'הערות': (r[4] || '').trim() },
       current: !['', 'לא', 'no', '0', 'false'].includes((r[5] || '').trim().toLowerCase()),
       order: i
     })).filter(r => r.title);
@@ -161,26 +224,106 @@ function render(){
   ).sort((a, b) => (b.current - a.current) || (catRank(a.cat) - catRank(b.cat)) || (a.order - b.order));
   const list = document.getElementById('list');
   if(!shown.length){ list.replaceChildren(el('div', 'empty-note', 'לא נמצאו מתכונים')); return; }
-  list.replaceChildren(...shown.map(r => {
-    const card = el('div', 'card' + (r.current ? ' is-current' : ''));
-    const head = el('button', 'card-head');
-    const t = el('span'); t.append(el('div', '', r.title), el('div', 'cat', r.cat));
-    if(r.current) t.firstChild.append(el('span', 'badge', '★ תפריט נוכחי'));
-    head.append(t, el('span', 'chev', '▾'));
-    head.onclick = () => card.classList.toggle('open');
-    const body = el('div', 'card-body');
+  list.replaceChildren(...shown.map(buildCard));
+}
+
+function buildCard(r){
+  const key = r.cat + '|' + r.title;
+  const card = el('div', 'card' + (r.current ? ' is-current' : ''));
+  const head = el('button', 'card-head');
+  const t = el('span'); t.append(el('div', '', r.title), el('div', 'cat', r.cat));
+  if(r.current) t.firstChild.append(el('span', 'badge', '★ תפריט נוכחי'));
+  head.append(t, el('span', 'chev', '▾'));
+  head.onclick = () => card.classList.toggle('open');
+  const body = el('div', 'card-body');
+
+  // כלי הכפלה
+  const bar = el('div', 'scale');
+  const input = el('input'); input.type = 'text'; input.inputMode = 'decimal'; input.value = String(multipliers.get(key) || 1);
+  input.setAttribute('aria-label', 'מכפלה');
+  const chips = [0.5, 1, 2, 3].map(n => {
+    const c = el('button', 'chip', n === 0.5 ? '½' : '×' + n); c.type = 'button';
+    c.onclick = () => { input.value = String(n); update(); };
+    return c;
+  });
+  bar.append(el('label', '', 'כפול ×'), input, ...chips);
+  const hint = el('div', 'scale-hint');
+  const dyn = el('div');
+  function update(){
+    const k = parseMultiplier(input.value);
+    input.classList.toggle('bad', k === null);
+    const f = k === null ? 1 : k;
+    multipliers.set(key, f);
+    chips.forEach((c, i) => c.classList.toggle('on', f === [0.5, 1, 2, 3][i]));
+    hint.textContent = f === 1 ? '' : 'הכמויות במצרכים מוכפלות ב-' + fmtNum(f) + '. זמנים, טמפרטורות ומשקלים בהוראות ההכנה לא משתנים.';
+    dyn.replaceChildren();
     if(r.ingredients.length){
-      const ul = el('ul'); r.ingredients.forEach(i => ul.append(el('li', '', i)));
-      body.append(el('h3', '', 'מצרכים'), ul);
+      const ul = el('ul'); r.ingredients.forEach(i => ul.append(el('li', '', scaleLine(i, f))));
+      dyn.append(el('h3', '', 'מצרכים'), ul);
     }
     if(r.steps.length){
       const ol = el('ol'); r.steps.forEach(s => ol.append(el('li', '', s)));
-      body.append(el('h3', '', 'הכנה'), ol);
+      dyn.append(el('h3', '', 'הכנה'), ol);
     }
-    if(r.note) body.append(el('div', 'note', r.note));
-    card.append(head, body);
-    return card;
-  }));
+    if(r.note) dyn.append(el('div', 'note', scaleLine(r.note, f)));
+  }
+  input.addEventListener('input', update);
+  body.append(bar, hint, dyn);
+  update();
+
+  if(CORRECTION_URL){
+    const fix = el('button', 'fix-btn', 'בקשת תיקון למתכון'); fix.type = 'button';
+    fix.onclick = () => openFix(r);
+    body.append(fix);
+  }
+  card.append(head, body);
+  return card;
+}
+
+// ---- בקשת תיקון ----
+function openFix(r){
+  const dlg = document.createElement('dialog'); dlg.className = 'fix';
+  const form = el('form', 'fix-form'); form.method = 'dialog';
+  const sel = el('select');
+  ['מצרכים', 'הוראות הכנה', 'הערות', 'שם'].forEach(f => sel.append(new Option(f === 'שם' ? 'שם המתכון' : f, f)));
+  const txt = el('textarea'); txt.required = true;
+  const comment = el('input'); comment.type = 'text'; comment.maxLength = 300; comment.placeholder = 'מה לא נכון? (לא חובה)';
+  const sender = el('input'); sender.type = 'text'; sender.maxLength = 60; sender.placeholder = 'השם שלך (לא חובה)';
+  const hp = el('input', 'hp'); hp.type = 'text'; hp.tabIndex = -1; hp.autocomplete = 'off'; hp.setAttribute('aria-hidden', 'true');
+  const msg = el('div'); msg.hidden = true;
+  const send = el('button', 'send', 'שליחה לאישור'); send.type = 'submit';
+  const cancel = el('button', 'cancel', 'סגירה'); cancel.type = 'button'; cancel.onclick = () => dlg.close();
+  const fillText = () => { txt.value = r.raw[sel.value] || ''; };
+  sel.onchange = fillText; fillText();
+  const l1 = el('label', '', 'מה לתקן'); l1.append(sel);
+  const l2 = el('label', '', 'הנוסח המתוקן (מתחילים מהנוסח הנוכחי, ללא הכפלה)'); l2.append(txt);
+  const l3 = el('label', '', 'הערה'); l3.append(comment);
+  const l4 = el('label', '', 'שולח'); l4.append(sender);
+  const actions = el('div', 'fix-actions'); actions.append(send, cancel);
+  form.append(el('h2', '', 'בקשת תיקון'), el('div', 'sub2', r.title + ' · ' + r.cat), l1, l2, l3, l4, hp, msg, actions);
+  dlg.append(form);
+  form.addEventListener('submit', async ev => {
+    ev.preventDefault();
+    const proposed = txt.value.trim();
+    if(!proposed || proposed === (r.raw[sel.value] || '').trim()){
+      msg.className = 'fix-msg err'; msg.textContent = 'לא בוצע שינוי בנוסח.'; msg.hidden = false; return;
+    }
+    send.disabled = true; msg.hidden = true;
+    try{
+      await fetch(CORRECTION_URL, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ cat: r.cat, title: r.title, field: sel.value, proposed, comment: comment.value.trim(), sender: sender.value.trim(), website: hp.value })
+      });
+      msg.className = 'fix-msg'; msg.textContent = 'הבקשה נשלחה וממתינה לאישור. תודה!'; msg.hidden = false;
+      send.hidden = true; cancel.textContent = 'סגירה';
+    }catch(e){
+      msg.className = 'fix-msg err'; msg.textContent = 'השליחה נכשלה. בדקו חיבור ונסו שוב.'; msg.hidden = false; send.disabled = false;
+    }
+  });
+  dlg.addEventListener('close', () => dlg.remove());
+  dlg.addEventListener('click', ev => { if(ev.target === dlg) dlg.close(); });
+  document.body.append(dlg); dlg.showModal();
 }
 
 document.getElementById('search').addEventListener('input', render);
