@@ -66,8 +66,9 @@
 </div>
 
 <script>
-// הגיליון שממנו נטענים המתכונים (חייב להיות משותף "כל מי שיש לו קישור - צפייה").
-// אם הטעינה נכשלת, הדף קורא את recipes.csv מהריפו.
+// מקור המתכונים: recipes.csv מהריפו. כדי לעבור לעריכה מגיליון Google Sheets:
+// מייבאים את recipes.csv לגיליון, משתפים "כל מי שיש לו קישור - צפייה", מדביקים את ה-ID וקובעים USE_SHEET = true.
+const USE_SHEET = false;
 const SHEET_ID = '1H3tzII7pSwy0KS3UyI1gCcPn9ipNpVwAh8Mg1AqiilM';
 const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`;
 const CATEGORIES = ['פס קר', 'פס חם', 'טאבון', "צ'קר", 'קונדיטוריה'];
@@ -109,10 +110,20 @@ function el(tag, cls, text){
 async function load(){
   const list = document.getElementById('list');
   try{
-    let res = await fetch(SHEET_CSV_URL, { cache: 'no-store' }).catch(() => null);
-    if(!res || !res.ok) res = await fetch('./recipes.csv', { cache: 'no-store' });
-    if(!res.ok) throw new Error(res.status);
-    const rows = parseCSV(await res.text()).slice(1);
+    let text = '';
+    if(USE_SHEET){
+      try{
+        const r = await fetch(SHEET_CSV_URL, { cache: 'no-store' });
+        const t = r.ok ? await r.text() : '';
+        if(t.replace(/^\uFEFF/, '').startsWith('"קטגוריה"')) text = t;
+      }catch(e){}
+    }
+    if(!text){
+      const res = await fetch('./recipes.csv', { cache: 'no-store' });
+      if(!res.ok) throw new Error(res.status);
+      text = await res.text();
+    }
+    const rows = parseCSV(text).slice(1);
     recipes = rows.map(r => ({
       cat: (r[0] || '').trim(), title: (r[1] || '').trim(),
       ingredients: lines(r[2]), steps: lines(r[3]), note: (r[4] || '').trim()
