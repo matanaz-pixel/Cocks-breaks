@@ -40,6 +40,9 @@
     width:100%; background:none; border:none; color:var(--text); font-family:inherit; font-size:17px; font-weight:500;
     text-align:right; padding:16px 18px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:10px;
   }
+  .badge{ display:inline-block; margin-inline-start:8px; padding:2px 9px; border-radius:999px; background:var(--green); color:#fff; font-size:11px; font-weight:500; vertical-align:middle; }
+  .card.is-current{ border-color:var(--green); box-shadow:inset -3px 0 0 var(--green); }
+  .tab.current:not(.active){ color:var(--green); border-color:var(--green); }
   .card-head .cat{ font-size:12px; font-weight:400; color:var(--accent); margin-top:2px; }
   .chev{ color:var(--text-dim); transition:transform .2s; }
   .card.open .chev{ transform:rotate(180deg); }
@@ -71,6 +74,7 @@
 const USE_SHEET = true;
 const SHEET_ID = '1H3tzII7pSwy0KS3UyI1gCcPn9ipNpVwAh8Mg1AqiilM';
 const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`;
+const CURRENT_TAB = 'תפריט נוכחי';
 const CATEGORIES = ['פס קר', 'פס חם', 'טאבון', "צ'קר", 'קונדיטוריה'];
 
 let recipes = [];
@@ -124,9 +128,11 @@ async function load(){
       text = await res.text();
     }
     const rows = parseCSV(text).slice(1);
-    recipes = rows.map(r => ({
+    recipes = rows.map((r, i) => ({
       cat: (r[0] || '').trim(), title: (r[1] || '').trim(),
-      ingredients: lines(r[2]), steps: lines(r[3]), note: (r[4] || '').trim()
+      ingredients: lines(r[2]), steps: lines(r[3]), note: (r[4] || '').trim(),
+      current: !['', 'לא', 'no', '0', 'false'].includes((r[5] || '').trim().toLowerCase()),
+      order: i
     })).filter(r => r.title);
     buildTabs();
     render();
@@ -138,25 +144,28 @@ async function load(){
 function buildTabs(){
   const tabs = document.getElementById('tabs');
   const extra = [...new Set(recipes.map(r => r.cat))].filter(c => c && !CATEGORIES.includes(c));
-  tabs.replaceChildren(...['הכל', ...CATEGORIES, ...extra].map(name => {
-    const b = el('button', 'tab' + (name === activeTab ? ' active' : ''), name);
+  tabs.replaceChildren(...['הכל', CURRENT_TAB, ...CATEGORIES, ...extra].map(name => {
+    const b = el('button', 'tab' + (name === activeTab ? ' active' : '') + (name === CURRENT_TAB ? ' current' : ''), name === CURRENT_TAB ? '★ ' + name : name);
     b.onclick = () => { activeTab = name; buildTabs(); render(); };
     return b;
   }));
 }
 
+function catRank(c){ const i = CATEGORIES.indexOf(c); return i < 0 ? CATEGORIES.length : i; }
+
 function render(){
   const q = document.getElementById('search').value.trim().toLowerCase();
   const shown = recipes.filter(r =>
-    (activeTab === 'הכל' || r.cat === activeTab) &&
+    (activeTab === 'הכל' || (activeTab === CURRENT_TAB ? r.current : r.cat === activeTab)) &&
     (!q || [r.title, r.cat, r.ingredients.join(' '), r.steps.join(' ')].join(' ').toLowerCase().includes(q))
-  );
+  ).sort((a, b) => (b.current - a.current) || (catRank(a.cat) - catRank(b.cat)) || (a.order - b.order));
   const list = document.getElementById('list');
   if(!shown.length){ list.replaceChildren(el('div', 'empty-note', 'לא נמצאו מתכונים')); return; }
   list.replaceChildren(...shown.map(r => {
-    const card = el('div', 'card');
+    const card = el('div', 'card' + (r.current ? ' is-current' : ''));
     const head = el('button', 'card-head');
     const t = el('span'); t.append(el('div', '', r.title), el('div', 'cat', r.cat));
+    if(r.current) t.firstChild.append(el('span', 'badge', '★ תפריט נוכחי'));
     head.append(t, el('span', 'chev', '▾'));
     head.onclick = () => card.classList.toggle('open');
     const body = el('div', 'card-body');
