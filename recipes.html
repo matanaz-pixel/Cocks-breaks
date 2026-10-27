@@ -59,6 +59,8 @@
   .scale .chip.on{ background:var(--green); border-color:var(--green); color:#fff; }
   [hidden]{ display:none !important; }
   .mult-tag{ display:inline-block; margin-inline-start:8px; padding:2px 9px; border-radius:999px; background:var(--accent); color:#fff; font-size:11px; font-weight:600; vertical-align:middle; }
+  .scale.var .chips{ flex-wrap:wrap; }
+  .scale.var .chip{ flex:1 1 auto; white-space:nowrap; }
   .scale-hint.bad{ color:var(--accent); font-weight:500; }
   .scale-hint{ font-size:12px; color:var(--text-dim); margin-top:6px; }
   .fix-btn{ margin-top:10px; background:none; border:none; padding:12px 0; min-height:44px; color:var(--text-dim); font:inherit; font-size:13px; text-decoration:underline; cursor:pointer; }
@@ -209,13 +211,24 @@ const CATEGORIES = ['פס קר', 'פס חם', 'טאבון', "צ'קר", 'קונד
 const STORE_KEY = 'rb-state-v1', SHEET_CACHE_KEY = 'rb-sheet-v1', TTL = 12 * 3600e3;
 const now = () => Date.now();
 let state = (() => { try{ const s = JSON.parse(localStorage.getItem(STORE_KEY)); return s && typeof s === 'object' ? s : {}; }catch(e){ return {}; } })();
-state.mult = state.mult || {}; state.prog = state.prog || {}; state.recent = state.recent || []; state.timers = state.timers || [];
+state.mult = state.mult || {}; state.variant = state.variant || {}; state.prog = state.prog || {}; state.recent = state.recent || []; state.timers = state.timers || [];
 if(state.wake === undefined) state.wake = true;
 for(const k of Object.keys(state.mult)) if(!Array.isArray(state.mult[k]) || now() - state.mult[k][1] > TTL) delete state.mult[k];   // הכפלה פגה אחרי 12 שעות
+for(const k of Object.keys(state.variant)) if(!Array.isArray(state.variant[k]) || now() - state.variant[k][1] > TTL) delete state.variant[k];   // בחירת גרסה פגה אחרי 12 שעות
 for(const k of Object.keys(state.prog)) if(!state.prog[k] || now() - state.prog[k].ts > TTL) delete state.prog[k];              // סימונים פגים אחרי 12 שעות
 function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){} }
 const getMult = key => (state.mult[key] && state.mult[key][0]) || 1;
 function setMult(key, f){ if(f === 1) delete state.mult[key]; else state.mult[key] = [f, now()]; save(); }
+// גרסאות כמות: מתכון שיש לו כמה גודלי אצווה (18 / 26 מנות). הבחירה נשמרת במכשיר בלבד.
+function variantOf(r, key){
+  if(!r.variants) return null;
+  const sel = state.variant[key];
+  return (sel && r.variants.find(v => v.label === sel[0])) || r.variants[0];
+}
+function setVariant(r, key, v){
+  if(v === r.variants[0]) delete state.variant[key]; else state.variant[key] = [v.label, now()];
+  save();
+}
 const NO_PROG = { ing: [], st: [], step: 0 };
 const peek = key => state.prog[key] || NO_PROG;                       // קריאה בלבד, לא יוצרת רשומה
 function prog(key){ return state.prog[key] || (state.prog[key] = { ts: now(), ing: [], st: [], step: 0 }); }
@@ -333,9 +346,19 @@ function parseMultiplier(str){
 }
 
 // עמודות מזוהות לפי שם הכותרת, כך שהוספת עמודה או שינוי סדר בגיליון לא משבשים את הספר
-const COLUMNS = { cat: 'קטגוריה', title: 'שם', ingredients: 'מצרכים', steps: 'הוראות הכנה', note: 'הערות', current: 'תפריט נוכחי' };
+const COLUMNS = { cat: 'קטגוריה', title: 'שם', ingredients: 'מצרכים', steps: 'הוראות הכנה', note: 'הערות', current: 'תפריט נוכחי', variants: 'גרסאות' };
 const REQUIRED = ['cat', 'title', 'ingredients', 'steps'];
 const SHEET_TIMEOUT_MS = 8000;
+
+// עמודת "גרסאות": בלוקים מופרדים בשורה של --- . בכל בלוק שורה ראשונה = שם הגרסה (למשל "18 מנות"), ואחריה המצרכים של אותה גרסה.
+function parseVariants(text){
+  const out = [];
+  for(const block of (text || '').split(/^[ \t]*-{3,}[ \t]*\r?$/m)){
+    const ls = lines(block);
+    if(ls.length >= 2) out.push({ label: ls[0], ingredients: ls.slice(1) });
+  }
+  return out.length >= 2 ? out : null;
+}
 
 function parseTable(text){
   const rows = parseCSV(text);
@@ -350,6 +373,7 @@ function parseTable(text){
     ingredients: lines(get(r, 'ingredients')), steps: lines(get(r, 'steps')), note: get(r, 'note'),
     raw: { 'שם': get(r, 'title'), 'מצרכים': get(r, 'ingredients'), 'הוראות הכנה': get(r, 'steps'), 'הערות': get(r, 'note') },
     current: get(r, 'current') === 'כן',
+    variants: parseVariants(get(r, 'variants')),
     order: i
   })).filter(r => r.title);
   return list.length ? list : null;
@@ -519,17 +543,28 @@ function buildCard(r){
   };
   const body = el('div', 'card-body');
 
-  // כלי הכפלה
-  const bar = el('div', 'scale');
-  const input = el('input'); input.type = 'text'; input.inputMode = 'decimal'; input.value = String(getMult(key));
-  input.setAttribute('aria-label', 'מכפלה');
-  const chips = [0.5, 1, 2, 3].map(n => {
-    const c = el('button', 'chip', n === 0.5 ? '½' : '×' + n); c.type = 'button';
-    c.onclick = () => { input.value = String(n); update(); };
-    return c;
-  });
-  const chipRow = el('div', 'chips'); chipRow.append(...chips);
-  bar.append(el('label', '', 'כפול ×'), input, chipRow);
+  // בורר גרסה (כמות אצווה) או כלי הכפלה
+  const bar = el('div', 'scale' + (r.variants ? ' var' : ''));
+  let input = null, chips = [], vchips = [];
+  if(r.variants){
+    vchips = r.variants.map(v => {
+      const c = el('button', 'chip', v.label); c.type = 'button';
+      c.onclick = () => { setVariant(r, key, v); update(); };
+      return c;
+    });
+    const row = el('div', 'chips'); row.append(...vchips);
+    bar.append(el('label', '', 'כמות:'), row);
+  }else{
+    input = el('input'); input.type = 'text'; input.inputMode = 'decimal'; input.value = String(getMult(key));
+    input.setAttribute('aria-label', 'מכפלה');
+    chips = [0.5, 1, 2, 3].map(n => {
+      const c = el('button', 'chip', n === 0.5 ? '½' : '×' + n); c.type = 'button';
+      c.onclick = () => { input.value = String(n); update(); };
+      return c;
+    });
+    const chipRow = el('div', 'chips'); chipRow.append(...chips);
+    bar.append(el('label', '', 'כפול ×'), input, chipRow);
+  }
   const hint = el('div', 'scale-hint');
   const actions = el('div', 'card-actions');
   const cook = el('button', 'cook-btn', '▶ מצב בישול'); cook.type = 'button'; cook.onclick = () => openCook(r, key);
@@ -539,27 +574,36 @@ function buildCard(r){
   const dyn = el('div');
   const { yld, rest } = splitNote(r.note);
   function update(){
-    const k = parseMultiplier(input.value);
-    const bad = k === null && input.value.trim() !== '';
-    input.classList.toggle('bad', bad);
-    const f = k === null ? 1 : k;
-    setMult(key, f);
-    chips.forEach((c, i) => c.classList.toggle('on', f === [0.5, 1, 2, 3][i]));
-    multTag.hidden = f === 1; multTag.textContent = '×' + fmtNum(f);
-    hint.classList.toggle('bad', bad);
-    hint.textContent = bad ? 'מספר לא תקין (אפשר למשל 1.5, ½ או 1/2). מוצגות הכמויות הרגילות.'
-      : f === 1 ? '' : 'מוכפלת רק הכמות שבתחילת כל שורת מצרך (×' + fmtNum(f) + '). אחוזים, מידות, זמנים וכמויות בתוך הוראות ההכנה לא משתנים.';
+    const vr = variantOf(r, key);
+    let f = 1;
+    if(vr){
+      vchips.forEach((c, i) => c.classList.toggle('on', r.variants[i] === vr));
+      multTag.hidden = vr === r.variants[0]; multTag.textContent = vr.label;
+      hint.textContent = '';
+    }else{
+      const k = parseMultiplier(input.value);
+      const bad = k === null && input.value.trim() !== '';
+      input.classList.toggle('bad', bad);
+      f = k === null ? 1 : k;
+      setMult(key, f);
+      chips.forEach((c, i) => c.classList.toggle('on', f === [0.5, 1, 2, 3][i]));
+      multTag.hidden = f === 1; multTag.textContent = '×' + fmtNum(f);
+      hint.classList.toggle('bad', bad);
+      hint.textContent = bad ? 'מספר לא תקין (אפשר למשל 1.5, ½ או 1/2). מוצגות הכמויות הרגילות.'
+        : f === 1 ? '' : 'מוכפלת רק הכמות שבתחילת כל שורת מצרך (×' + fmtNum(f) + '). אחוזים, מידות, זמנים וכמויות בתוך הוראות ההכנה לא משתנים.';
+    }
+    const ings = vr ? vr.ingredients : r.ingredients;
     clear.hidden = !(peek(key).ing.length || peek(key).st.length);
     dyn.replaceChildren();
     if(yld.length) dyn.append(el('div', 'yield', yld.map(l => scaleYield(l, f)).join('\n')));
-    if(r.ingredients.length) dyn.append(el('h3', '', 'מצרכים'), tickList('ul', r.ingredients, key, 'ing', f, scaleLine));
+    if(ings.length) dyn.append(el('h3', '', 'מצרכים'), tickList('ul', ings, key, 'ing', f, vr ? null : scaleLine));
     if(r.steps.length) dyn.append(el('h3', '', 'הכנה'), tickList('ol', r.steps, key, 'st', f, null));
     if(rest) dyn.append(el('div', 'note', rest));
     if(r.steps.some(s => findTimes(s).length)){
       dyn.querySelectorAll('ol li.tick').forEach((li, idx) => timerButtons(li, r, r.steps[idx]));
     }
   }
-  input.addEventListener('input', () => { update(); });
+  if(input) input.addEventListener('input', () => { update(); });
   body.append(bar, hint, actions, dyn);
   update();
 
@@ -652,12 +696,13 @@ function restoreTimers(){ state.timers = state.timers.filter(t => now() - t.end 
 
 // ---- מצב בישול: שלב אחד בכל פעם, טקסט גדול ----
 function openCook(r, key){
-  const f = getMult(key), steps = r.steps, total = steps.length + 1;     // 0 = מצרכים
+  const vr = variantOf(r, key), f = vr ? 1 : getMult(key), steps = r.steps, total = steps.length + 1;     // 0 = מצרכים
+  const ings = vr ? vr.ingredients : r.ingredients;
   let i = Math.min(peek(key).step || 0, total - 1);
   const dlg = document.createElement('dialog'); dlg.className = 'cook';
   const wrap = el('div', 'cook-wrap');
   const top = el('div', 'cook-top');
-  const title = el('h2', '', r.title + (f !== 1 ? '  ×' + fmtNum(f) : ''));
+  const title = el('h2', '', r.title + (vr ? '  ·  ' + vr.label : f !== 1 ? '  ×' + fmtNum(f) : ''));
   const close = el('button', 'cook-close', '✕'); close.type = 'button'; close.setAttribute('aria-label', 'סגירה'); close.onclick = () => dlg.close();
   top.append(title, close);
   const timersBox = el('div', 'cook-timers');
@@ -678,7 +723,7 @@ function openCook(r, key){
     if(i === 0){
       body.append(el('div', 'step-no', 'מצרכים' + (steps.length ? ' · ' + steps.length + ' שלבים' : '')));
       if(yld.length) body.append(el('div', 'yield', yld.map(l => scaleYield(l, f)).join('\n')));
-      body.append(tickList('ul', r.ingredients, key, 'ing', f, scaleLine));
+      body.append(tickList('ul', ings, key, 'ing', f, vr ? null : scaleLine));
     }else{
       body.append(el('div', 'step-no', 'שלב ' + i + ' מתוך ' + steps.length));
       const s = el('div', 'big-step', steps[i - 1]);
@@ -810,12 +855,13 @@ function openFix(preset){
   let qrows = [], txt = null;
   function choose(x){
     r = x; pick.hidden = true; work.hidden = false; send.hidden = false; msg.hidden = true;
+    bQty.hidden = !!r.variants;                                       // מתכון עם גרסאות כמות: תיקון כמויות אצל השף בלבד
     chosen.replaceChildren(el('div', 'ct', r.title), el('small', '', r.cat));
     if(!preset){ const sw = el('button', 'swap', 'החלפה'); sw.type = 'button'; sw.onclick = () => { work.hidden = true; send.hidden = true; pick.hidden = false; pickIn.focus(); }; chosen.append(sw); }
     // כמויות: שדה לכל מצרך שיש לו כמות בתחילת השורה
     pQty.replaceChildren(el('div', 'hint2', 'הכמויות כפי שהן בספר (בלי הכפלה). משנים רק את המספר.'));
     const box = el('div', 'qlist');
-    qrows = r.ingredients.map((line, idx) => {
+    qrows = (r.variants ? [] : r.ingredients).map((line, idx) => {
       if(line.endsWith(':')){ box.append(el('div', 'qsub', line)); return null; }
       const s = splitQty(line), row = el('div', 'qrow');
       if(!s){ row.append(el('span', 'rest', line)); row.classList.add('plain'); box.append(row); return null; }
@@ -833,7 +879,7 @@ function openFix(preset){
     txt = el('textarea'); txt.value = r.raw['הוראות הכנה'] || '';
     pTxt.replaceChildren(el('div', 'hint2', 'עריכה חופשית. כל שורה היא שלב.'), txt);
     if(!r.steps.length) pTxt.prepend(el('div', 'hint2 warn', 'למתכון הזה אין עדיין הוראות הכנה, אפשר לכתוב אותן כאן.'));
-    setMode(r.ingredients.length ? 'qty' : 'txt');
+    setMode(r.ingredients.length && !r.variants ? 'qty' : 'txt');
   }
 
   const send = el('button', 'send', 'שליחה לאישור'); send.type = 'submit'; send.hidden = true;
