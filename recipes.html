@@ -437,6 +437,16 @@ async function load(){
     list.replaceChildren(el('div', 'status error', 'לא הצלחתי לטעון את המתכונים. בדקו חיבור לאינטרנט ונסו לרענן.'));
     return;
   }
+  // מתכונים שמוגשים מהריפו (recipes-extra.csv) ולא מהגיליון. מתכון שקיים בגיליון באותה קטגוריה ובאותו שם גובר עליהם.
+  try{
+    const extra = parseTable(await fetchText('./recipes-extra.csv', 8000));
+    if(extra){
+      const have = new Set(data.map(keyOf));
+      const add = extra.filter(r => !have.has(keyOf(r)));
+      add.forEach((r, i) => { r.order = data.length + i; });
+      data = data.concat(add);
+    }
+  }catch(e){}
   if(source === 'device') showBanner('אין חיבור לגיליון. מוצגת הגרסה האחרונה שנשמרה במכשיר' + (stamp ? ' (' + fmtStamp(stamp) + ')' : '') + '. הכמויות עשויות להיות לא מעודכנות.');
   else if(source === 'repo' && USE_SHEET) showBanner('לא הצלחתי להתחבר לגיליון המתכונים, ולכן מוצגת גרסה שמורה שעלולה לא להיות מעודכנת. נסו לרענן בעוד רגע.');
   dataInfo = { source, stamp };
