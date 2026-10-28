@@ -135,6 +135,11 @@
   li.tick.done{ text-decoration:line-through; opacity:.45; }
   button:active{ transform:scale(.97); filter:brightness(.92); }
   .sr{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+  .alg{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:10px; font-size:14px; }
+  .alg b{ font-weight:600; color:#7a1d0a; }
+  .alg-chip{ padding:3px 10px; border-radius:999px; background:#fde8e3; color:#7a1d0a; border:1px solid #f1b8a8; font-weight:500; }
+  .alg.none{ font-size:13px; color:var(--text-dim); }
+  small.nqs{ font-size:.8em; color:#8a5a00; }
   mark.nq{ background:#ffe58a; color:inherit; border-radius:4px; padding:0 3px; }
   .qwarn{ font-size:13px; color:#8a5a00; background:#fff4d6; border-radius:10px; padding:6px 10px; margin:0 0 10px; }
   li .uq{ color:#8a5a00; font-size:12px; margin-inline-start:6px; }
@@ -433,6 +438,16 @@ function syncTicks(){
   });
   document.querySelectorAll('.clear-btn').forEach(b => { const p = peek(b.closest('.card').dataset.key); b.hidden = !(p.ing.length || p.st.length); });
 }
+// טקסט הוראה עם כמויות מפורשות מודגשות. כשיש הכפלה, ליד כל כמות מוצג החישוב אם הכמות הזו היא לכל האצווה
+function qtyNodes(text, f){
+  const out = [];
+  splitQuantities(text, f).forEach(p => {
+    if(!p.q){ out.push(document.createTextNode(p.t)); return; }
+    out.push(el('mark', 'nq', p.t));
+    if(p.s) out.push(el('small', 'nqs', ' (×' + fmtNum(f) + ': ' + p.s + ')'));
+  });
+  return out;
+}
 function tickList(tag, items, key, kind, f, scaler){
   const done = peek(key)[kind];
   const list = el(tag);
@@ -441,7 +456,7 @@ function tickList(tag, items, key, kind, f, scaler){
     const li = el('li', 'tick' + (done.includes(i) ? ' done' : ''));
     const shown = scaler ? scaler(text, f) : text;
     if(f !== 1 && kind === 'st'){
-      splitQuantities(shown).forEach(p => li.append(p.q ? el('mark', 'nq', p.t) : document.createTextNode(p.t)));      // כמות מפורשת בהוראה: לא מוכפלת, ולכן מודגשת
+      li.append(...qtyNodes(shown, f));      // כמות מפורשת בהוראה: לא מוכפלת אוטומטית, ולכן מודגשת עם החישוב לידה
     }else li.append(document.createTextNode(shown));
     if(f !== 1 && kind === 'ing' && hasUnscaledQty(text)){ const u = el('span', 'uq', '⚠ יש כאן כמות שלא הוכפלה'); li.append(u); }
     li.setAttribute('role', 'checkbox'); li.setAttribute('aria-checked', done.includes(i));
@@ -535,7 +550,11 @@ function buildCard(r){
     }
   }
   if(input) input.addEventListener('input', () => { update(); });
-  body.append(bar, hint, actions, dyn);
+  const alg = el('div', 'alg' + (r.allergens === null ? ' none' : ''));
+  if(r.allergens === null) alg.textContent = 'אלרגנים: לא הוזנו למתכון הזה. העדר מידע לא אומר שאין אלרגנים.';
+  else if(!r.allergens.length) alg.textContent = 'אלרגנים: ללא';
+  else alg.append(el('b', '', 'אלרגנים:'), ...r.allergens.map(a => el('span', 'alg-chip', a)));
+  body.append(bar, hint, alg, actions, dyn);
   update();
 
   if(CORRECTION_URL){
@@ -683,10 +702,10 @@ function openCook(r, key){
     }else{
       body.append(el('div', 'step-no', 'שלב ' + i + ' מתוך ' + steps.length));
       const s = el('div', 'big-step');
-      const parts = f !== 1 ? splitQuantities(steps[i - 1]) : [{ t: steps[i - 1], q: false }];
-      parts.forEach(p => s.append(p.q ? el('mark', 'nq', p.t) : document.createTextNode(p.t)));
+      const parts = f !== 1 ? splitQuantities(steps[i - 1], f) : [];
+      if(f !== 1) s.append(...qtyNodes(steps[i - 1], f)); else s.textContent = steps[i - 1];
       body.append(s);
-      if(parts.some(p => p.q)) body.append(el('div', 'qwarn', '⚠ הכפלת ×' + fmtNum(f) + ': הכמות המסומנת בצהוב לא הוכפלה, צריך לחשב אותה ידנית.'));
+      if(parts.some(p => p.q)) body.append(el('div', 'qwarn', '⚠ הכפלת ×' + fmtNum(f) + ': הכמות המסומנת בצהוב לא הוכפלה אוטומטית. בסוגריים החישוב אם היא לכל האצווה. את זה קובע השף.'));
       const times = findTimes(steps[i - 1]);
       if(times.length){ const row = el('div', 'tbtns big'); times.forEach(t => timerBtnPair(t).forEach(([lbl, tt, cls]) => { const b = el('button', 'tbtn' + cls, lbl); b.type = 'button'; b.onclick = () => startTimer(r.title, tt); row.append(b); })); body.append(row); }
       const isDone = peek(key).st.includes(i - 1);
@@ -848,7 +867,9 @@ function openFix(preset){
     pIdx = noteLines.findIndex(l => l.trim().startsWith('מנות:'));
     pBase = pIdx >= 0 ? noteLines[pIdx].trim().replace(/^מנות:\s*/, '') : '';
     yin = el('input'); yin.type = 'text'; yin.maxLength = 120; yin.value = yBase; yin.placeholder = 'למשל: 27 ק"ג בצק';
+    yin.addEventListener('input', () => yin.classList.remove('bad'));
     pin = el('input'); pin.type = 'text'; pin.maxLength = 120; pin.value = pBase; pin.placeholder = 'למשל: 100 (270 גרם למנה)';
+    pin.addEventListener('input', () => pin.classList.remove('bad'));
     const ly = el('label', '', 'תפוקה (כמות)'); ly.append(yin);
     const lp = el('label', '', 'כמה מנות יוצאות (מספר, ואפשר גם משקל למנה בסוגריים)'); lp.append(pin);
     pYld.replaceChildren(el('div', 'hint2', yIdx >= 0 || pIdx >= 0 ? 'כפי שהם בספר. אפשר לשנות כל אחד.' : 'למתכון הזה אין עדיין תפוקה או מספר מנות, אפשר להוסיף כאן.'), ly, lp);
@@ -886,6 +907,8 @@ function openFix(preset){
     // תפוקה ומספר מנות (שתי שורות בתוך עמודת ההערות)
     const yv = yin ? yin.value.trim() : '', pv = pin ? pin.value.trim() : '';
     const yChg = yin && yv && yv !== yBase, pChg = pin && pv && pv !== pBase;
+    const vErr = (pChg && RB.validatePortions(pv)) || (yChg && RB.validateYield(yv));
+    if(vErr){ say(vErr, true); (pChg && RB.validatePortions(pv) ? pin : yin).classList.add('bad'); (pChg && RB.validatePortions(pv) ? pin : yin).focus(); return; }
     if(yChg || pChg){
       let ls = (r.raw['הערות'] || '').replace(/\r/g, '').split('\n');
       const at = (pref, val) => {

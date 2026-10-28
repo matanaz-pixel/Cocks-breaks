@@ -58,6 +58,10 @@ function scaleQty(a, b, word, unit, k){
   else if(unit === 'ליטר' && v < 1){ v *= 1000; unit = 'מ"ל'; }
   return { text: fmtNum(v, unit), unit };
 }
+// "(מומס ב-24 גרם מים)" : הכמות שבסוגריים תלויה ישירות בכמות הפותחת, ולכן מוכפלת איתה
+function scaleDissolved(rest, k){
+  return rest.replace(/\((מומס(?:ת)?|מעורבב(?:ת)?)\s+ב-?\s*([^)]*)\)/, (m, w, inner) => '(' + w + ' ב-' + scaleAll(inner, k) + ')');
+}
 function scaleLine(s, k){
   if(k === 1) return s;
   const m = s.match(LEAD_RE);
@@ -65,7 +69,7 @@ function scaleLine(s, k){
     const [all, pre, a, b, word, sp, unit] = m;
     const q = scaleQty(a, b, word, unit, k);
     const prefix = pre === 'ל' ? 'ל-' : pre;                         // "לחצי ליטר" > "ל-1 ליטר"
-    return prefix + q.text + (sp || '') + (q.unit || '') + s.slice(all.length);
+    return prefix + q.text + (sp || '') + (q.unit || '') + scaleDissolved(s.slice(all.length), k);
   }
   const f = s.match(FROM_RE);                                         // "מיץ מ-2 לימונים"
   if(f) return s.slice(0, f.index) + f[1] + 'מ-' + fmtNum(toNum(f[2]) * k, 'יח') + s.slice(f.index + f[0].length);
@@ -88,9 +92,10 @@ function scaleYield(s, k){
 }
 // שורת "מנות: 100 (270 גרם למנה)" מוצגת כ"100 מנות (270 גרם למנה)". מוכפל רק מספר המנות, לא המשקל למנה
 function yieldText(l, k){
-  const m = l.match(new RegExp(String.raw`^מנות:\s*(${NUM})(.*)$`));
+  const m = l.match(new RegExp(String.raw`^מנות:\s*(כ-?\s*|~\s*)?(${NUM})(?:\s*-\s*(${NUM}))?(.*)$`));
   if(!m) return l.startsWith('מנות:') ? l.replace(/^מנות:\s*/, '') : scaleYield(l, k);
-  return fmtNum(toNum(m[1]) * k, 'יח') + ' מנות' + m[2];
+  const pre = m[1] ? 'כ-' : '';
+  return pre + fmtNum(toNum(m[2]) * k, 'יח') + (m[3] ? '-' + fmtNum(toNum(m[3]) * k, 'יח') : '') + ' מנות' + m[4];
 }
 function parseMultiplier(str){
   let s = String(str).trim().replace(/^[x×*]\s*|\s*[x×*]$/gi, '').replace(',', '.');
@@ -106,7 +111,7 @@ function parseMultiplier(str){
 }
 
 // עמודות מזוהות לפי שם הכותרת, כך שהוספת עמודה או שינוי סדר בגיליון לא משבשים את הספר
-const COLUMNS = { cat: 'קטגוריה', title: 'שם', ingredients: 'מצרכים', steps: 'הוראות הכנה', note: 'הערות', current: 'תפריט נוכחי', variants: 'גרסאות' };
+const COLUMNS = { cat: 'קטגוריה', title: 'שם', ingredients: 'מצרכים', steps: 'הוראות הכנה', note: 'הערות', allergens: 'אלרגנים', current: 'תפריט נוכחי', variants: 'גרסאות' };
 const REQUIRED = ['cat', 'title', 'ingredients', 'steps'];
 
 // עמודת "גרסאות": בלוקים מופרדים בשורה של --- . בכל בלוק שורה ראשונה = שם הגרסה (למשל "18 מנות"), ואחריה המצרכים של אותה גרסה.
@@ -119,6 +124,13 @@ function parseVariants(text){
   return out.length >= 2 ? out : null;
 }
 
+// עמודת "אלרגנים": רשימה מופרדת בפסיקים/שורות. null = לא הוזן (לא אומר שאין אלרגנים!), [] = הוזן "ללא"
+function parseAllergens(text){
+  const t = (text || '').trim();
+  if(!t) return null;
+  if(/^(ללא|אין|none|-)$/i.test(t)) return [];
+  return t.split(/[,\n;،]+/).map(x => x.trim()).filter(Boolean);
+}
 function parseTable(text){
   const rows = parseCSV(text);
   if(!rows.length) return null;
@@ -131,6 +143,7 @@ function parseTable(text){
     cat: get(r, 'cat'), title: get(r, 'title'),
     ingredients: lines(get(r, 'ingredients')), steps: lines(get(r, 'steps')), note: get(r, 'note'),
     raw: { 'שם': get(r, 'title'), 'מצרכים': get(r, 'ingredients'), 'הוראות הכנה': get(r, 'steps'), 'הערות': get(r, 'note') },
+    allergens: parseAllergens(get(r, 'allergens')),
     current: get(r, 'current') === 'כן',
     variants: parseVariants(get(r, 'variants')),
     order: i
@@ -138,6 +151,19 @@ function parseTable(text){
   return list.length ? list : null;
 }
 
+
+// בדיקת שדה "מנות" בבקשת תיקון: חייב להתחיל במספר (או טווח, או כ-), ואפשר משקל למנה בסוגריים. מחזיר '' אם תקין
+function validatePortions(v){
+  v = String(v).trim();
+  if(!v) return '';
+  return new RegExp(String.raw`^(?:כ-?\s*|~\s*)?(?:${NUM})(?:\s*-\s*(?:${NUM}))?(?:\s*\(.*\))?\s*$`).test(v) ? '' : 'מספר המנות חייב להתחיל במספר, למשל 100 או 100-120 או כ-100 (270 גרם למנה)';
+}
+// תפוקה: טקסט חופשי, אבל חייב להכיל כמות כלשהי
+function validateYield(v){
+  v = String(v).trim();
+  if(!v) return '';
+  return /\d|חצי|רבע|שליש|אחד|אחת|שני|שתי/.test(v) ? '' : 'התפוקה צריכה לכלול כמות, למשל 27 ק"ג בצק';
+}
 
 // ---- חיפוש סלחני: אותיות סופיות, גרשיים, ניקוד, כתיב מלא/חסר (י/ו) וריבוי ----
 // כל מילת חיפוש חייבת להתאים למילה בתחילתה (לא באמצע מילה), כך ש"שום" לא מוצא "שמן".
@@ -189,11 +215,13 @@ function searchScore(r, tokens, fuzzy){
 // ---- כמויות שלא מוכפלות ----
 const QTY_RE = new RegExp(String.raw`(?<![\d.,])(${NUM})\s*(גרם|ק"ג|קג|ק״ג|מ"ל|מ״ל|ליטר|ל')(?![א-ת])`, 'g');
 // חלקים של טקסט: [{t, q}] כש-q=true לכמות מפורשת (מספר+יחידה). משמש להדגשת כמויות בהוראות שאינן מוכפלות
-function splitQuantities(text){
+function splitQuantities(text, k){
   const out = []; let last = 0;
   for(const m of text.matchAll(QTY_RE)){
     if(m.index > last) out.push({ t: text.slice(last, m.index), q: false });
-    out.push({ t: m[0], q: true }); last = m.index + m[0].length;
+    const p = { t: m[0], q: true };
+    if(k && k !== 1){ const sc = scaleLine(m[0], k); if(sc !== m[0]) p.s = sc; }          // ההצעה אם הכמות הזו היא לכל האצווה
+    out.push(p); last = m.index + m[0].length;
   }
   if(last < text.length) out.push({ t: text.slice(last), q: false });
   return out;
@@ -201,7 +229,11 @@ function splitQuantities(text){
 // שורת מצרך שיש בה כמות נוספת מעבר לכמות הפותחת (למשל "(מומס ב-24 גרם מים)" או "לכל 2 ק"ג") – היא לא מוכפלת
 function hasUnscaledQty(line){
   const m = line.match(LEAD_RE);
-  return new RegExp(QTY_RE.source).test(m ? line.slice(m[0].length) : line);
+  const rest = (m ? line.slice(m[0].length) : line)
+    .replace(/\([^)]*(?:כל אחד|כל אחת|ליחידה|למנה)[^)]*\)/g, '')          // משקל ליחידה: נשאר כמו שהוא בכוונה
+    .replace(/\((?:מומס|מעורבב)[^)]*\)/g, '')                              // מוכפל יחד עם הכמות הפותחת
+    .replace(/(?:לכל|על)\s+[^,;)]*/g, '');                                  // יחס: "לכל 2 ק"ג"
+  return new RegExp(QTY_RE.source).test(rest);
 }
 
 // ---- זמנים בהוראות (לטיימרים) ----
@@ -242,7 +274,7 @@ function fmtDur(s){
   return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(ss).padStart(2, '0');
 }
 
-const api = { NUM, scaleAll, parseCSV, lines, fmtNum, toNum, scaleLine, scaleAll, scaleYield, yieldText, parseMultiplier, parseVariants, parseTable,
-  COLUMNS, REQUIRED, fold, queryTokens, searchScore, splitQuantities, hasUnscaledQty, findTimes, fmtDur };
+const api = { NUM, scaleAll, parseCSV, lines, fmtNum, toNum, scaleLine, scaleAll, scaleYield, yieldText, parseMultiplier, parseVariants, parseTable, parseAllergens,
+  validatePortions, validateYield, COLUMNS, REQUIRED, fold, queryTokens, searchScore, splitQuantities, hasUnscaledQty, findTimes, fmtDur };
 if(typeof module === 'object' && module.exports) module.exports = api; else root.RB = api;
 })(typeof self !== 'undefined' ? self : this);
