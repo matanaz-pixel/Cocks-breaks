@@ -11,3 +11,15 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
+
+// הגנה מפני XSS: כל ערך שמגיע מ-Firebase (שם, מזהה, תמונה) עובר דרך esc() לפני שנכנס ל-innerHTML.
+function esc(v){
+  return String(v == null ? '' : v).replace(/[&<>"'`]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[ch]));
+}
+// תמונה מותרת: data:image בלבד (בסיס 64) או כתובת https בלי תווים מסוכנים. כל השאר מוחלף בריק.
+function safePhoto(p){
+  if(typeof p !== 'string') return '';
+  if(/^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+\/=]+$/.test(p)) return p;
+  if(/^https:\/\/[^\s"'<>()\\]+$/.test(p)) return p;
+  return '';
+}

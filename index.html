@@ -338,7 +338,7 @@
       `<option value="${s.key}" ${c.station===s.key?'selected':''}>${s.label}</option>`
     ).join('');
     const selectHtml = `
-      <select class="station-select" data-station-id="${c.id}" ${hasActiveBreak(c.id)?'disabled':''}>
+      <select class="station-select" data-station-id="${esc(c.id)}" ${hasActiveBreak(c.id)?'disabled':''}>
         <option value="" ${!c.station?'selected':''}>לא במשמרת</option>
         ${stationOptions}
       </select>`;
@@ -354,7 +354,7 @@
         const s = Math.floor(remaining%60).toString().padStart(2,'0');
         numText = m+':'+s;
         offset = CIRC_MINI * (1 - remaining / (b.minutes*60));
-        subText = `בהפסקה (${b.minutes} דק')`;
+        subText = `בהפסקה (${Number(b.minutes) || 0} דק')`;
       } else {
         const overtime = Math.max(0, Math.round((Date.now() - b.endAt)/1000));
         const m = Math.floor(overtime/60).toString().padStart(2,'0');
@@ -375,18 +375,18 @@
         </div>`;
       actionHtml = mode==='done'
         ? (b.muted
-            ? `<div class="actions-group"><span class="muted-tag">מושתק</span><button class="card-action ack-btn" data-id="${c.id}" data-action="ack">אישור</button></div>`
-            : `<div class="actions-group"><button class="card-action" data-id="${c.id}" data-action="mute">השתק</button><button class="card-action ack-btn" data-id="${c.id}" data-action="ack">אישור</button></div>`)
-        : `<button class="card-action" data-id="${c.id}" data-action="cancel">בטל</button>`;
+            ? `<div class="actions-group"><span class="muted-tag">מושתק</span><button class="card-action ack-btn" data-id="${esc(c.id)}" data-action="ack">אישור</button></div>`
+            : `<div class="actions-group"><button class="card-action" data-id="${esc(c.id)}" data-action="mute">השתק</button><button class="card-action ack-btn" data-id="${esc(c.id)}" data-action="ack">אישור</button></div>`)
+        : `<button class="card-action" data-id="${esc(c.id)}" data-action="cancel">בטל</button>`;
     } else {
-      avatarHtml = c.photo
-        ? `<div class="avatar"><img src="${c.photo}" alt=""></div>`
-        : `<div class="avatar">${initials(c.name)}</div>`;
+      avatarHtml = safePhoto(c.photo)
+        ? `<div class="avatar"><img src="${esc(safePhoto(c.photo))}" alt=""></div>`
+        : `<div class="avatar">${esc(initials(c.name))}</div>`;
       if(mode === 'off') subText = 'לא במשמרת היום';
       else if(mode === 'choosing') subText = 'בחר משך הפסקה';
       else subText = 'זמין - לחץ על ההפסקה כדי להתחיל';
       if(mode === 'idle'){
-        actionHtml = `<button class="start-btn" data-open-id="${c.id}">הפסקה</button>`;
+        actionHtml = `<button class="start-btn" data-open-id="${esc(c.id)}">הפסקה</button>`;
       }
     }
 
@@ -394,21 +394,21 @@
       <div class="card-row">
         ${selectHtml}
         ${avatarHtml}
-        <div class="card-body" data-history-id="${c.id}">
-          <div class="card-title">${c.name}</div>
+        <div class="card-body" data-history-id="${esc(c.id)}">
+          <div class="card-title">${esc(c.name)}</div>
           <div class="card-sub">${subText}</div>
         </div>
         ${actionHtml}
       </div>
       ${mode === 'choosing' ? `
         <div class="duration-row">
-          <button class="duration-btn" data-start-id="${c.id}" data-min="20">
+          <button class="duration-btn" data-start-id="${esc(c.id)}" data-min="20">
             <span class="duration-num">20</span><span class="duration-label">דקות</span>
           </button>
-          <button class="duration-btn" data-start-id="${c.id}" data-min="30">
+          <button class="duration-btn" data-start-id="${esc(c.id)}" data-min="30">
             <span class="duration-num">30</span><span class="duration-label">דקות</span>
           </button>
-          <button class="duration-cancel" data-close-id="${c.id}">ביטול</button>
+          <button class="duration-cancel" data-close-id="${esc(c.id)}">ביטול</button>
         </div>
       ` : ''}
     `;

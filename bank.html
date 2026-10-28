@@ -222,23 +222,24 @@
       const locked = hasActiveBreak(c.id);
       const row = document.createElement('div');
       row.className = 'bank-row';
-      const avatarStyle = c.photo ? `style="background-image:url('${c.photo}')"` : '';
+      const photo = safePhoto(c.photo);
+      const avatarStyle = photo ? `style="background-image:url('${esc(photo)}')"` : '';
       const personalUrl = window.location.origin + window.location.pathname.replace('bank.html','chef.html') + '?id=' + c.id;
       row.innerHTML = `
-        <div class="bank-avatar" data-pick-id="${c.id}" ${avatarStyle}>
-          ${c.photo ? '' : initials(c.name)}
+        <div class="bank-avatar" data-pick-id="${esc(c.id)}" ${avatarStyle}>
+          ${photo ? '' : esc(initials(c.name))}
           <span class="cam-badge">📷</span>
         </div>
-        <input type="file" id="photoInput-${c.id}" class="photo-input" accept="image/*">
-        <div class="bank-row-name">${c.name}${locked ? ' <span class="bank-row-tag">(בהפסקה כרגע)</span>' : ''}</div>
-        ${c.photo ? `<button class="bank-btn" data-remove-photo-id="${c.id}">הסר תמונה</button>` : ''}
-        <button class="bank-btn share" data-share-id="${c.id}">קישור אישי</button>
-        <button class="bank-btn danger" data-delete-id="${c.id}" ${locked?'disabled':''}>מחק</button>
+        <input type="file" id="photoInput-${esc(c.id)}" class="photo-input" accept="image/*">
+        <div class="bank-row-name">${esc(c.name)}${locked ? ' <span class="bank-row-tag">(בהפסקה כרגע)</span>' : ''}</div>
+        ${photo ? `<button class="bank-btn" data-remove-photo-id="${esc(c.id)}">הסר תמונה</button>` : ''}
+        <button class="bank-btn share" data-share-id="${esc(c.id)}">קישור אישי</button>
+        <button class="bank-btn danger" data-delete-id="${esc(c.id)}" ${locked?'disabled':''}>מחק</button>
         ${openShareId === c.id ? `
           <div class="share-row">
             <div class="share-box">
-              <input type="text" readonly value="${personalUrl}" onclick="this.select()">
-              <button class="bank-btn" data-copy-id="${c.id}" data-url="${personalUrl}">העתק</button>
+              <input type="text" readonly value="${esc(personalUrl)}" onclick="this.select()">
+              <button class="bank-btn" data-copy-id="${esc(c.id)}" data-url="${esc(personalUrl)}">העתק</button>
             </div>
           </div>
         ` : ''}
