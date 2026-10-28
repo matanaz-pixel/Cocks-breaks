@@ -333,6 +333,12 @@ function scaleYield(s, k){
   const i = lead.indexOf('(');
   return i < 0 ? lead : lead.slice(0, i) + scaleAll(lead.slice(i), k);   // גם "(כ-5 מנות)"
 }
+// שורת "מנות: 100 (270 גרם למנה)" מוצגת כ"100 מנות (270 גרם למנה)". מוכפל רק מספר המנות, לא המשקל למנה
+function yieldText(l, k){
+  const m = l.match(new RegExp(String.raw`^מנות:\s*(${NUM})(.*)$`));
+  if(!m) return l.startsWith('מנות:') ? l.replace(/^מנות:\s*/, '') : scaleYield(l, k);
+  return fmtNum(toNum(m[1]) * k, 'יח') + ' מנות' + m[2];
+}
 function parseMultiplier(str){
   let s = String(str).trim().replace(/^[x×*]\s*|\s*[x×*]$/gi, '').replace(',', '.');
   const glyph = FRACTIONS.find(([, g]) => s.endsWith(g));
@@ -510,7 +516,8 @@ function render(){
 }
 
 // שורות "תפוקה:" מוצגות בולט בראש המתכון, שאר ההערות בתחתית
-const splitNote = note => { const ls = note.split('\n'); return { yld: ls.filter(l => l.startsWith('תפוקה')), rest: ls.filter(l => l && !l.startsWith('תפוקה')).join('\n') }; };
+const isYld = l => l.startsWith('תפוקה') || l.startsWith('מנות:');
+const splitNote = note => { const ls = note.split('\n'); return { yld: ls.filter(isYld), rest: ls.filter(l => l && !isYld(l)).join('\n') }; };
 
 // מסנכרן את כל השורות המסומנות והכפתורים "נקה סימונים" במסך לפי המצב השמור
 function syncTicks(){
@@ -606,7 +613,7 @@ function buildCard(r){
     const ings = vr ? vr.ingredients : r.ingredients;
     clear.hidden = !(peek(key).ing.length || peek(key).st.length);
     dyn.replaceChildren();
-    if(yld.length) dyn.append(el('div', 'yield', yld.map(l => scaleYield(l, f)).join('\n')));
+    if(yld.length) dyn.append(el('div', 'yield', yld.map(l => yieldText(l, f)).join('\n')));
     if(ings.length) dyn.append(el('h3', '', 'מצרכים'), tickList('ul', ings, key, 'ing', f, vr ? null : scaleLine));
     if(r.steps.length) dyn.append(el('h3', '', 'הכנה'), tickList('ol', r.steps, key, 'st', f, null));
     if(rest) dyn.append(el('div', 'note', rest));
@@ -733,7 +740,7 @@ function openCook(r, key){
     body.replaceChildren();
     if(i === 0){
       body.append(el('div', 'step-no', 'מצרכים' + (steps.length ? ' · ' + steps.length + ' שלבים' : '')));
-      if(yld.length) body.append(el('div', 'yield', yld.map(l => scaleYield(l, f)).join('\n')));
+      if(yld.length) body.append(el('div', 'yield', yld.map(l => yieldText(l, f)).join('\n')));
       body.append(tickList('ul', ings, key, 'ing', f, vr ? null : scaleLine));
     }else{
       body.append(el('div', 'step-no', 'שלב ' + i + ' מתוך ' + steps.length));
@@ -865,7 +872,7 @@ function openFix(preset){
   work.append(chosen, seg, pQty, pTxt, pYld, l3, l4, hp);
   work.hidden = true;
 
-  let qrows = [], txt = null, yin = null, yIdx = -1, yBase = '';
+  let qrows = [], txt = null, yin = null, pin = null, yIdx = -1, yBase = '', pIdx = -1, pBase = '';
   function choose(x){
     r = x; pick.hidden = true; work.hidden = false; send.hidden = false; msg.hidden = true;
     bQty.hidden = !!r.variants;                                       // מתכון עם גרסאות כמות: תיקון כמויות אצל השף בלבד
@@ -896,8 +903,13 @@ function openFix(preset){
     const noteLines = (r.raw['הערות'] || '').replace(/\r/g, '').split('\n');
     yIdx = noteLines.findIndex(l => l.trim().startsWith('תפוקה'));
     yBase = yIdx >= 0 ? noteLines[yIdx].trim().replace(/^תפוקה:?\s*/, '') : '';
-    yin = el('input'); yin.type = 'text'; yin.maxLength = 120; yin.value = yBase; yin.placeholder = 'למשל: 2 ליטר או כ-10 מנות';
-    pYld.replaceChildren(el('div', 'hint2', yIdx >= 0 ? 'התפוקה כפי שהיא בספר. אפשר לשנות את הנוסח.' : 'למתכון הזה אין עדיין תפוקה, אפשר להוסיף כאן.'), yin);
+    pIdx = noteLines.findIndex(l => l.trim().startsWith('מנות:'));
+    pBase = pIdx >= 0 ? noteLines[pIdx].trim().replace(/^מנות:\s*/, '') : '';
+    yin = el('input'); yin.type = 'text'; yin.maxLength = 120; yin.value = yBase; yin.placeholder = 'למשל: 27 ק"ג בצק';
+    pin = el('input'); pin.type = 'text'; pin.maxLength = 120; pin.value = pBase; pin.placeholder = 'למשל: 100 (270 גרם למנה)';
+    const ly = el('label', '', 'תפוקה (כמות)'); ly.append(yin);
+    const lp = el('label', '', 'כמה מנות יוצאות (מספר, ואפשר גם משקל למנה בסוגריים)'); lp.append(pin);
+    pYld.replaceChildren(el('div', 'hint2', yIdx >= 0 || pIdx >= 0 ? 'כפי שהם בספר. אפשר לשנות כל אחד.' : 'למתכון הזה אין עדיין תפוקה או מספר מנות, אפשר להוסיף כאן.'), ly, lp);
     setMode(r.ingredients.length && !r.variants ? 'qty' : 'txt');
   }
 
@@ -907,7 +919,7 @@ function openFix(preset){
   form.append(el('h2', '', 'בקשת תיקון'), pick, work, msg, actions);
   dlg.append(form);
 
-  const dirty = () => !sent && r && (qrows.some(q => q.inp.value.trim() !== q.s.qty) || (txt && txt.value.trim() !== (r.raw['הוראות הכנה'] || '').trim()) || (yin && yin.value.trim() !== yBase) || comment.value.trim());
+  const dirty = () => !sent && r && (qrows.some(q => q.inp.value.trim() !== q.s.qty) || (txt && txt.value.trim() !== (r.raw['הוראות הכנה'] || '').trim()) || (yin && (yin.value.trim() !== yBase || pin.value.trim() !== pBase)) || comment.value.trim());
   const tryClose = () => { if(!dirty() || confirm('לסגור בלי לשלוח? מה שכתבת יימחק.')) dlg.close(); };
   cancel.onclick = tryClose;
   dlg.addEventListener('cancel', ev => { ev.preventDefault(); tryClose(); });   // ESC
@@ -929,11 +941,19 @@ function openFix(preset){
     // הוראות הכנה
     const t = txt ? txt.value.trim() : '';
     if(txt && t && t !== (r.raw['הוראות הכנה'] || '').trim()) reqs.push({ field: 'הוראות הכנה', base: r.raw['הוראות הכנה'] || '', proposed: t });
-    // תפוקה
-    const yv = yin ? yin.value.trim() : '';
-    if(yin && yv && yv !== yBase){
-      const ls = (r.raw['הערות'] || '').replace(/\r/g, '').split('\n');
-      if(yIdx >= 0) ls[yIdx] = 'תפוקה: ' + yv; else ls.unshift('תפוקה: ' + yv);
+    // תפוקה ומספר מנות (שתי שורות בתוך עמודת ההערות)
+    const yv = yin ? yin.value.trim() : '', pv = pin ? pin.value.trim() : '';
+    const yChg = yin && yv && yv !== yBase, pChg = pin && pv && pv !== pBase;
+    if(yChg || pChg){
+      let ls = (r.raw['הערות'] || '').replace(/\r/g, '').split('\n');
+      const at = (pref, val) => {
+        const i = ls.findIndex(l => l.trim().startsWith(pref));
+        if(i >= 0) ls[i] = pref + ' ' + val;
+        else if(pref === 'מנות:' && ls.findIndex(l => l.trim().startsWith('תפוקה')) >= 0) ls.splice(ls.findIndex(l => l.trim().startsWith('תפוקה')) + 1, 0, pref + ' ' + val);
+        else ls.unshift(pref + ' ' + val);
+      };
+      if(pChg) at('מנות:', pv);
+      if(yChg) at('תפוקה:', yv);                                       // תפוקה נשארת מעל המנות
       reqs.push({ field: 'הערות', base: r.raw['הערות'] || '', proposed: ls.join('\n').replace(/\n+$/, '') });
     }
     if(!reqs.length){ say('לא בוצע שום שינוי.', true); return; }
