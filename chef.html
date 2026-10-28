@@ -157,7 +157,9 @@
       notFoundBox.classList.add('hidden');
       content.classList.remove('hidden');
       chefNameEl.textContent = chef.name;
-      avatarEl.innerHTML = chef.photo ? `<img src="${chef.photo}" alt="">` : initials(chef.name);
+      const ph = safePhoto(chef.photo);
+      if(ph){ const im = document.createElement('img'); im.src = ph; im.alt = ''; avatarEl.replaceChildren(im); }
+      else avatarEl.textContent = initials(chef.name);
       render();
     });
 

@@ -130,10 +130,10 @@
 
     const profileEl = document.getElementById('profile');
     profileEl.innerHTML = `
-      <div class="profile-avatar">${chef && chef.photo ? `<img src="${chef.photo}" alt="">` : initials(chefName)}</div>
+      <div class="profile-avatar">${chef && safePhoto(chef.photo) ? `<img src="${esc(safePhoto(chef.photo))}" alt="">` : esc(initials(chefName))}</div>
       <div>
-        <div class="profile-name">${chefName}</div>
-        <div class="profile-sub">${chef ? stationLabel(chef.station) : 'הוסר מהבנק'}</div>
+        <div class="profile-name">${esc(chefName)}</div>
+        <div class="profile-sub">${esc(chef ? stationLabel(chef.station) : 'הוסר מהבנק')}</div>
       </div>
     `;
 
@@ -164,13 +164,13 @@
 
         let subText;
         if(h.status === 'cancelled'){
-          subText = `הפסקה של ${h.minutes} דק' - בוטלה מוקדם`;
+          subText = `הפסקה של ${Number(h.minutes) || 0} דק' - בוטלה מוקדם`;
         } else if(h.overtimeSeconds > 0){
           const om = Math.floor(h.overtimeSeconds/60).toString().padStart(2,'0');
           const os = Math.floor(h.overtimeSeconds%60).toString().padStart(2,'0');
-          subText = `הפסקה של ${h.minutes} דק' - <span class="entry-overtime">חריגה של ${om}:${os}</span>`;
+          subText = `הפסקה של ${Number(h.minutes) || 0} דק' - <span class="entry-overtime">חריגה של ${om}:${os}</span>`;
         } else {
-          subText = `הפסקה של ${h.minutes} דק' - בזמן`;
+          subText = `הפסקה של ${Number(h.minutes) || 0} דק' - בזמן`;
         }
 
         const row = document.createElement('div');
