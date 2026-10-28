@@ -109,6 +109,23 @@
   .qrow.bad input{ border-color:#c0392b; background:#fde8e3; }
   .fix-form input.bad{ border-color:#c0392b; background:#fde8e3; }
   .qcount{ margin-top:6px; font-size:13px; color:var(--accent); font-weight:500; }
+  .prep-btn{ min-height:44px; padding:0 16px; border:1px solid var(--green); border-radius:999px; background:#fff; color:var(--green); font:inherit; font-size:14px; cursor:pointer; }
+  .prep-btn.on{ background:var(--green); color:#fff; }
+  .prep-badge{ display:inline-block; margin-inline-start:8px; padding:2px 9px; border-radius:999px; border:1px solid var(--green); color:var(--green); font-size:11px; font-weight:500; vertical-align:middle; }
+  .prep-fab{ position:fixed; inset-inline-end:16px; bottom:calc(16px + env(safe-area-inset-bottom)); z-index:7; min-height:52px; padding:0 20px; border-radius:999px; border:none; background:#25a244; color:#fff; font:inherit; font-size:15px; font-weight:600; box-shadow:0 4px 14px rgba(0,0,0,.3); cursor:pointer; }
+  body.has-timers .prep-fab{ bottom:calc(120px + env(safe-area-inset-bottom)); }
+  .prow{ display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  .prow:last-child{ border-bottom:none; }
+  .prow .pn{ flex:1 1 140px; font-weight:600; font-size:15px; }
+  .prow .pq{ font-size:13px; color:var(--text-dim); flex:1 1 100%; }
+  .prow input{ width:72px; min-height:44px; text-align:center; border:1px solid var(--line); border-radius:10px; font:inherit; font-size:16px; background:#fff; color:var(--text); }
+  .prow .pv{ display:flex; gap:6px; flex-wrap:wrap; }
+  .prow .pv button{ min-height:40px; padding:0 12px; border:1px solid var(--line); border-radius:999px; background:#fff; font:inherit; font-size:13px; cursor:pointer; }
+  .prow .pv button.on{ background:var(--green); color:#fff; border-color:var(--green); }
+  .prow .px{ width:44px; height:44px; border:none; background:none; font-size:22px; color:#a3300f; cursor:pointer; }
+  .padd{ display:flex; gap:8px; }
+  .padd input{ min-width:0; }
+  .fix-actions .wa{ background:#25a244; border-color:#25a244; color:#fff; }
   .hp{ position:absolute; left:-9999px; width:1px; height:1px; opacity:0; }
   .yield{ white-space:pre-line; margin-top:14px; padding:10px 14px; border-radius:12px; background:var(--green); color:#fff; font-size:16px; font-weight:500; }
   .card-actions{ display:flex; gap:10px; align-items:center; margin-top:12px; }
@@ -212,10 +229,12 @@ const CATEGORIES = ['פס קר', 'פס חם', 'טאבון', "צ'קר", 'קונד
 const STORE_KEY = 'rb-state-v1', SHEET_CACHE_KEY = 'rb-sheet-v1', TTL = 12 * 3600e3;
 const now = () => Date.now();
 let state = (() => { try{ const s = JSON.parse(localStorage.getItem(STORE_KEY)); return s && typeof s === 'object' ? s : {}; }catch(e){ return {}; } })();
-state.mult = state.mult || {}; state.variant = state.variant || {}; state.prog = state.prog || {}; state.recent = state.recent || []; state.timers = state.timers || [];
+state.mult = state.mult || {}; state.variant = state.variant || {}; state.prog = state.prog || {}; state.recent = state.recent || []; state.timers = state.timers || []; state.prep = state.prep || {}; state.prepExtra = state.prepExtra || [];
 if(state.wake === undefined) state.wake = true;
 for(const k of Object.keys(state.mult)) if(!Array.isArray(state.mult[k]) || now() - state.mult[k][1] > TTL) delete state.mult[k];   // הכפלה פגה אחרי 12 שעות
 for(const k of Object.keys(state.variant)) if(!Array.isArray(state.variant[k]) || now() - state.variant[k][1] > TTL) delete state.variant[k];   // בחירת גרסה פגה אחרי 12 שעות
+for(const k of Object.keys(state.prep)) if(!state.prep[k] || now() - state.prep[k] > TTL) delete state.prep[k];   // רשימת הכנות פגה אחרי 12 שעות
+state.prepExtra = state.prepExtra.filter(x => x && now() - x.ts <= TTL);
 for(const k of Object.keys(state.prog)) if(!state.prog[k] || now() - state.prog[k].ts > TTL) delete state.prog[k];              // סימונים פגים אחרי 12 שעות
 function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){} }
 const getMult = key => (state.mult[key] && state.mult[key][0]) || 1;
@@ -513,6 +532,7 @@ function render(){
     return;
   }
   list.replaceChildren(...shown.map(buildCard));
+  syncPrep();
 }
 
 // שורות "תפוקה:" מוצגות בולט בראש המתכון, שאר ההערות בתחתית
@@ -550,6 +570,7 @@ function buildCard(r){
   if(r.current) t.firstChild.append(el('span', 'badge', '★ תפריט נוכחי'));
   const multTag = el('span', 'mult-tag'); multTag.hidden = true;
   t.firstChild.append(multTag);
+  const prepTag = el('span', 'prep-badge', '✓ להכנה'); prepTag.dataset.prepTag = key; prepTag.hidden = !state.prep[key]; t.firstChild.append(prepTag);
   head.append(t, el('span', 'chev', '▾'));
   card.classList.toggle('open', openCards.has(key));
   head.setAttribute('aria-expanded', openCards.has(key));
@@ -588,7 +609,9 @@ function buildCard(r){
   const cook = el('button', 'cook-btn', '▶ מצב בישול'); cook.type = 'button'; cook.onclick = () => openCook(r, key);
   const clear = el('button', 'clear-btn', 'נקה סימונים'); clear.type = 'button';
   clear.onclick = () => { delete state.prog[key]; save(); syncTicks(); };
-  actions.append(cook, clear);
+  const prepB = el('button', 'prep-btn'); prepB.type = 'button'; prepB.dataset.prep = key;
+  prepB.onclick = () => { if(state.prep[key]) delete state.prep[key]; else state.prep[key] = now(); save(); syncPrep(); };
+  actions.append(cook, prepB, clear);
   const dyn = el('div');
   const { yld, rest } = splitNote(r.note);
   function update(){
@@ -974,6 +997,98 @@ function openFix(preset){
   dlg.addEventListener('close', () => dlg.remove());
   document.body.append(dlg); dlg.showModal();
   if(preset) choose(preset); else { fillPick(); pickIn.focus(); }
+}
+
+
+// ---- רשימת הכנות לשליחה בוואטסאפ ----
+// הטבח מסמן "להכנה היום" בכרטיס מתכון, הכמות היא ההכפלה/הגרסה שנבחרה, ואפשר להוסיף פריטים שלא בספר.
+function syncPrep(){
+  document.querySelectorAll('[data-prep]').forEach(b => { const on = !!state.prep[b.dataset.prep]; b.classList.toggle('on', on); b.textContent = on ? '✓ ברשימת ההכנות' : '＋ להכנה היום'; });
+  document.querySelectorAll('[data-prep-tag]').forEach(b => { b.hidden = !state.prep[b.dataset.prepTag]; });
+  const n = Object.keys(state.prep).filter(k => recipes.some(r => keyOf(r) === k)).length + state.prepExtra.length;
+  let fab = document.getElementById('prepFab');
+  if(!fab){ fab = el('button', 'prep-fab'); fab.id = 'prepFab'; fab.type = 'button'; fab.onclick = openPrep; document.body.append(fab); }
+  fab.hidden = n === 0; fab.textContent = '📋 רשימת הכנות (' + n + ')';
+}
+function prepInfo(r){
+  const key = keyOf(r), vr = variantOf(r, key), f = vr ? 1 : getMult(key);
+  const { yld } = splitNote(r.note);
+  const mult = vr ? vr.label : f !== 1 ? '×' + fmtNum(f) : '';
+  const y = yld.map(l => yieldText(l, f)).join(', ');
+  return { mult, y, line: '• ' + r.title + (mult ? ' ' + mult : '') + (y ? ' — ' + y : '') };
+}
+function prepMessage(name, note){
+  const d = new Date(), p2 = n => String(n).padStart(2, '0');
+  const out = ['*רשימת הכנות*', 'שם: ' + name, 'תאריך: ' + p2(d.getDate()) + '/' + p2(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + p2(d.getHours()) + ':' + p2(d.getMinutes()), ''];
+  recipes.filter(r => state.prep[keyOf(r)]).forEach(r => out.push(prepInfo(r).line));
+  state.prepExtra.forEach(x => out.push('• ' + x.name + (x.qty ? ' — ' + x.qty : '')));
+  if(note) out.push('', 'הערה: ' + note);
+  return out.join('\n');
+}
+function openPrep(){
+  const dlg = document.createElement('dialog'); dlg.className = 'fix';
+  const form = el('form', 'fix-form'); form.noValidate = true;
+  const msg = el('div'); msg.hidden = true;
+  const say = (t, err) => { msg.className = 'fix-msg' + (err ? ' err' : ''); msg.textContent = t; msg.hidden = false; msg.scrollIntoView({ block: 'nearest' }); };
+  const list = el('div', 'qlist');
+  function draw(){
+    list.replaceChildren();
+    const sel = recipes.filter(r => state.prep[keyOf(r)]);
+    sel.forEach(r => {
+      const key = keyOf(r), row = el('div', 'prow');
+      row.append(el('div', 'pn', r.title));
+      if(r.variants){
+        const pv = el('div', 'pv');
+        r.variants.forEach(v => { const b = el('button', variantOf(r, key) === v ? 'on' : '', v.label); b.type = 'button'; b.onclick = () => { setVariant(r, key, v); draw(); }; pv.append(b); });
+        row.append(pv);
+      }else{
+        const inp = el('input'); inp.type = 'text'; inp.inputMode = 'decimal'; inp.value = String(getMult(key)); inp.setAttribute('aria-label', 'הכפלה: ' + r.title);
+        inp.addEventListener('change', () => { const k = parseMultiplier(inp.value); if(k !== null) setMult(key, k); draw(); });
+        row.append(el('span', '', '×'), inp);
+      }
+      const x = el('button', 'px', '×'); x.type = 'button'; x.setAttribute('aria-label', 'הסרה'); x.onclick = () => { delete state.prep[key]; save(); syncPrep(); draw(); };
+      row.append(x, el('div', 'pq', [prepInfo(r).mult, prepInfo(r).y].filter(Boolean).join(' — ')));
+      list.append(row);
+    });
+    state.prepExtra.forEach((e, i) => {
+      const row = el('div', 'prow'); row.append(el('div', 'pn', e.name), el('div', 'pq', e.qty || ''));
+      const x = el('button', 'px', '×'); x.type = 'button'; x.onclick = () => { state.prepExtra.splice(i, 1); save(); syncPrep(); draw(); }; row.append(x);
+      list.append(row);
+    });
+    if(!list.children.length) list.append(el('div', 'pick-none', 'הרשימה ריקה. מסמנים "להכנה היום" בכרטיס מתכון או מוסיפים פריט למטה.'));
+  }
+  draw();
+  const an = el('input'); an.type = 'text'; an.maxLength = 60; an.placeholder = 'פריט שלא בספר (למשל מלפפון)';
+  const aq = el('input'); aq.type = 'text'; aq.maxLength = 40; aq.placeholder = 'כמות (למשל 5 ק"ג)'; aq.style.maxWidth = '40%';
+  const ab = el('button', 'cancel', 'הוספה'); ab.type = 'button';
+  ab.onclick = () => { const n = an.value.trim(); if(!n){ an.focus(); return; } state.prepExtra.push({ name: n, qty: aq.value.trim(), ts: now() }); an.value = aq.value = ''; save(); syncPrep(); draw(); };
+  const padd = el('div', 'padd'); padd.append(an, aq, ab);
+  const nm = el('input'); nm.type = 'text'; nm.maxLength = 60; nm.placeholder = 'השם שלך (חובה)';
+  try{ nm.value = localStorage.getItem('rb-sender') || ''; }catch(e){}
+  nm.addEventListener('input', () => nm.classList.remove('bad'));
+  const note = el('input'); note.type = 'text'; note.maxLength = 200; note.placeholder = 'הערה (לא חובה)';
+  const l1 = el('label', '', 'הוספת פריט'); l1.append(padd);
+  const l2 = el('label', '', 'שם הטבח'); l2.append(nm);
+  const l3 = el('label', '', 'הערה'); l3.append(note);
+  const send = el('button', 'send wa', 'שליחה בוואטסאפ'); send.type = 'submit';
+  const clr = el('button', 'cancel', 'ניקוי'); clr.type = 'button';
+  clr.onclick = () => { if(!confirm('למחוק את כל הרשימה?')) return; state.prep = {}; state.prepExtra = []; save(); syncPrep(); draw(); };
+  const close = el('button', 'cancel', 'סגירה'); close.type = 'button'; close.onclick = () => dlg.close();
+  const actions = el('div', 'fix-actions'); actions.append(send, close, clr);
+  form.append(el('h2', '', 'רשימת הכנות'), el('div', 'hint2', 'הכמות היא לפי ההכפלה או הגרסה שנבחרה בכל מתכון. אפשר לשנות אותה גם כאן.'), list, l1, l2, l3, msg, actions);
+  form.addEventListener('submit', ev => {
+    ev.preventDefault();
+    const name = nm.value.trim();
+    const n = recipes.filter(r => state.prep[keyOf(r)]).length + state.prepExtra.length;
+    if(!n){ say('הרשימה ריקה.', true); return; }
+    if(!name){ say('חובה לכתוב את השם שלך.', true); nm.classList.add('bad'); nm.focus(); return; }
+    try{ localStorage.setItem('rb-sender', name); }catch(e){}
+    const url = 'https://wa.me/?text=' + encodeURIComponent(prepMessage(name, note.value.trim()));
+    const a = document.createElement('a'); a.href = url; a.target = '_blank'; a.rel = 'noopener'; document.body.append(a); a.click(); a.remove();
+    say('וואטסאפ נפתח עם ההודעה. בוחרים למי לשלוח ולוחצים שליחה.', false);
+  });
+  dlg.addEventListener('close', () => { dlg.remove(); render(); });
+  dlg.append(form); document.body.append(dlg); dlg.showModal();
 }
 
 // ---- אתחול ----
