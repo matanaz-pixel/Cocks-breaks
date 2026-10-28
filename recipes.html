@@ -849,20 +849,20 @@ function openFix(preset){
   const work = el('div', 'work');
   const chosen = el('div', 'chosen');
   const seg = el('div', 'seg');
-  const bQty = el('button', 'on', 'שינוי כמויות'), bTxt = el('button', '', 'שינוי הוראות הכנה');
-  bQty.type = bTxt.type = 'button'; seg.append(bQty, bTxt);
-  const pQty = el('div', 'panel'), pTxt = el('div', 'panel'); pTxt.hidden = true;
-  const setMode = m => { mode = m; bQty.classList.toggle('on', m === 'qty'); bTxt.classList.toggle('on', m === 'txt'); pQty.hidden = m !== 'qty'; pTxt.hidden = m !== 'txt'; };
-  bQty.onclick = () => setMode('qty'); bTxt.onclick = () => setMode('txt');
+  const bQty = el('button', 'on', 'כמויות'), bTxt = el('button', '', 'הוראות הכנה'), bYld = el('button', '', 'תפוקה');
+  bQty.type = bTxt.type = bYld.type = 'button'; seg.append(bQty, bTxt, bYld);
+  const pQty = el('div', 'panel'), pTxt = el('div', 'panel'), pYld = el('div', 'panel'); pTxt.hidden = true; pYld.hidden = true;
+  const setMode = m => { mode = m; bQty.classList.toggle('on', m === 'qty'); bTxt.classList.toggle('on', m === 'txt'); bYld.classList.toggle('on', m === 'yld'); pQty.hidden = m !== 'qty'; pTxt.hidden = m !== 'txt'; pYld.hidden = m !== 'yld'; };
+  bQty.onclick = () => setMode('qty'); bTxt.onclick = () => setMode('txt'); bYld.onclick = () => setMode('yld');
   const comment = el('input'); comment.type = 'text'; comment.maxLength = 300; comment.placeholder = 'מה לא נכון? (לא חובה)';
   const sender = el('input'); sender.type = 'text'; sender.maxLength = 60; sender.placeholder = 'השם שלך (לא חובה)';
   const hp = el('input', 'hp'); hp.type = 'text'; hp.tabIndex = -1; hp.autocomplete = 'off'; hp.setAttribute('aria-hidden', 'true');
   const l3 = el('label', '', 'הערה'); l3.append(comment);
   const l4 = el('label', '', 'שולח'); l4.append(sender);
-  work.append(chosen, seg, pQty, pTxt, l3, l4, hp);
+  work.append(chosen, seg, pQty, pTxt, pYld, l3, l4, hp);
   work.hidden = true;
 
-  let qrows = [], txt = null;
+  let qrows = [], txt = null, yin = null, yIdx = -1, yBase = '';
   function choose(x){
     r = x; pick.hidden = true; work.hidden = false; send.hidden = false; msg.hidden = true;
     bQty.hidden = !!r.variants;                                       // מתכון עם גרסאות כמות: תיקון כמויות אצל השף בלבד
@@ -889,6 +889,12 @@ function openFix(preset){
     txt = el('textarea'); txt.value = r.raw['הוראות הכנה'] || '';
     pTxt.replaceChildren(el('div', 'hint2', 'עריכה חופשית. כל שורה היא שלב.'), txt);
     if(!r.steps.length) pTxt.prepend(el('div', 'hint2 warn', 'למתכון הזה אין עדיין הוראות הכנה, אפשר לכתוב אותן כאן.'));
+    // תפוקה: שורה "תפוקה: ..." בתוך עמודת ההערות. משנים רק אותה ושאר ההערות נשארות כמות שהן
+    const noteLines = (r.raw['הערות'] || '').replace(/\r/g, '').split('\n');
+    yIdx = noteLines.findIndex(l => l.trim().startsWith('תפוקה'));
+    yBase = yIdx >= 0 ? noteLines[yIdx].trim().replace(/^תפוקה:?\s*/, '') : '';
+    yin = el('input'); yin.type = 'text'; yin.maxLength = 120; yin.value = yBase; yin.placeholder = 'למשל: 2 ליטר או כ-10 מנות';
+    pYld.replaceChildren(el('div', 'hint2', yIdx >= 0 ? 'התפוקה כפי שהיא בספר. אפשר לשנות את הנוסח.' : 'למתכון הזה אין עדיין תפוקה, אפשר להוסיף כאן.'), yin);
     setMode(r.ingredients.length && !r.variants ? 'qty' : 'txt');
   }
 
@@ -898,7 +904,7 @@ function openFix(preset){
   form.append(el('h2', '', 'בקשת תיקון'), pick, work, msg, actions);
   dlg.append(form);
 
-  const dirty = () => !sent && r && (qrows.some(q => q.inp.value.trim() !== q.s.qty) || (txt && txt.value.trim() !== (r.raw['הוראות הכנה'] || '').trim()) || comment.value.trim());
+  const dirty = () => !sent && r && (qrows.some(q => q.inp.value.trim() !== q.s.qty) || (txt && txt.value.trim() !== (r.raw['הוראות הכנה'] || '').trim()) || (yin && yin.value.trim() !== yBase) || comment.value.trim());
   const tryClose = () => { if(!dirty() || confirm('לסגור בלי לשלוח? מה שכתבת יימחק.')) dlg.close(); };
   cancel.onclick = tryClose;
   dlg.addEventListener('cancel', ev => { ev.preventDefault(); tryClose(); });   // ESC
@@ -920,6 +926,13 @@ function openFix(preset){
     // הוראות הכנה
     const t = txt ? txt.value.trim() : '';
     if(txt && t && t !== (r.raw['הוראות הכנה'] || '').trim()) reqs.push({ field: 'הוראות הכנה', base: r.raw['הוראות הכנה'] || '', proposed: t });
+    // תפוקה
+    const yv = yin ? yin.value.trim() : '';
+    if(yin && yv && yv !== yBase){
+      const ls = (r.raw['הערות'] || '').replace(/\r/g, '').split('\n');
+      if(yIdx >= 0) ls[yIdx] = 'תפוקה: ' + yv; else ls.unshift('תפוקה: ' + yv);
+      reqs.push({ field: 'הערות', base: r.raw['הערות'] || '', proposed: ls.join('\n').replace(/\n+$/, '') });
+    }
     if(!reqs.length){ say('לא בוצע שום שינוי.', true); return; }
     send.disabled = true; msg.hidden = true;
     const results = [];
@@ -931,7 +944,7 @@ function openFix(preset){
     if(lost.length){ say('לא הצלחתי לוודא שהבקשה נשמרה. בדקו חיבור ונסו לשלוח שוב (בקשה כפולה לא תירשם פעמיים).', true); send.disabled = false; return; }
     if(bad.length){ say(bad.map(x => x.field + ': ' + FIX_REPLIES[x.reply][0]).join('\n'), true); send.disabled = false; return; }
     sent = true; send.hidden = true; cancel.textContent = 'סגירה';
-    say(reqs.length === 1 ? 'הבקשה נשלחה וממתינה לאישור. תודה!' : 'נשלחו ' + reqs.length + ' בקשות (כמויות והוראות הכנה) וממתינות לאישור. תודה!', false);
+    say(reqs.length === 1 ? 'הבקשה נשלחה וממתינה לאישור. תודה!' : 'נשלחו ' + reqs.length + ' בקשות וממתינות לאישור. תודה!', false);
   });
   dlg.addEventListener('close', () => dlg.remove());
   document.body.append(dlg); dlg.showModal();
