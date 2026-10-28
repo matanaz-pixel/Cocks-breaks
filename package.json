@@ -1,0 +1,9 @@
+{
+  "name": "cocks-breaks",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/lib.test.js",
+    "lint:csv": "node tests/lint-csv.js",
+    "check": "npm run lint:csv && npm test"
+  }
+}

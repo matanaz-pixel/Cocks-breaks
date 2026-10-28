@@ -1,7 +1,7 @@
 // Service worker של ספר המתכונים בלבד (נפרד מזה של אפליקציית ההפסקות).
 // הדף נטען קודם מהרשת (עד 4 שניות) כדי שעדכונים יגיעו, ואם אין קליטה נטען מהמכשיר.
-const VERSION = 'book-v2';
-const SHELL = ['./recipes.html', './recipes.csv', './recipes-extra.csv', './recipes.webmanifest', './roberta-logo-white.svg', './roberta-logo.png', './roberta-icon-192.png'];
+const VERSION = 'book-v3';
+const SHELL = ['./recipes.html', './recipes-lib.js', './recipes.csv', './recipes-extra.csv', './recipes.webmanifest', './roberta-logo-white.svg', './roberta-logo.png', './roberta-icon-192.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -33,7 +33,7 @@ self.addEventListener('fetch', e => {
   if(req.method !== 'GET') return;
   if(url.origin === location.origin){
     const file = url.pathname.split('/').pop();
-    if(file === 'recipes.html' || file === 'recipes-extra.csv' || req.mode === 'navigate') return e.respondWith(networkFirst(req, 4000));
+    if(file === 'recipes.html' || file === 'recipes-lib.js' || file === 'recipes-extra.csv' || req.mode === 'navigate') return e.respondWith(networkFirst(req, 4000));
     if(SHELL.some(s => s.endsWith('/' + file))) return e.respondWith(staleWhileRevalidate(req));
     return;
   }
