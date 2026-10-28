@@ -61,8 +61,7 @@ test('scaling: lead quantity only', () => {
   assert.strictEqual(R.scaleLine('חצי ליטר חלב', 2), '1 ליטר חלב');
 });
 test('scaling: flags lines with extra quantities', () => {
-  assert.ok(R.hasUnscaledQty('6 גרם ג\'לטין (מומס ב-24 גרם מים)'));
-  assert.ok(R.hasUnscaledQty('100 גרם אריסה לכל 2 ק"ג'));
+  assert.ok(R.hasUnscaledQty('2 ק"ג בשר, מוסיפים 300 גרם מלח'));
   assert.ok(!R.hasUnscaledQty('2 ק"ג בצל'));
 });
 test('scaling: step quantities are found for highlighting', () => {
@@ -90,4 +89,30 @@ test('CSV parse + table', () => {
 });
 test('table without required columns is rejected', () => {
   assert.strictEqual(R.parseTable('a,b\n1,2\n'), null);
+});
+
+test('scaling: dissolved amount in parentheses scales with the lead quantity', () => {
+  assert.strictEqual(R.scaleLine("6 גרם ג'לטין (מומס ב-24 גרם מים)", 2), "12 גרם ג'לטין (מומס ב-48 גרם מים)");
+});
+test('scaling: per-unit weights and ratios are not flagged', () => {
+  assert.ok(!R.hasUnscaledQty('2 מיכלים יוגורט כבשים (1.5 ק"ג כל אחד)'));
+  assert.ok(!R.hasUnscaledQty('100 גרם אריסה לכל 2 ק"ג תבשיל מוכן'));
+});
+test('scaling: step quantity gets a suggested scaled value', () => {
+  const q = R.splitQuantities('מערבבים עם 400 גרם מלח', 2).find(p => p.q);
+  assert.strictEqual(q.s, '800 גרם');
+  assert.strictEqual(R.splitQuantities('400 גרם', 1)[0].s, undefined);
+});
+test('yield: approximate and range portions scale', () => {
+  assert.strictEqual(R.yieldText('מנות: כ-100 (270 גרם למנה)', 2), 'כ-200 מנות (270 גרם למנה)');
+  assert.strictEqual(R.yieldText('מנות: 100-120', 2), '200-240 מנות');
+});
+test('validation of portions and yield fields', () => {
+  assert.strictEqual(R.validatePortions('100 (270 גרם למנה)'), '');
+  assert.strictEqual(R.validatePortions('כ-100'), '');
+  assert.strictEqual(R.validatePortions('100-120'), '');
+  assert.notStrictEqual(R.validatePortions('הרבה'), '');
+  assert.notStrictEqual(R.validatePortions('~'), '');
+  assert.strictEqual(R.validateYield('27 ק"ג בצק'), '');
+  assert.notStrictEqual(R.validateYield('הרבה בצק'), '');
 });

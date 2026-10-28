@@ -23,7 +23,8 @@ function check(file, list){
     if(!r.ingredients.length) errors.push(`${file}: ${k} בלי מצרכים`);
     if(!r.steps.length) warns.push(`${file}: ${k} בלי הוראות הכנה`);
     if(!/^(תפוקה|מנות):/m.test(r.note)) warns.push(`${file}: ${k} בלי שורת תפוקה`);
-    if(!/אלרגנ|חיי מדף/.test(r.note)) warns.push(`${file}: ${k} בלי אלרגנים/חיי מדף`);
+    if(r.allergens === null) warns.push(`${file}: ${k} בלי אלרגנים`);
+    if(!/חיי מדף/.test(r.note)) warns.push(`${file}: ${k} בלי חיי מדף`);
     r.ingredients.forEach(l => { if(!l.endsWith(':') && !/\d|חצי|רבע|שליש/.test(l)) warns.push(`${file}: ${k}: מצרך בלי כמות: ${l}`); });
     for(const v of r.variants || []) if(!v.ingredients.length) errors.push(`${file}: ${k}: גרסה ריקה ${v.label}`);
   }
