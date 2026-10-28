@@ -107,6 +107,7 @@
   .qrow.plain .rest{ color:var(--text-dim); padding:8px 0; }
   .qrow.chg input{ border-color:var(--accent); background:#fff4f0; font-weight:600; }
   .qrow.bad input{ border-color:#c0392b; background:#fde8e3; }
+  .fix-form input.bad{ border-color:#c0392b; background:#fde8e3; }
   .qcount{ margin-top:6px; font-size:13px; color:var(--accent); font-weight:500; }
   .hp{ position:absolute; left:-9999px; width:1px; height:1px; opacity:0; }
   .yield{ white-space:pre-line; margin-top:14px; padding:10px 14px; border-radius:12px; background:var(--green); color:#fff; font-size:16px; font-weight:500; }
@@ -855,10 +856,12 @@ function openFix(preset){
   const setMode = m => { mode = m; bQty.classList.toggle('on', m === 'qty'); bTxt.classList.toggle('on', m === 'txt'); bYld.classList.toggle('on', m === 'yld'); pQty.hidden = m !== 'qty'; pTxt.hidden = m !== 'txt'; pYld.hidden = m !== 'yld'; };
   bQty.onclick = () => setMode('qty'); bTxt.onclick = () => setMode('txt'); bYld.onclick = () => setMode('yld');
   const comment = el('input'); comment.type = 'text'; comment.maxLength = 300; comment.placeholder = 'מה לא נכון? (לא חובה)';
-  const sender = el('input'); sender.type = 'text'; sender.maxLength = 60; sender.placeholder = 'השם שלך (לא חובה)';
+  const sender = el('input'); sender.type = 'text'; sender.maxLength = 60; sender.placeholder = 'השם שלך (חובה)'; sender.required = true;
+  try{ sender.value = localStorage.getItem('rb-sender') || ''; }catch(e){}
   const hp = el('input', 'hp'); hp.type = 'text'; hp.tabIndex = -1; hp.autocomplete = 'off'; hp.setAttribute('aria-hidden', 'true');
   const l3 = el('label', '', 'הערה'); l3.append(comment);
-  const l4 = el('label', '', 'שולח'); l4.append(sender);
+  sender.addEventListener('input', () => sender.classList.remove('bad'));
+  const l4 = el('label', '', 'שם המבקש (חובה)'); l4.append(sender);
   work.append(chosen, seg, pQty, pTxt, pYld, l3, l4, hp);
   work.hidden = true;
 
@@ -934,6 +937,8 @@ function openFix(preset){
       reqs.push({ field: 'הערות', base: r.raw['הערות'] || '', proposed: ls.join('\n').replace(/\n+$/, '') });
     }
     if(!reqs.length){ say('לא בוצע שום שינוי.', true); return; }
+    if(!sender.value.trim()){ say('חובה לכתוב את השם שלך כדי לשלוח בקשה.', true); sender.classList.add('bad'); sender.focus(); return; }
+    try{ localStorage.setItem('rb-sender', sender.value.trim()); }catch(e){}
     send.disabled = true; msg.hidden = true;
     const results = [];
     for(const q of reqs){
