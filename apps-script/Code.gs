@@ -8,7 +8,14 @@
  * 4. מעתיקים את כתובת ה-Web App (מסתיימת ב-/exec) ל-CORRECTION_URL ב-recipes.html.
  * אחרי שינוי בקוד: פריסה > ניהול פריסות > עריכה > גרסה חדשה (אחרת הכתובת ממשיכה להריץ את הגרסה הקודמת).
  *
- * חשוב: הגיליון צריך להיות משותף לצפייה בלבד. כל מי שיכול לערוך את הגיליון יכול גם לאשר בקשות.
+ * חשוב: כל מי שיכול לערוך את הגיליון יכול גם לאשר בקשות ולאשר מכשירים. לא משתפים אותו לעריכה.
+ *
+ * אישור מכשירים (גישה לספר):
+ * הספר נטען דרך הסקריפט הזה ולא ישירות מהגיליון, ולכן הגיליון אמור להיות פרטי (שיתוף: מוגבל). הסקריפט רץ בשמך, ולכן הוא יכול לקרוא אותו.
+ * טבח שפותח את הספר בפעם הראשונה כותב את שמו ולוחץ "בקש גישה". נוספת שורה בטאב "מכשירים" (נוצר אוטומטית).
+ * מסמנים וי בעמודת "מאושר" והספר נפתח אצלו. מסירים את הוי והמכשיר נחסם (בפעם הבאה שיש לו חיבור לשרת).
+ * "קוד" הוא 4 תווים שהטבח רואה על המסך, כדי להבדיל בין שני טבחים עם אותו שם.
+ * מתכונים נוספים שלא בטאב recipes אפשר לשים בטאב "recipes-extra" (אותן עמודות). הוא נשלח לטבחים מאושרים בלבד.
  *
  * הזרימה: הטבח בוחר מתכון ומשנה כמויות (שדה לכל מצרך) ו/או את הוראות ההכנה > האתר שולח בקשה (doPost) >
  * נוספת שורה בטאב "בקשות תיקון" בסטטוס "ממתין", עם עמודת "מה השתנה" (לפני/אחרי) >
@@ -21,42 +28,169 @@ const FIELDS = { 'שם': 'שם', 'מצרכים': 'מצרכים', 'הוראות �
 const HEADERS = ['זמן', 'קטגוריה', 'שם מתכון', 'שדה', 'הנוסח שהטבח ראה', 'נוסח מוצע', 'מה השתנה', 'הערה', 'שולח', 'סטטוס'];
 const STATUS_COL = 10;
 const ST = { PENDING: 'ממתין', APPROVED: 'אושר', FORCE: 'אשר בכל מקרה', REJECTED: 'נדחה', APPLIED: 'הוחל', CONFLICT: 'התנגשות', NOTFOUND: 'מתכון לא נמצא' };
-const RATE_LIMIT = 30;            // בקשות לכל 10 דקות, לכל השולחים יחד
+const RATE_PER_SENDER = 10;       // בקשות לכל 10 דקות, לכל שם שולח
+const RATE_GLOBAL = 120;          // בקשות לכל 10 דקות, לכולם יחד (תקרת חירום נגד הצפה)
+const WINDOW_MS = 10 * 60 * 1000; // חלון קבוע: הספירה מתאפסת בתחילת כל חלון, ולא מתארכת עם כל בקשה
 const NOTIFY_OWNER = true;        // מייל לבעלים, לכל היותר פעם בשעה
+const DEVICES_SHEET = 'מכשירים';
+const EXTRA_SHEET = 'recipes-extra';
+const DEV_HEADERS = ['זמן בקשה', 'שם', 'קוד', 'מאושר', 'נראה לאחרונה', 'מזהה (מוצפן, לא לגעת)'];
+const DEV_APPROVED = 4, DEV_SEEN = 5, DEV_HASH = 6;
+const DEV_REQ_GLOBAL = 20;        // בקשות גישה חדשות לכל 10 דקות, לכולם יחד
+const DEV_PENDING_MAX = 100;      // תקרה לבקשות שלא אושרו. מעבר לזה נדחות עד שמנקים את הטאב
+const SEEN_EVERY_S = 3600;        // "נראה לאחרונה" מתעדכן לכל היותר פעם בשעה למכשיר
 
-function doGet() {
+function doGet(e) {
+  try {
+    const p = (e && e.parameter) || {};
+    if (p.a === 'data') return handleData(p.d);
+  } catch (err) {
+    return reply('error');
+  }
   return reply('ok');
 }
 
 function doPost(e) {
   const lock = LockService.getScriptLock();
+  let locked = false;
   try {
     const d = JSON.parse(e.postData.contents);
     if (d.website) return reply('ok');                       // מלכודת לבוטים
+    if (d.a === 'request') return handleRequest(d);          // בקשת גישה של מכשיר חדש
     const cat = clip(d.cat, 100).trim(), title = clip(d.title, 200).trim(), field = clip(d.field, 30);
     const proposed = clip(d.proposed, 5000).trim();
-    if (!proposed || !FIELDS[field]) return reply('invalid');
-    if (!rateOk()) return reply('busy');
+    const sender = clean(clip(d.sender, 60)).trim();
+    if (!proposed || !FIELDS[field] || !sender) return reply('invalid');
+    const dev = lookupDevice(d.dev);
+    if (!dev || !dev.approved) return reply('denied');       // בקשות תיקון רק ממכשיר מאושר
 
-    lock.waitLock(15000);
+    lock.waitLock(15000); locked = true;                     // הספירה והכתיבה מתבצעות תחת נעילה, כדי שבקשות מקבילות לא יעקפו את המגבלה
+    if (!rateOk(sender)) return reply('busy');
     const recipes = SpreadsheetApp.getActive().getSheetByName(RECIPES_SHEET);
     const row = findRecipeRow(recipes, cat, title);
     if (!row) return reply('unknown');
     const current = String(recipes.getRange(row, columnOf(recipes, FIELDS[field])).getValue());
     if (norm(current) === norm(proposed)) return reply('same');
-    // בסיס ההשוואה הוא הנוסח שהטבח ראה בדף. אם הגיליון השתנה מאז, האישור יסומן "התנגשות" ולא ידרוס את השינוי.
-    const base = d.base == null ? current : clip(d.base, 5000);
+    // בסיס ההשוואה הוא תמיד הנוסח שבגיליון עכשיו (נקבע בשרת, לא מהלקוח). כך "מה השתנה" ובדיקת ההתנגשות באישור אמינים.
+    // אם הטבח ראה נוסח אחר ממה שבגיליון, זה נרשם בהערה, והבקשה נשארת לבדיקה ידנית.
+    let comment = clean(clip(d.comment, 300));
+    if (d.base != null && norm(clip(d.base, 5000)) !== norm(current)) comment = ('[הגיליון השתנה מאז שהטבח ראה את המתכון] ' + comment).trim();
 
     const sh = requestsSheet();
     if (isDuplicate(sh, cat, title, field, proposed)) return reply('ok');
-    sh.appendRow([new Date(), cat, title, field, base, proposed, summarize(base, proposed), clip(d.comment, 300), clip(d.sender, 60), ST.PENDING].map(safe));
+    sh.appendRow([new Date(), cat, title, field, current, proposed, summarize(current, proposed), comment, sender, ST.PENDING].map(safe));
     notify();
     return reply('ok');
   } catch (err) {
     return reply('error');
   } finally {
-    try { lock.releaseLock(); } catch (x) {}
+    if (locked) { try { lock.releaseLock(); } catch (x) {} }
   }
+}
+
+// ---- אישור מכשירים ----
+function json(o) { return reply(JSON.stringify(o)); }
+
+// גיבוב של מזהה המכשיר. בגיליון נשמר רק הגיבוב, כך שמי שרואה את הגיליון לא יכול להתחזות למכשיר מאושר.
+// הקידומת h מונעת מהגיליון לפרש מחרוזת של ספרות ו-e כמספר.
+function devKey(id) {
+  id = String(id == null ? '' : id);
+  if (!/^[a-f0-9]{32}$/.test(id)) return '';
+  const bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, id);
+  return 'h' + Array.from(bytes, b => ('0' + (b & 255).toString(16)).slice(-2)).join('').slice(0, 32);
+}
+const devCode = key => key.slice(1, 5).toUpperCase();
+const isTrue = v => v === true || String(v).trim().toUpperCase() === 'TRUE';
+
+function devicesSheet() {
+  const ss = SpreadsheetApp.getActive();
+  let sh = ss.getSheetByName(DEVICES_SHEET);
+  if (sh) return sh;
+  sh = ss.insertSheet(DEVICES_SHEET, ss.getSheets().length);
+  sh.appendRow(DEV_HEADERS);
+  sh.setFrozenRows(1);
+  sh.getRange(1, 1, 1, DEV_HEADERS.length).setFontWeight('bold');
+  sh.getRange(2, DEV_APPROVED, sh.getMaxRows() - 1, 1).insertCheckboxes();
+  sh.hideColumns(DEV_HASH);
+  return sh;
+}
+
+/** מוצא מכשיר לפי המזהה שהלקוח שלח. מחזיר null אם המזהה לא תקין או לא קיים. */
+function lookupDevice(id) {
+  const key = devKey(id);
+  const sh = SpreadsheetApp.getActive().getSheetByName(DEVICES_SHEET);
+  if (!key || !sh || sh.getLastRow() < 2) return null;
+  const rows = sh.getRange(2, 1, sh.getLastRow() - 1, DEV_HEADERS.length).getValues();
+  for (let i = 0; i < rows.length; i++) {
+    if (rows[i][DEV_HASH - 1] === key) {
+      return { sh, row: i + 2, key, name: String(rows[i][1]), approved: isTrue(rows[i][DEV_APPROVED - 1]), seen: rows[i][DEV_SEEN - 1] };
+    }
+  }
+  return null;
+}
+
+function devStatus(dev) {
+  return { status: dev.approved ? 'ok' : (dev.seen ? 'blocked' : 'pending'), name: dev.name, code: devCode(dev.key) };
+}
+
+/** doGet?a=data&d=<מזהה>: מחזיר את המתכונים רק למכשיר מאושר. */
+function handleData(id) {
+  const dev = lookupDevice(id);
+  if (!dev) return json({ status: 'unknown' });
+  const st = devStatus(dev);
+  if (st.status !== 'ok') return json(st);
+  const cache = CacheService.getScriptCache();
+  if (!cache.get('seen-' + dev.key)) {
+    cache.put('seen-' + dev.key, '1', SEEN_EVERY_S);
+    dev.sh.getRange(dev.row, DEV_SEEN).setValue(new Date());
+  }
+  st.csv = sheetCsv(RECIPES_SHEET);
+  st.extra = sheetCsv(EXTRA_SHEET);
+  return json(st);
+}
+
+/** doPost {a:'request', dev, name}: בקשת גישה של מכשיר חדש. מכשיר שכבר קיים לא מקבל שורה נוספת. */
+function handleRequest(d) {
+  const name = clean(clip(d.name, 60)).trim(), key = devKey(d.dev);
+  if (!name || !key) return reply('invalid');
+  const lock = LockService.getScriptLock();
+  let locked = false;
+  try {
+    lock.waitLock(15000); locked = true;
+    const sh = devicesSheet();
+    const existing = lookupDevice(d.dev);
+    if (existing) return json(devStatus(existing));
+    if (!windowOk('dq', DEV_REQ_GLOBAL)) return reply('busy');
+    const last = sh.getLastRow();
+    if (last >= 2) {
+      const pending = sh.getRange(2, DEV_APPROVED, last - 1, 1).getValues().filter(r => !isTrue(r[0])).length;
+      if (pending >= DEV_PENDING_MAX) return reply('busy');
+    }
+    sh.appendRow([new Date(), name, "'" + devCode(key), false, '', key].map(safe));
+    notify('מכשיר חדש מבקש גישה לספר המתכונים', name + ' (קוד ' + devCode(key) + ')\nלאישור: טאב "' + DEVICES_SHEET + '", וי בעמודת "מאושר"\n' + SpreadsheetApp.getActive().getUrl(), 'notified-dev');
+    return json({ status: 'pending', name, code: devCode(key) });
+  } finally {
+    if (locked) { try { lock.releaseLock(); } catch (x) {} }
+  }
+}
+
+function sheetCsv(name) {
+  const sh = SpreadsheetApp.getActive().getSheetByName(name);
+  if (!sh || sh.getLastRow() < 1) return '';
+  const rows = sh.getDataRange().getDisplayValues();
+  while (rows.length && rows[rows.length - 1].every(c => c === '')) rows.pop();
+  const q = v => /[",\n\r]/.test(v) ? '"' + String(v).replace(/"/g, '""') + '"' : String(v);
+  return rows.map(r => r.map(q).join(',')).join('\n');
+}
+
+/** מונה בחלון קבוע (כמו rateOk). נקרא רק תחת נעילה. */
+function windowOk(name, limit) {
+  const cache = CacheService.getScriptCache();
+  const k = name + '-' + Math.floor(Date.now() / WINDOW_MS);
+  const n = Number(cache.get(k) || 0) + 1;
+  if (n > limit) return false;
+  cache.put(k, String(n), 1200);
+  return true;
 }
 
 /** מופעל אוטומטית בכל עריכה בגיליון. פועל רק על עמודת הסטטוס בטאב הבקשות, גם בהדבקה על כמה שורות. */
@@ -136,25 +270,34 @@ function summarize(base, proposed) {
   return out.slice(0, 15).join('\n\n') + (out.length > 15 ? '\n... ועוד ' + (out.length - 15) : '');
 }
 
-function rateOk() {
+// חלון קבוע ולא נגלל: המפתח כולל את מספר החלון, ולכן בקשות נוספות לא מאריכות את הספירה. נקרא רק תחת נעילה.
+function rateOk(sender) {
   const cache = CacheService.getScriptCache();
-  const n = Number(cache.get('req-count') || 0) + 1;
-  cache.put('req-count', String(n), 600);
-  return n <= RATE_LIMIT;
+  const w = Math.floor(Date.now() / WINDOW_MS);
+  const kSender = 'rs-' + w + '-' + Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, sender.toLowerCase())).slice(0, 12);
+  const kAll = 'rg-' + w;
+  const ns = Number(cache.get(kSender) || 0) + 1, ng = Number(cache.get(kAll) || 0) + 1;
+  if (ns > RATE_PER_SENDER || ng > RATE_GLOBAL) return false;
+  cache.put(kSender, String(ns), 1200);
+  cache.put(kAll, String(ng), 1200);
+  return true;
 }
 
-function notify() {
+function notify(subject, body, flag) {
   if (!NOTIFY_OWNER) return;
   const cache = CacheService.getScriptCache();
-  if (cache.get('notified')) return;
-  cache.put('notified', '1', 3600);
+  flag = flag || 'notified';
+  if (cache.get(flag)) return;
+  cache.put(flag, '1', 3600);
   try {
-    MailApp.sendEmail(Session.getEffectiveUser().getEmail(), 'יש בקשות תיקון חדשות בספר המתכונים',
-      'לאישור: טאב "' + REQUESTS_SHEET + '" בגיליון\n' + SpreadsheetApp.getActive().getUrl());
+    MailApp.sendEmail(Session.getEffectiveUser().getEmail(),
+      subject || 'יש בקשות תיקון חדשות בספר המתכונים',
+      body || 'לאישור: טאב "' + REQUESTS_SHEET + '" בגיליון\n' + SpreadsheetApp.getActive().getUrl());
   } catch (err) {}
 }
 
 const clip = (v, n) => String(v == null ? '' : v).slice(0, n);
 const norm = s => String(s).replace(/^'/, '').replace(/\r/g, '').split('\n').map(x => x.trim()).filter(Boolean).join('\n');
-const safe = s => (typeof s === 'string' && /^[=+\-@]/.test(s) ? "'" + s : s);   // מונע פרשנות כנוסחה
+const clean = s => String(s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, '');   // תווי בקרה ותווי כיוון נסתרים
+const safe = s => (typeof s === 'string' && /^[\s\u0000-\u001F]*[=+\-@]/.test(s) ? "'" + s : s);   // מונע פרשנות כנוסחה (גם אחרי רווח/טאב)
 const reply = s => ContentService.createTextOutput(s);

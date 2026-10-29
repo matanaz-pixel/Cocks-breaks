@@ -61,8 +61,7 @@ test('scaling: lead quantity only', () => {
   assert.strictEqual(R.scaleLine('חצי ליטר חלב', 2), '1 ליטר חלב');
 });
 test('scaling: flags lines with extra quantities', () => {
-  assert.ok(R.hasUnscaledQty('6 גרם ג\'לטין (מומס ב-24 גרם מים)'));
-  assert.ok(R.hasUnscaledQty('100 גרם אריסה לכל 2 ק"ג'));
+  assert.ok(R.hasUnscaledQty('2 ק"ג בשר, מוסיפים 300 גרם מלח'));
   assert.ok(!R.hasUnscaledQty('2 ק"ג בצל'));
 });
 test('scaling: step quantities are found for highlighting', () => {
@@ -90,4 +89,50 @@ test('CSV parse + table', () => {
 });
 test('table without required columns is rejected', () => {
   assert.strictEqual(R.parseTable('a,b\n1,2\n'), null);
+});
+
+test('scaling: dissolved amount in parentheses scales with the lead quantity', () => {
+  assert.strictEqual(R.scaleLine("6 גרם ג'לטין (מומס ב-24 גרם מים)", 2), "12 גרם ג'לטין (מומס ב-48 גרם מים)");
+});
+test('scaling: per-unit weights and ratios are not flagged', () => {
+  assert.ok(!R.hasUnscaledQty('2 מיכלים יוגורט כבשים (1.5 ק"ג כל אחד)'));
+  assert.ok(!R.hasUnscaledQty('100 גרם אריסה לכל 2 ק"ג תבשיל מוכן'));
+});
+test('scaling: step quantity gets a suggested scaled value', () => {
+  const q = R.splitQuantities('מערבבים עם 400 גרם מלח', 2).find(p => p.q);
+  assert.strictEqual(q.s, '800 גרם');
+  assert.strictEqual(R.splitQuantities('400 גרם', 1)[0].s, undefined);
+});
+test('yield: approximate and range portions scale', () => {
+  assert.strictEqual(R.yieldText('מנות: כ-100 (270 גרם למנה)', 2), 'כ-200 מנות (270 גרם למנה)');
+  assert.strictEqual(R.yieldText('מנות: 100-120', 2), '200-240 מנות');
+});
+test('validation of portions and yield fields', () => {
+  assert.strictEqual(R.validatePortions('100 (270 גרם למנה)'), '');
+  assert.strictEqual(R.validatePortions('כ-100'), '');
+  assert.strictEqual(R.validatePortions('100-120'), '');
+  assert.notStrictEqual(R.validatePortions('הרבה'), '');
+  assert.notStrictEqual(R.validatePortions('~'), '');
+  assert.strictEqual(R.validateYield('27 ק"ג בצק'), '');
+  assert.notStrictEqual(R.validateYield('הרבה בצק'), '');
+});
+
+// ---- גישה למכשירים ----
+test('parseAccess accepts only the known statuses', () => {
+  assert.strictEqual(R.parseAccess('{"status":"ok","csv":"a"}').csv, 'a');
+  for(const st of ['pending', 'blocked', 'unknown']) assert.strictEqual(R.parseAccess(JSON.stringify({ status: st })).status, st);
+  for(const bad of ['ok', '', '<html>', '{"status":"admin"}', '{"x":1}', 'null', '[]']) assert.strictEqual(R.parseAccess(bad), null, bad);
+});
+test('cached copy is valid for 14 days only', () => {
+  const t = Date.UTC(2026, 9, 29);
+  assert.ok(R.cacheValid(t - 13 * 86400e3, t));
+  assert.ok(!R.cacheValid(t - 15 * 86400e3, t));
+  assert.ok(!R.cacheValid(undefined, t));
+  assert.ok(!R.cacheValid(t + 30 * 86400e3, t));    // שעון מכשיר שזז קדימה לא מאריך תוקף
+});
+test('device ids are 32 hex chars and validated strictly', () => {
+  const id = R.newDeviceId(Array.from({ length: 16 }, (_, i) => i * 17));
+  assert.match(id, /^[a-f0-9]{32}$/);
+  assert.ok(R.isDeviceId(id));
+  for(const bad of ['', 'A'.repeat(32), 'a'.repeat(31), 'a'.repeat(33), null, 5]) assert.ok(!R.isDeviceId(bad));
 });
