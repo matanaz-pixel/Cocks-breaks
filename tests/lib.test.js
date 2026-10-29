@@ -116,3 +116,23 @@ test('validation of portions and yield fields', () => {
   assert.strictEqual(R.validateYield('27 ק"ג בצק'), '');
   assert.notStrictEqual(R.validateYield('הרבה בצק'), '');
 });
+
+// ---- גישה למכשירים ----
+test('parseAccess accepts only the known statuses', () => {
+  assert.strictEqual(R.parseAccess('{"status":"ok","csv":"a"}').csv, 'a');
+  for(const st of ['pending', 'blocked', 'unknown']) assert.strictEqual(R.parseAccess(JSON.stringify({ status: st })).status, st);
+  for(const bad of ['ok', '', '<html>', '{"status":"admin"}', '{"x":1}', 'null', '[]']) assert.strictEqual(R.parseAccess(bad), null, bad);
+});
+test('cached copy is valid for 14 days only', () => {
+  const t = Date.UTC(2026, 9, 29);
+  assert.ok(R.cacheValid(t - 13 * 86400e3, t));
+  assert.ok(!R.cacheValid(t - 15 * 86400e3, t));
+  assert.ok(!R.cacheValid(undefined, t));
+  assert.ok(!R.cacheValid(t + 30 * 86400e3, t));    // שעון מכשיר שזז קדימה לא מאריך תוקף
+});
+test('device ids are 32 hex chars and validated strictly', () => {
+  const id = R.newDeviceId(Array.from({ length: 16 }, (_, i) => i * 17));
+  assert.match(id, /^[a-f0-9]{32}$/);
+  assert.ok(R.isDeviceId(id));
+  for(const bad of ['', 'A'.repeat(32), 'a'.repeat(31), 'a'.repeat(33), null, 5]) assert.ok(!R.isDeviceId(bad));
+});

@@ -274,7 +274,24 @@ function fmtDur(s){
   return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(ss).padStart(2, '0');
 }
 
+// ---- גישה למכשירים ----
+// תשובת השרת לבקשת נתונים: JSON עם status אחד מארבעה. כל דבר אחר (שרת ישן, שגיאת HTML) נחשב לא מוכר.
+const ACCESS_STATUSES = ['ok', 'pending', 'blocked', 'unknown'];
+function parseAccess(text){
+  try{
+    const o = JSON.parse(text);
+    return o && typeof o === 'object' && ACCESS_STATUSES.includes(o.status) ? o : null;
+  }catch(e){ return null; }
+}
+// עותק שמור במכשיר תקף 14 ימים בלי אימות מול השרת. אחרי זה נדרש חיבור, וכך גם מכשיר שנחסם נחסם בפועל.
+const OFFLINE_MAX_MS = 14 * 24 * 3600e3;
+function cacheValid(ts, nowMs){ return typeof ts === 'number' && isFinite(ts) && nowMs - ts >= -3600e3 && nowMs - ts <= OFFLINE_MAX_MS; }
+// מזהה מכשיר: 16 בתים אקראיים כ-32 תווי hex
+function newDeviceId(bytes){ return Array.from(bytes, b => (b & 255).toString(16).padStart(2, '0')).join(''); }
+const isDeviceId = v => typeof v === 'string' && /^[a-f0-9]{32}$/.test(v);
+
 const api = { NUM, scaleAll, parseCSV, lines, fmtNum, toNum, scaleLine, scaleAll, scaleYield, yieldText, parseMultiplier, parseVariants, parseTable, parseAllergens,
-  validatePortions, validateYield, COLUMNS, REQUIRED, fold, queryTokens, searchScore, splitQuantities, hasUnscaledQty, findTimes, fmtDur };
+  validatePortions, validateYield, COLUMNS, REQUIRED, fold, queryTokens, searchScore, splitQuantities, hasUnscaledQty, findTimes, fmtDur,
+  parseAccess, cacheValid, newDeviceId, isDeviceId, OFFLINE_MAX_MS };
 if(typeof module === 'object' && module.exports) module.exports = api; else root.RB = api;
 })(typeof self !== 'undefined' ? self : this);
