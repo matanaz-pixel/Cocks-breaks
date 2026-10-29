@@ -21,7 +21,9 @@ const FIELDS = { 'שם': 'שם', 'מצרכים': 'מצרכים', 'הוראות �
 const HEADERS = ['זמן', 'קטגוריה', 'שם מתכון', 'שדה', 'הנוסח שהטבח ראה', 'נוסח מוצע', 'מה השתנה', 'הערה', 'שולח', 'סטטוס'];
 const STATUS_COL = 10;
 const ST = { PENDING: 'ממתין', APPROVED: 'אושר', FORCE: 'אשר בכל מקרה', REJECTED: 'נדחה', APPLIED: 'הוחל', CONFLICT: 'התנגשות', NOTFOUND: 'מתכון לא נמצא' };
-const RATE_LIMIT = 30;            // בקשות לכל 10 דקות, לכל השולחים יחד
+const RATE_PER_SENDER = 10;       // בקשות לכל 10 דקות, לכל שם שולח
+const RATE_GLOBAL = 120;          // בקשות לכל 10 דקות, לכולם יחד (תקרת חירום נגד הצפה)
+const WINDOW_MS = 10 * 60 * 1000; // חלון קבוע: הספירה מתאפסת בתחילת כל חלון, ולא מתארכת עם כל בקשה
 const NOTIFY_OWNER = true;        // מייל לבעלים, לכל היותר פעם בשעה
 
 function doGet() {
@@ -30,32 +32,36 @@ function doGet() {
 
 function doPost(e) {
   const lock = LockService.getScriptLock();
+  let locked = false;
   try {
     const d = JSON.parse(e.postData.contents);
     if (d.website) return reply('ok');                       // מלכודת לבוטים
     const cat = clip(d.cat, 100).trim(), title = clip(d.title, 200).trim(), field = clip(d.field, 30);
     const proposed = clip(d.proposed, 5000).trim();
-    if (!proposed || !FIELDS[field]) return reply('invalid');
-    if (!rateOk()) return reply('busy');
+    const sender = clean(clip(d.sender, 60)).trim();
+    if (!proposed || !FIELDS[field] || !sender) return reply('invalid');
 
-    lock.waitLock(15000);
+    lock.waitLock(15000); locked = true;                     // הספירה והכתיבה מתבצעות תחת נעילה, כדי שבקשות מקבילות לא יעקפו את המגבלה
+    if (!rateOk(sender)) return reply('busy');
     const recipes = SpreadsheetApp.getActive().getSheetByName(RECIPES_SHEET);
     const row = findRecipeRow(recipes, cat, title);
     if (!row) return reply('unknown');
     const current = String(recipes.getRange(row, columnOf(recipes, FIELDS[field])).getValue());
     if (norm(current) === norm(proposed)) return reply('same');
-    // בסיס ההשוואה הוא הנוסח שהטבח ראה בדף. אם הגיליון השתנה מאז, האישור יסומן "התנגשות" ולא ידרוס את השינוי.
-    const base = d.base == null ? current : clip(d.base, 5000);
+    // בסיס ההשוואה הוא תמיד הנוסח שבגיליון עכשיו (נקבע בשרת, לא מהלקוח). כך "מה השתנה" ובדיקת ההתנגשות באישור אמינים.
+    // אם הטבח ראה נוסח אחר ממה שבגיליון, זה נרשם בהערה, והבקשה נשארת לבדיקה ידנית.
+    let comment = clean(clip(d.comment, 300));
+    if (d.base != null && norm(clip(d.base, 5000)) !== norm(current)) comment = ('[הגיליון השתנה מאז שהטבח ראה את המתכון] ' + comment).trim();
 
     const sh = requestsSheet();
     if (isDuplicate(sh, cat, title, field, proposed)) return reply('ok');
-    sh.appendRow([new Date(), cat, title, field, base, proposed, summarize(base, proposed), clip(d.comment, 300), clip(d.sender, 60), ST.PENDING].map(safe));
+    sh.appendRow([new Date(), cat, title, field, current, proposed, summarize(current, proposed), comment, sender, ST.PENDING].map(safe));
     notify();
     return reply('ok');
   } catch (err) {
     return reply('error');
   } finally {
-    try { lock.releaseLock(); } catch (x) {}
+    if (locked) { try { lock.releaseLock(); } catch (x) {} }
   }
 }
 
@@ -136,11 +142,17 @@ function summarize(base, proposed) {
   return out.slice(0, 15).join('\n\n') + (out.length > 15 ? '\n... ועוד ' + (out.length - 15) : '');
 }
 
-function rateOk() {
+// חלון קבוע ולא נגלל: המפתח כולל את מספר החלון, ולכן בקשות נוספות לא מאריכות את הספירה. נקרא רק תחת נעילה.
+function rateOk(sender) {
   const cache = CacheService.getScriptCache();
-  const n = Number(cache.get('req-count') || 0) + 1;
-  cache.put('req-count', String(n), 600);
-  return n <= RATE_LIMIT;
+  const w = Math.floor(Date.now() / WINDOW_MS);
+  const kSender = 'rs-' + w + '-' + Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, sender.toLowerCase())).slice(0, 12);
+  const kAll = 'rg-' + w;
+  const ns = Number(cache.get(kSender) || 0) + 1, ng = Number(cache.get(kAll) || 0) + 1;
+  if (ns > RATE_PER_SENDER || ng > RATE_GLOBAL) return false;
+  cache.put(kSender, String(ns), 1200);
+  cache.put(kAll, String(ng), 1200);
+  return true;
 }
 
 function notify() {
@@ -156,5 +168,6 @@ function notify() {
 
 const clip = (v, n) => String(v == null ? '' : v).slice(0, n);
 const norm = s => String(s).replace(/^'/, '').replace(/\r/g, '').split('\n').map(x => x.trim()).filter(Boolean).join('\n');
-const safe = s => (typeof s === 'string' && /^[=+\-@]/.test(s) ? "'" + s : s);   // מונע פרשנות כנוסחה
+const clean = s => String(s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, '');   // תווי בקרה ותווי כיוון נסתרים
+const safe = s => (typeof s === 'string' && /^[\s\u0000-\u001F]*[=+\-@]/.test(s) ? "'" + s : s);   // מונע פרשנות כנוסחה (גם אחרי רווח/טאב)
 const reply = s => ContentService.createTextOutput(s);
